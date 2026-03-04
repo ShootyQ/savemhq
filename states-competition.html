@@ -93,21 +93,83 @@
         months: [
           {
             month: "January",
-            andy: 19,
-            savannah: 17,
-            statesSeen: ["Alabama", "Arizona", "California", "Florida", "Illinois", "Maryland", "New York"],
+            andy: 28,
+            savannah: 29,
+            andyStates: [],
+            savannahStates: [],
           },
           {
             month: "February",
-            andy: 16,
-            savannah: 20,
-            statesSeen: ["Colorado", "Georgia", "Kentucky", "New Jersey", "Ohio", "Pennsylvania", "Texas"],
+            andy: 28,
+            savannah: 29,
+            andyStates: [
+              "Arizona",
+              "California",
+              "Colorado",
+              "Delaware",
+              "Florida",
+              "Georgia",
+              "Idaho",
+              "Illinois",
+              "Iowa",
+              "Kansas",
+              "Louisiana",
+              "Maryland",
+              "Michigan",
+              "Minnesota",
+              "Missouri",
+              "New York",
+              "North Carolina",
+              "North Dakota",
+              "Ohio",
+              "Oklahoma",
+              "Oregon",
+              "South Dakota",
+              "Tennessee",
+              "Texas",
+              "Virginia",
+              "District of Columbia",
+              "Washington",
+              "Wisconsin",
+            ],
+            savannahStates: [
+              "Alabama",
+              "Arizona",
+              "California",
+              "Colorado",
+              "Delaware",
+              "Florida",
+              "Illinois",
+              "Indiana",
+              "Iowa",
+              "Louisiana",
+              "Maryland",
+              "Massachusetts",
+              "Michigan",
+              "Minnesota",
+              "Mississippi",
+              "Missouri",
+              "Nebraska",
+              "New Jersey",
+              "New Mexico",
+              "North Dakota",
+              "Ohio",
+              "Oregon",
+              "Pennsylvania",
+              "South Carolina",
+              "South Dakota",
+              "Tennessee",
+              "Texas",
+              "Virginia",
+              "Wisconsin",
+            ],
           },
           {
             month: "March",
             andy: 0,
             savannah: 0,
-            statesSeen: [],
+            andyStates: [],
+            savannahStates: [],
           },
         ],
       };
@@ -136,11 +198,19 @@
 
       const monthScores = safeMonths.map((monthData) => {
         const winner = winnerForMonth(monthData);
+        const andyStates = Array.isArray(monthData.andyStates) ? monthData.andyStates : [];
+        const savannahStates = Array.isArray(monthData.savannahStates) ? monthData.savannahStates : [];
+        const fallbackStates = Array.isArray(monthData.statesSeen) ? monthData.statesSeen : [];
+        const monthlyStates = Array.from(new Set([...savannahStates, ...andyStates, ...fallbackStates]));
+
         return {
           ...monthData,
+          andyStates,
+          savannahStates,
+          statesSeen: monthlyStates,
           winner,
           totalSpots: monthData.andy + monthData.savannah,
-          uniqueStates: Array.isArray(monthData.statesSeen) ? monthData.statesSeen.length : 0,
+          uniqueStates: monthlyStates.length,
         };
       });
 
@@ -159,7 +229,11 @@
 
       monthlyPlates.innerHTML = monthScores
         .map((monthData) => {
-          const monthStatePills = (monthData.statesSeen || [])
+          const savannahStatePills = (monthData.savannahStates || [])
+            .map((stateName) => `<span class="state-pill seen">${stateName}</span>`)
+            .join("");
+
+          const andyStatePills = (monthData.andyStates || [])
             .map((stateName) => `<span class="state-pill seen">${stateName}</span>`)
             .join("");
 
@@ -167,7 +241,10 @@
             <article class="project-card">
               <h3>${monthData.month}</h3>
               <p><strong>Unique states seen:</strong> ${monthData.uniqueStates}</p>
-              <div class="month-states-wrap">${monthStatePills || '<p class="small-note">No sightings logged yet.</p>'}</div>
+              <p><strong>Savannah saw:</strong></p>
+              <div class="month-states-wrap">${savannahStatePills || '<p class="small-note">No sightings logged yet.</p>'}</div>
+              <p><strong>Andy saw:</strong></p>
+              <div class="month-states-wrap">${andyStatePills || '<p class="small-note">No sightings logged yet.</p>'}</div>
             </article>
           `;
         })
