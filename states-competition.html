@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Andy and Savannah's States Competition | SavemHQ</title>
+    <meta
+      name="description"
+      content="Track Andy and Savannah's monthly license plate spotting competition with winners, sightings, and yearly stats."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a class="brand" href="index.html" aria-label="SavemHQ home">SavemHQ</a>
+        <nav aria-label="Primary">
+          <ul class="nav-list">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#monthly-scoreboard">Monthly Scoreboard</a></li>
+            <li><a href="#plate-views">Plate Tracker</a></li>
+            <li><a href="#yearly-stats">Yearly Stats</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner">
+          <p class="tagline">Family side quest unlocked</p>
+          <h1>Andy and Savannah's States Competition</h1>
+          <p class="subheadline">
+            A monthly race to spot the most state license plates, plus the bragging rights that follow.
+          </p>
+          <p class="intro">
+            This page keeps score each month, tracks which state plates we’ve seen, and rolls it all up into
+            fun yearly stats. Winner gets glory. Loser gets motivated.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#monthly-scoreboard">See Monthly Scores</a>
+            <a class="btn btn-secondary" href="index.html#projects">Back to Projects</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="monthly-scoreboard" class="section section-card">
+        <div class="container">
+          <h2>Monthly Scoreboard (2026)</h2>
+          <p class="section-intro">Edit one data block at the bottom of this file each month. Everything below auto-updates.</p>
+          <div id="monthly-grid" class="project-grid" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section id="plate-views" class="section">
+        <div class="container">
+          <h2>Plates Seen By Month</h2>
+          <p class="section-intro">
+            Which state plates showed up each month of the competition.
+          </p>
+          <div id="monthly-plates" class="project-grid" aria-live="polite"></div>
+          <p class="small-note">Tip: each month card is generated from the same data block as the scoreboard.</p>
+        </div>
+      </section>
+
+      <section id="yearly-stats" class="section section-card">
+        <div class="container">
+          <h2>Yearly Fun Stats</h2>
+          <div id="yearly-grid" class="project-grid" aria-live="polite"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>License plates, side quests, and family glory.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#monthly-scoreboard">Monthly</a></li>
+            <li><a href="#plate-views">Plates</a></li>
+            <li><a href="#yearly-stats">Yearly</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script>
+      const competitionData = {
+        year: 2026,
+        months: [
+          {
+            month: "January",
+            andy: 19,
+            savannah: 17,
+            statesSeen: ["Alabama", "Arizona", "California", "Florida", "Illinois", "Maryland", "New York"],
+          },
+          {
+            month: "February",
+            andy: 16,
+            savannah: 20,
+            statesSeen: ["Colorado", "Georgia", "Kentucky", "New Jersey", "Ohio", "Pennsylvania", "Texas"],
+          },
+          {
+            month: "March",
+            andy: 0,
+            savannah: 0,
+            statesSeen: [],
+          },
+        ],
+      };
+
+      const monthlyGrid = document.getElementById("monthly-grid");
+      const monthlyPlates = document.getElementById("monthly-plates");
+      const yearlyGrid = document.getElementById("yearly-grid");
+
+      const safeMonths = Array.isArray(competitionData.months) ? competitionData.months : [];
+
+      const winnerForMonth = (monthData) => {
+        if (monthData.andy === 0 && monthData.savannah === 0) {
+          return "In progress";
+        }
+
+        if (monthData.andy > monthData.savannah) {
+          return "Andy";
+        }
+
+        if (monthData.savannah > monthData.andy) {
+          return "Savannah";
+        }
+
+        return "Tie";
+      };
+
+      const monthScores = safeMonths.map((monthData) => {
+        const winner = winnerForMonth(monthData);
+        return {
+          ...monthData,
+          winner,
+          totalSpots: monthData.andy + monthData.savannah,
+          uniqueStates: Array.isArray(monthData.statesSeen) ? monthData.statesSeen.length : 0,
+        };
+      });
+
+      monthlyGrid.innerHTML = monthScores
+        .map(
+          (monthData) => `
+            <article class="project-card">
+              <h3>${monthData.month}</h3>
+              <p><strong>Andy:</strong> ${monthData.andy} states</p>
+              <p><strong>Savannah:</strong> ${monthData.savannah} states</p>
+              <p><strong>Winner:</strong> ${monthData.winner}</p>
+            </article>
+          `
+        )
+        .join("");
+
+      monthlyPlates.innerHTML = monthScores
+        .map((monthData) => {
+          const monthStatePills = (monthData.statesSeen || [])
+            .map((stateName) => `<span class="state-pill seen">${stateName}</span>`)
+            .join("");
+
+          return `
+            <article class="project-card">
+              <h3>${monthData.month}</h3>
+              <p><strong>Unique states seen:</strong> ${monthData.uniqueStates}</p>
+              <div class="month-states-wrap">${monthStatePills || '<p class="small-note">No sightings logged yet.</p>'}</div>
+            </article>
+          `;
+        })
+        .join("");
+
+      const completedMonths = monthScores.filter((monthData) => monthData.winner !== "In progress");
+      const andyWins = completedMonths.filter((monthData) => monthData.winner === "Andy").length;
+      const savannahWins = completedMonths.filter((monthData) => monthData.winner === "Savannah").length;
+
+      const combinedStatesSet = new Set(
+        monthScores.flatMap((monthData) => (Array.isArray(monthData.statesSeen) ? monthData.statesSeen : []))
+      );
+
+      const bestMonth = monthScores.reduce(
+        (best, monthData) => (monthData.totalSpots > best.totalSpots ? monthData : best),
+        { month: "N/A", totalSpots: -1 }
+      );
+
+      let currentStreakWinner = "None";
+      let currentStreakCount = 0;
+      for (let index = monthScores.length - 1; index >= 0; index -= 1) {
+        const winner = monthScores[index].winner;
+        if (winner === "In progress" || winner === "Tie") {
+          continue;
+        }
+
+        if (currentStreakWinner === "None") {
+          currentStreakWinner = winner;
+          currentStreakCount = 1;
+          continue;
+        }
+
+        if (winner === currentStreakWinner) {
+          currentStreakCount += 1;
+        } else {
+          break;
+        }
+      }
+
+      let longestStreakWinner = "None";
+      let longestStreakCount = 0;
+      let runWinner = "";
+      let runCount = 0;
+
+      monthScores.forEach((monthData) => {
+        if (monthData.winner === "In progress" || monthData.winner === "Tie") {
+          runWinner = "";
+          runCount = 0;
+          return;
+        }
+
+        if (monthData.winner === runWinner) {
+          runCount += 1;
+        } else {
+          runWinner = monthData.winner;
+          runCount = 1;
+        }
+
+        if (runCount > longestStreakCount) {
+          longestStreakCount = runCount;
+          longestStreakWinner = runWinner;
+        }
+      });
+
+      yearlyGrid.innerHTML = `
+        <article class="project-card">
+          <h3>Monthly Wins</h3>
+          <p><strong>Andy:</strong> ${andyWins}</p>
+          <p><strong>Savannah:</strong> ${savannahWins}</p>
+        </article>
+        <article class="project-card">
+          <h3>Total Unique States Seen</h3>
+          <p><strong>Combined ${competitionData.year}:</strong> ${combinedStatesSet.size}</p>
+          <p><strong>Best spotting month:</strong> ${bestMonth.month} (${bestMonth.totalSpots} total spots)</p>
+        </article>
+        <article class="project-card">
+          <h3>Streak Watch</h3>
+          <p><strong>Current streak:</strong> ${currentStreakWinner} (${currentStreakCount} month${currentStreakCount === 1 ? "" : "s"})</p>
+          <p><strong>Longest streak:</strong> ${longestStreakWinner} (${longestStreakCount} month${longestStreakCount === 1 ? "" : "s"})</p>
+        </article>
+      `;
+
+      document.querySelector("#monthly-scoreboard h2").textContent = `Monthly Scoreboard (${competitionData.year})`;
+    </script>
+  </body>
+</html>
