@@ -109,7 +109,7 @@
         doc,
         getDoc,
         getDocs,
-        getFirestore,
+        initializeFirestore,
         onSnapshot,
         orderBy,
         query,
@@ -273,7 +273,10 @@
       const adminLink = document.getElementById("header-admin-link");
 
       const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+      const db = initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true,
+        useFetchStreams: false,
+      });
       const auth = getAuth(app);
       const googleProvider = new GoogleAuthProvider();
       const competitionYear = competitionData.year;

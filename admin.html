@@ -74,7 +74,7 @@
       import {
         collection,
         getDoc,
-        getFirestore,
+        initializeFirestore,
         onSnapshot,
         orderBy,
         query,
@@ -97,7 +97,10 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const googleProvider = new GoogleAuthProvider();
-      const db = getFirestore(app);
+      const db = initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true,
+        useFetchStreams: false,
+      });
       const approvalsCollection = collection(db, "loginApprovals");
 
       const headerAuthStatus = document.getElementById("header-auth-status");

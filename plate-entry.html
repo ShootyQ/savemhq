@@ -100,7 +100,7 @@
         signInWithPopup,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-      import { arrayUnion, collection, doc, getDoc, getDocs, getFirestore, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+      import { arrayUnion, collection, doc, getDoc, getDocs, initializeFirestore, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyADdgBbyCyPXaRuRKGAuFIWQSqTIQ9kR8s",
@@ -130,7 +130,10 @@
 
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
-      const db = getFirestore(app);
+      const db = initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true,
+        useFetchStreams: false,
+      });
       const provider = new GoogleAuthProvider();
       const approvals = collection(db, "loginApprovals");
       const monthsCollection = collection(db, "competitions", String(COMPETITION_YEAR), "months");
