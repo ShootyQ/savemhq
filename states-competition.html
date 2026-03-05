@@ -46,10 +46,64 @@
         </div>
       </section>
 
+      <section id="live-controls" class="section section-card">
+        <div class="container">
+          <h2>Live Tracker Login</h2>
+          <p class="section-intro">
+            Sign in so each of you can add sightings during the month. New entries sync in real time.
+          </p>
+          <p class="small-note">
+            Admin approvals: <a href="admin.html">Open login approvals</a>
+          </p>
+
+          <div class="auth-grid">
+            <article class="project-card">
+              <h3>Sign In</h3>
+              <form id="auth-form" class="stack-form">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" autocomplete="email" required />
+
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" required />
+
+                <div class="form-actions">
+                  <button class="btn btn-primary" type="submit">Sign In</button>
+                  <button class="btn btn-secondary" id="create-account" type="button">Create Account</button>
+                </div>
+              </form>
+              <p id="auth-status" class="small-note" aria-live="polite">Signed out.</p>
+              <button class="btn btn-secondary" id="sign-out" type="button" disabled>Sign Out</button>
+            </article>
+
+            <article class="project-card">
+              <h3>Add Plate Sighting</h3>
+              <form id="plate-form" class="stack-form" aria-describedby="plate-help">
+                <label for="month-select">Month</label>
+                <select id="month-select" name="month" required></select>
+
+                <label for="person-select">Who saw it?</label>
+                <select id="person-select" name="person" required>
+                  <option value="andy">Andy</option>
+                  <option value="savannah">Savannah</option>
+                </select>
+
+                <label for="state-input">State</label>
+                <input id="state-input" name="state" list="state-list" placeholder="e.g. Texas" required />
+                <datalist id="state-list"></datalist>
+
+                <button class="btn btn-primary" type="submit" disabled id="add-plate">Add Plate</button>
+              </form>
+              <p id="plate-help" class="small-note">Duplicates for the same person/month are ignored automatically.</p>
+              <p id="plate-status" class="small-note" aria-live="polite">Sign in to add sightings.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section id="monthly-scoreboard" class="section section-card">
         <div class="container">
           <h2>Monthly Scoreboard (2026)</h2>
-          <p class="section-intro">Edit one data block at the bottom of this file each month. Everything below auto-updates.</p>
+          <p class="section-intro">Live data from Firebase updates this page for both players automatically.</p>
           <div id="monthly-grid" class="project-grid" aria-live="polite"></div>
         </div>
       </section>
@@ -87,21 +141,52 @@
       </div>
     </footer>
 
-    <script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+      import { getAnalytics, isSupported as analyticsSupported } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js";
+      import {
+        createUserWithEmailAndPassword,
+        getAuth,
+        onAuthStateChanged,
+        signInWithEmailAndPassword,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+      import {
+        arrayUnion,
+        collection,
+        doc,
+        getDoc,
+        getDocs,
+        getFirestore,
+        onSnapshot,
+        orderBy,
+        query,
+        serverTimestamp,
+        setDoc,
+        writeBatch,
+      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyADdgBbyCyPXaRuRKGAuFIWQSqTIQ9kR8s",
+        authDomain: "savemhq.firebaseapp.com",
+        projectId: "savemhq",
+        storageBucket: "savemhq.firebasestorage.app",
+        messagingSenderId: "648978749286",
+        appId: "1:648978749286:web:233b165c3902849dcc9aa7",
+        measurementId: "G-ESG98RHGSQ",
+      };
+      const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
+
       const competitionData = {
         year: 2026,
         months: [
           {
             month: "January",
-            andy: 28,
-            savannah: 29,
             andyStates: [],
             savannahStates: [],
           },
           {
             month: "February",
-            andy: 28,
-            savannah: 29,
             andyStates: [
               "Arizona",
               "California",
@@ -166,19 +251,156 @@
           },
           {
             month: "March",
-            andy: 0,
-            savannah: 0,
             andyStates: [],
             savannahStates: [],
           },
         ],
       };
 
+      const ALL_STATES = [
+        "Alabama",
+        "Alaska",
+        "Arizona",
+        "Arkansas",
+        "California",
+        "Colorado",
+        "Connecticut",
+        "Delaware",
+        "Florida",
+        "Georgia",
+        "Hawaii",
+        "Idaho",
+        "Illinois",
+        "Indiana",
+        "Iowa",
+        "Kansas",
+        "Kentucky",
+        "Louisiana",
+        "Maine",
+        "Maryland",
+        "Massachusetts",
+        "Michigan",
+        "Minnesota",
+        "Mississippi",
+        "Missouri",
+        "Montana",
+        "Nebraska",
+        "Nevada",
+        "New Hampshire",
+        "New Jersey",
+        "New Mexico",
+        "New York",
+        "North Carolina",
+        "North Dakota",
+        "Ohio",
+        "Oklahoma",
+        "Oregon",
+        "Pennsylvania",
+        "Rhode Island",
+        "South Carolina",
+        "South Dakota",
+        "Tennessee",
+        "Texas",
+        "Utah",
+        "Vermont",
+        "Virginia",
+        "Washington",
+        "West Virginia",
+        "Wisconsin",
+        "Wyoming",
+        "District of Columbia",
+      ];
+
       const monthlyGrid = document.getElementById("monthly-grid");
       const monthlyPlates = document.getElementById("monthly-plates");
       const yearlyGrid = document.getElementById("yearly-grid");
+      const authForm = document.getElementById("auth-form");
+      const createAccountBtn = document.getElementById("create-account");
+      const signOutBtn = document.getElementById("sign-out");
+      const authStatus = document.getElementById("auth-status");
+      const plateForm = document.getElementById("plate-form");
+      const plateStatus = document.getElementById("plate-status");
+      const addPlateBtn = document.getElementById("add-plate");
+      const monthSelect = document.getElementById("month-select");
+      const stateList = document.getElementById("state-list");
 
-      const safeMonths = Array.isArray(competitionData.months) ? competitionData.months : [];
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
+      const competitionYear = competitionData.year;
+      const monthsCollection = collection(db, "competitions", String(competitionYear), "months");
+      const approvalCollection = collection(db, "loginApprovals");
+      let signedOutMessage = "Signed out.";
+
+      analyticsSupported().then((supported) => {
+        if (supported) {
+          getAnalytics(app);
+        }
+      });
+
+      stateList.innerHTML = ALL_STATES.map((state) => `<option value="${state}"></option>`).join("");
+
+      const slugifyMonth = (monthName) =>
+        monthName
+          .toLowerCase()
+          .trim()
+          .replace(/\s+/g, "-");
+
+      const monthMetaById = new Map(
+        competitionData.months.map((monthData, index) => [slugifyMonth(monthData.month), { month: monthData.month, order: index }])
+      );
+
+      const normalizeState = (rawState) => {
+        const trimmed = rawState.trim().toLowerCase();
+        const match = ALL_STATES.find((state) => state.toLowerCase() === trimmed);
+        return match || "";
+      };
+
+      const approvalStatusFor = async (user) => {
+        const approvalRef = doc(approvalCollection, user.uid);
+        const snapshot = await getDoc(approvalRef);
+        const normalizedEmail = (user.email || "").toLowerCase();
+
+        if (!snapshot.exists()) {
+          const defaultStatus = normalizedEmail === ADMIN_EMAIL ? "approved" : "pending";
+          await setDoc(
+            approvalRef,
+            {
+              uid: user.uid,
+              email: user.email || "",
+              status: defaultStatus,
+              requestedAt: serverTimestamp(),
+              lastLoginAttemptAt: serverTimestamp(),
+              reviewedAt: defaultStatus === "approved" ? serverTimestamp() : null,
+              reviewedBy: defaultStatus === "approved" ? ADMIN_EMAIL : null,
+            },
+            { merge: true }
+          );
+
+          return defaultStatus;
+        }
+
+        const data = snapshot.data();
+        let status = data.status || "pending";
+
+        if (normalizedEmail === ADMIN_EMAIL && status !== "approved") {
+          status = "approved";
+        }
+
+        await setDoc(
+          approvalRef,
+          {
+            uid: user.uid,
+            email: user.email || "",
+            status,
+            lastLoginAttemptAt: serverTimestamp(),
+            ...(status === "approved" ? { reviewedAt: serverTimestamp(), reviewedBy: ADMIN_EMAIL } : {}),
+          },
+          { merge: true }
+        );
+
+        return status;
+      };
 
       const winnerForMonth = (monthData) => {
         if (monthData.andy === 0 && monthData.savannah === 0) {
@@ -196,138 +418,340 @@
         return "Tie";
       };
 
-      const monthScores = safeMonths.map((monthData) => {
-        const winner = winnerForMonth(monthData);
-        const andyStates = Array.isArray(monthData.andyStates) ? monthData.andyStates : [];
-        const savannahStates = Array.isArray(monthData.savannahStates) ? monthData.savannahStates : [];
-        const fallbackStates = Array.isArray(monthData.statesSeen) ? monthData.statesSeen : [];
-        const monthlyStates = Array.from(new Set([...savannahStates, ...andyStates, ...fallbackStates]));
+      const renderMonthOptions = (months) => {
+        months.forEach((monthData, index) => {
+          monthMetaById.set(slugifyMonth(monthData.month), {
+            month: monthData.month,
+            order: Number.isFinite(monthData.order) ? monthData.order : index,
+          });
+        });
 
-        return {
-          ...monthData,
-          andyStates,
-          savannahStates,
-          statesSeen: monthlyStates,
-          winner,
-          totalSpots: monthData.andy + monthData.savannah,
-          uniqueStates: monthlyStates.length,
-        };
-      });
+        monthSelect.innerHTML = months
+          .map((monthData) => `<option value="${slugifyMonth(monthData.month)}">${monthData.month}</option>`)
+          .join("");
+      };
 
-      monthlyGrid.innerHTML = monthScores
-        .map(
-          (monthData) => `
-            <article class="project-card">
-              <h3>${monthData.month}</h3>
-              <p><strong>Andy:</strong> ${monthData.andy} states</p>
-              <p><strong>Savannah:</strong> ${monthData.savannah} states</p>
-              <p><strong>Winner:</strong> ${monthData.winner}</p>
-            </article>
-          `
-        )
-        .join("");
+      const renderCompetition = (months) => {
+        const monthScores = months.map((monthData) => {
+          const andyStates = Array.isArray(monthData.andyStates) ? monthData.andyStates : [];
+          const savannahStates = Array.isArray(monthData.savannahStates) ? monthData.savannahStates : [];
+          const monthlyStates = Array.from(new Set([...savannahStates, ...andyStates]));
+          const andy = andyStates.length;
+          const savannah = savannahStates.length;
+          const winner = winnerForMonth({ andy, savannah });
 
-      monthlyPlates.innerHTML = monthScores
-        .map((monthData) => {
-          const savannahStatePills = (monthData.savannahStates || [])
-            .map((stateName) => `<span class="state-pill seen">${stateName}</span>`)
-            .join("");
+          return {
+            ...monthData,
+            andy,
+            savannah,
+            andyStates,
+            savannahStates,
+            statesSeen: monthlyStates,
+            winner,
+            totalSpots: andy + savannah,
+            uniqueStates: monthlyStates.length,
+          };
+        });
 
-          const andyStatePills = (monthData.andyStates || [])
-            .map((stateName) => `<span class="state-pill seen">${stateName}</span>`)
-            .join("");
+        monthlyGrid.innerHTML = monthScores
+          .map(
+            (monthData) => `
+              <article class="project-card">
+                <h3>${monthData.month}</h3>
+                <p><strong>Andy:</strong> ${monthData.andy} states</p>
+                <p><strong>Savannah:</strong> ${monthData.savannah} states</p>
+                <p><strong>Winner:</strong> ${monthData.winner}</p>
+              </article>
+            `
+          )
+          .join("");
 
-          return `
-            <article class="project-card">
-              <h3>${monthData.month}</h3>
-              <p><strong>Unique states seen:</strong> ${monthData.uniqueStates}</p>
-              <p><strong>Savannah saw:</strong></p>
-              <div class="month-states-wrap">${savannahStatePills || '<p class="small-note">No sightings logged yet.</p>'}</div>
-              <p><strong>Andy saw:</strong></p>
-              <div class="month-states-wrap">${andyStatePills || '<p class="small-note">No sightings logged yet.</p>'}</div>
-            </article>
-          `;
-        })
-        .join("");
+        monthlyPlates.innerHTML = monthScores
+          .map((monthData) => {
+            const savannahStatePills = monthData.savannahStates
+              .map((stateName) => `<span class="state-pill seen">${stateName}</span>`)
+              .join("");
 
-      const completedMonths = monthScores.filter((monthData) => monthData.winner !== "In progress");
-      const andyWins = completedMonths.filter((monthData) => monthData.winner === "Andy").length;
-      const savannahWins = completedMonths.filter((monthData) => monthData.winner === "Savannah").length;
+            const andyStatePills = monthData.andyStates
+              .map((stateName) => `<span class="state-pill seen">${stateName}</span>`)
+              .join("");
 
-      const combinedStatesSet = new Set(
-        monthScores.flatMap((monthData) => (Array.isArray(monthData.statesSeen) ? monthData.statesSeen : []))
-      );
+            return `
+              <article class="project-card">
+                <h3>${monthData.month}</h3>
+                <p><strong>Unique states seen:</strong> ${monthData.uniqueStates}</p>
+                <p><strong>Savannah saw:</strong></p>
+                <div class="month-states-wrap">${savannahStatePills || '<p class="small-note">No sightings logged yet.</p>'}</div>
+                <p><strong>Andy saw:</strong></p>
+                <div class="month-states-wrap">${andyStatePills || '<p class="small-note">No sightings logged yet.</p>'}</div>
+              </article>
+            `;
+          })
+          .join("");
 
-      const bestMonth = monthScores.reduce(
-        (best, monthData) => (monthData.totalSpots > best.totalSpots ? monthData : best),
-        { month: "N/A", totalSpots: -1 }
-      );
+        const completedMonths = monthScores.filter((monthData) => monthData.winner !== "In progress");
+        const andyWins = completedMonths.filter((monthData) => monthData.winner === "Andy").length;
+        const savannahWins = completedMonths.filter((monthData) => monthData.winner === "Savannah").length;
+        const combinedStatesSet = new Set(monthScores.flatMap((monthData) => monthData.statesSeen));
 
-      let currentStreakWinner = "None";
-      let currentStreakCount = 0;
-      for (let index = monthScores.length - 1; index >= 0; index -= 1) {
-        const winner = monthScores[index].winner;
-        if (winner === "In progress" || winner === "Tie") {
-          continue;
+        const bestMonth = monthScores.reduce(
+          (best, monthData) => (monthData.totalSpots > best.totalSpots ? monthData : best),
+          { month: "N/A", totalSpots: -1 }
+        );
+
+        let currentStreakWinner = "None";
+        let currentStreakCount = 0;
+        for (let index = monthScores.length - 1; index >= 0; index -= 1) {
+          const winner = monthScores[index].winner;
+          if (winner === "In progress" || winner === "Tie") {
+            continue;
+          }
+
+          if (currentStreakWinner === "None") {
+            currentStreakWinner = winner;
+            currentStreakCount = 1;
+            continue;
+          }
+
+          if (winner === currentStreakWinner) {
+            currentStreakCount += 1;
+          } else {
+            break;
+          }
         }
 
-        if (currentStreakWinner === "None") {
-          currentStreakWinner = winner;
-          currentStreakCount = 1;
-          continue;
-        }
+        let longestStreakWinner = "None";
+        let longestStreakCount = 0;
+        let runWinner = "";
+        let runCount = 0;
 
-        if (winner === currentStreakWinner) {
-          currentStreakCount += 1;
-        } else {
-          break;
-        }
-      }
+        monthScores.forEach((monthData) => {
+          if (monthData.winner === "In progress" || monthData.winner === "Tie") {
+            runWinner = "";
+            runCount = 0;
+            return;
+          }
 
-      let longestStreakWinner = "None";
-      let longestStreakCount = 0;
-      let runWinner = "";
-      let runCount = 0;
+          if (monthData.winner === runWinner) {
+            runCount += 1;
+          } else {
+            runWinner = monthData.winner;
+            runCount = 1;
+          }
 
-      monthScores.forEach((monthData) => {
-        if (monthData.winner === "In progress" || monthData.winner === "Tie") {
-          runWinner = "";
-          runCount = 0;
+          if (runCount > longestStreakCount) {
+            longestStreakCount = runCount;
+            longestStreakWinner = runWinner;
+          }
+        });
+
+        yearlyGrid.innerHTML = `
+          <article class="project-card">
+            <h3>Monthly Wins</h3>
+            <p><strong>Andy:</strong> ${andyWins}</p>
+            <p><strong>Savannah:</strong> ${savannahWins}</p>
+          </article>
+          <article class="project-card">
+            <h3>Total Unique States Seen</h3>
+            <p><strong>Combined ${competitionYear}:</strong> ${combinedStatesSet.size}</p>
+            <p><strong>Best spotting month:</strong> ${bestMonth.month} (${bestMonth.totalSpots} total spots)</p>
+          </article>
+          <article class="project-card">
+            <h3>Streak Watch</h3>
+            <p><strong>Current streak:</strong> ${currentStreakWinner} (${currentStreakCount} month${currentStreakCount === 1 ? "" : "s"})</p>
+            <p><strong>Longest streak:</strong> ${longestStreakWinner} (${longestStreakCount} month${longestStreakCount === 1 ? "" : "s"})</p>
+          </article>
+        `;
+
+        document.querySelector("#monthly-scoreboard h2").textContent = `Monthly Scoreboard (${competitionYear})`;
+      };
+
+      const seedMonthsIfNeeded = async () => {
+        const existing = await getDocs(monthsCollection);
+        if (!existing.empty) {
           return;
         }
 
-        if (monthData.winner === runWinner) {
-          runCount += 1;
-        } else {
-          runWinner = monthData.winner;
-          runCount = 1;
-        }
+        const batch = writeBatch(db);
+        competitionData.months.forEach((monthData, index) => {
+          const monthId = slugifyMonth(monthData.month);
+          const monthDoc = doc(monthsCollection, monthId);
+          batch.set(monthDoc, {
+            month: monthData.month,
+            order: index,
+            andyStates: monthData.andyStates,
+            savannahStates: monthData.savannahStates,
+            updatedAt: serverTimestamp(),
+          });
+        });
+        await batch.commit();
+      };
 
-        if (runCount > longestStreakCount) {
-          longestStreakCount = runCount;
-          longestStreakWinner = runWinner;
+      const monthQuery = query(monthsCollection, orderBy("order", "asc"));
+      onSnapshot(
+        monthQuery,
+        async (snapshot) => {
+          if (snapshot.empty) {
+            try {
+              await seedMonthsIfNeeded();
+              return;
+            } catch (error) {
+              renderCompetition(competitionData.months);
+              renderMonthOptions(competitionData.months);
+              plateStatus.textContent = "Could not load Firestore data yet. Check Firebase rules/config.";
+              return;
+            }
+          }
+
+          const months = snapshot.docs.map((documentSnapshot) => {
+            const data = documentSnapshot.data();
+            return {
+              month: data.month,
+              order: data.order,
+              andyStates: Array.isArray(data.andyStates) ? data.andyStates : [],
+              savannahStates: Array.isArray(data.savannahStates) ? data.savannahStates : [],
+            };
+          });
+
+          renderCompetition(months);
+          renderMonthOptions(months);
+        },
+        () => {
+          renderCompetition(competitionData.months);
+          renderMonthOptions(competitionData.months);
+          plateStatus.textContent = "Realtime sync unavailable. Showing local fallback data.";
+        }
+      );
+
+      authForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const formData = new FormData(authForm);
+        const email = String(formData.get("email") || "").trim();
+        const password = String(formData.get("password") || "").trim();
+
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+          authStatus.textContent = `Signed in as ${email}.`;
+        } catch {
+          authStatus.textContent = "Sign in failed. Check your email/password.";
         }
       });
 
-      yearlyGrid.innerHTML = `
-        <article class="project-card">
-          <h3>Monthly Wins</h3>
-          <p><strong>Andy:</strong> ${andyWins}</p>
-          <p><strong>Savannah:</strong> ${savannahWins}</p>
-        </article>
-        <article class="project-card">
-          <h3>Total Unique States Seen</h3>
-          <p><strong>Combined ${competitionData.year}:</strong> ${combinedStatesSet.size}</p>
-          <p><strong>Best spotting month:</strong> ${bestMonth.month} (${bestMonth.totalSpots} total spots)</p>
-        </article>
-        <article class="project-card">
-          <h3>Streak Watch</h3>
-          <p><strong>Current streak:</strong> ${currentStreakWinner} (${currentStreakCount} month${currentStreakCount === 1 ? "" : "s"})</p>
-          <p><strong>Longest streak:</strong> ${longestStreakWinner} (${longestStreakCount} month${longestStreakCount === 1 ? "" : "s"})</p>
-        </article>
-      `;
+      createAccountBtn.addEventListener("click", async () => {
+        const formData = new FormData(authForm);
+        const email = String(formData.get("email") || "").trim();
+        const password = String(formData.get("password") || "").trim();
 
-      document.querySelector("#monthly-scoreboard h2").textContent = `Monthly Scoreboard (${competitionData.year})`;
+        if (!email || !password) {
+          authStatus.textContent = "Enter email and password first.";
+          return;
+        }
+
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+          signedOutMessage = "Account created. Waiting for admin approval before login access.";
+          authStatus.textContent = signedOutMessage;
+        } catch {
+          authStatus.textContent = "Account creation failed. Check Firebase Auth settings.";
+        }
+      });
+
+      signOutBtn.addEventListener("click", async () => {
+        await signOut(auth);
+      });
+
+      onAuthStateChanged(auth, async (user) => {
+        const isSignedIn = Boolean(user);
+
+        if (!isSignedIn) {
+          addPlateBtn.disabled = true;
+          signOutBtn.disabled = true;
+          authStatus.textContent = signedOutMessage;
+          plateStatus.textContent = "Sign in to add sightings.";
+          return;
+        }
+
+        try {
+          const approvalStatus = await approvalStatusFor(user);
+          if (approvalStatus !== "approved") {
+            addPlateBtn.disabled = true;
+            signOutBtn.disabled = true;
+
+            if (approvalStatus === "denied") {
+              signedOutMessage = "Login denied. Contact Andrew if this should be allowed.";
+            } else {
+              signedOutMessage = "Account pending approval. Andrew must approve this login first.";
+            }
+
+            await signOut(auth);
+            return;
+          }
+        } catch {
+          signedOutMessage = "Approval check failed. Verify Firestore rules and try again.";
+          addPlateBtn.disabled = true;
+          signOutBtn.disabled = true;
+          await signOut(auth);
+          return;
+        }
+
+        addPlateBtn.disabled = false;
+        signOutBtn.disabled = false;
+        signedOutMessage = "Signed out.";
+
+        authStatus.textContent = `Signed in as ${user.email}.`;
+        plateStatus.textContent = "Ready to add a sighting.";
+      });
+
+      plateForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const user = auth.currentUser;
+        if (!user) {
+          plateStatus.textContent = "Please sign in first.";
+          return;
+        }
+
+        const formData = new FormData(plateForm);
+        const monthId = String(formData.get("month") || "").trim();
+        const person = String(formData.get("person") || "").trim();
+        const state = normalizeState(String(formData.get("state") || ""));
+
+        if (!monthId || !state) {
+          plateStatus.textContent = "Choose a month and enter a valid U.S. state.";
+          return;
+        }
+
+        const validPeople = ["andy", "savannah"];
+        if (!validPeople.includes(person)) {
+          plateStatus.textContent = "Pick a valid player.";
+          return;
+        }
+
+        const monthRef = doc(monthsCollection, monthId);
+        const stateField = person === "andy" ? "andyStates" : "savannahStates";
+        const monthMeta = monthMetaById.get(monthId);
+
+        try {
+          await setDoc(
+            monthRef,
+            {
+              month: monthMeta ? monthMeta.month : monthId,
+              order: monthMeta ? monthMeta.order : 999,
+              [stateField]: arrayUnion(state),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+
+          plateForm.reset();
+          plateStatus.textContent = `${state} added for ${person === "andy" ? "Andy" : "Savannah"}.`;
+        } catch {
+          plateStatus.textContent = "Could not add sighting. Check Firestore permissions.";
+        }
+      });
+
+      renderCompetition(competitionData.months);
+      renderMonthOptions(competitionData.months);
     </script>
   </body>
 </html>

@@ -160,6 +160,42 @@ a:hover {
   margin-top: 1.2rem;
 }
 
+.auth-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.stack-form {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.stack-form label {
+  margin-top: 0.45rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.stack-form input,
+.stack-form select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.58rem 0.7rem;
+  font: inherit;
+  color: var(--text);
+  background: #ffffff;
+}
+
+.form-actions {
+  margin-top: 0.55rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
 .btn {
   display: inline-block;
   text-decoration: none;
@@ -275,5 +311,11 @@ button:focus-visible {
   .nav-list,
   .footer-nav {
     flex-wrap: wrap;
+  }
+
+  .form-actions .btn,
+  #sign-out {
+    width: 100%;
+    text-align: center;
   }
 }

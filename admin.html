@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login Approvals | SavemHQ</title>
+    <meta name="description" content="Admin page to approve or deny SavemHQ login requests." />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a class="brand" href="index.html" aria-label="SavemHQ home">SavemHQ</a>
+        <nav aria-label="Primary">
+          <ul class="nav-list">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="states-competition.html">States Competition</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner">
+          <p class="tagline">Admin only</p>
+          <h1>Login Approval Center</h1>
+          <p class="subheadline">Review new sign-ins and approve or deny access.</p>
+        </div>
+      </section>
+
+      <section class="section section-card">
+        <div class="container auth-grid">
+          <article class="project-card">
+            <h2>Admin Sign In</h2>
+            <form id="admin-auth-form" class="stack-form">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="email" required />
+
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" autocomplete="current-password" required />
+
+              <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Sign In</button>
+                <button class="btn btn-secondary" type="button" id="admin-sign-out" disabled>Sign Out</button>
+              </div>
+            </form>
+            <p id="admin-status" class="small-note" aria-live="polite">Signed out.</p>
+          </article>
+
+          <article class="project-card">
+            <h2>Approval Queue</h2>
+            <p class="small-note">Only approved users can access the plate tracker.</p>
+            <div id="approvals-list" class="stack-form" aria-live="polite">
+              <p class="small-note">Sign in as admin to load requests.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>SavemHQ admin tools.</p>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+        signInWithEmailAndPassword,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+      import {
+        collection,
+        getFirestore,
+        onSnapshot,
+        orderBy,
+        query,
+        serverTimestamp,
+        setDoc,
+        doc,
+      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyADdgBbyCyPXaRuRKGAuFIWQSqTIQ9kR8s",
+        authDomain: "savemhq.firebaseapp.com",
+        projectId: "savemhq",
+        storageBucket: "savemhq.firebasestorage.app",
+        messagingSenderId: "648978749286",
+        appId: "1:648978749286:web:233b165c3902849dcc9aa7",
+        measurementId: "G-ESG98RHGSQ",
+      };
+
+      const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const approvalsCollection = collection(db, "loginApprovals");
+
+      const adminAuthForm = document.getElementById("admin-auth-form");
+      const adminStatus = document.getElementById("admin-status");
+      const adminSignOut = document.getElementById("admin-sign-out");
+      const approvalsList = document.getElementById("approvals-list");
+
+      let unsubscribeApprovals = null;
+
+      const formatDate = (value) => {
+        if (!value || typeof value.toDate !== "function") {
+          return "N/A";
+        }
+
+        return value.toDate().toLocaleString();
+      };
+
+      const renderApprovals = (docs) => {
+        if (!docs.length) {
+          approvalsList.innerHTML = '<p class="small-note">No login requests found.</p>';
+          return;
+        }
+
+        approvalsList.innerHTML = docs
+          .map((approvalDoc) => {
+            const data = approvalDoc.data();
+            const status = data.status || "pending";
+            const isAdminRecord = (data.email || "").toLowerCase() === ADMIN_EMAIL;
+            const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+
+            return `
+              <article class="project-card">
+                <h3>${data.email || "Unknown email"}</h3>
+                <p><strong>Status:</strong> ${statusLabel}</p>
+                <p><strong>Requested:</strong> ${formatDate(data.requestedAt)}</p>
+                <p><strong>Last login attempt:</strong> ${formatDate(data.lastLoginAttemptAt)}</p>
+                <p><strong>Reviewed by:</strong> ${data.reviewedBy || "N/A"}</p>
+                <div class="form-actions">
+                  <button class="btn btn-primary" data-action="approved" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Accept</button>
+                  <button class="btn btn-secondary" data-action="denied" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Do Not Accept</button>
+                </div>
+              </article>
+            `;
+          })
+          .join("");
+      };
+
+      const startApprovalSubscription = () => {
+        if (unsubscribeApprovals) {
+          unsubscribeApprovals();
+        }
+
+        const approvalsQuery = query(approvalsCollection, orderBy("requestedAt", "desc"));
+        unsubscribeApprovals = onSnapshot(
+          approvalsQuery,
+          (snapshot) => {
+            renderApprovals(snapshot.docs);
+          },
+          () => {
+            approvalsList.innerHTML = '<p class="small-note">Could not load approvals. Check Firestore rules.</p>';
+          }
+        );
+      };
+
+      adminAuthForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const formData = new FormData(adminAuthForm);
+        const email = String(formData.get("email") || "").trim();
+        const password = String(formData.get("password") || "").trim();
+
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+        } catch {
+          adminStatus.textContent = "Sign in failed.";
+        }
+      });
+
+      adminSignOut.addEventListener("click", async () => {
+        await signOut(auth);
+      });
+
+      approvalsList.addEventListener("click", async (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        const action = target.dataset.action;
+        const uid = target.dataset.uid;
+        const user = auth.currentUser;
+
+        if (!user || (user.email || "").toLowerCase() !== ADMIN_EMAIL) {
+          adminStatus.textContent = "Only the admin account can review logins.";
+          return;
+        }
+
+        if (!action || !uid) {
+          return;
+        }
+
+        target.disabled = true;
+        try {
+          await setDoc(
+            doc(approvalsCollection, uid),
+            {
+              status: action,
+              reviewedAt: serverTimestamp(),
+              reviewedBy: user.email,
+            },
+            { merge: true }
+          );
+          adminStatus.textContent = `Updated request to ${action}.`;
+        } catch {
+          adminStatus.textContent = "Could not update request status.";
+        } finally {
+          target.disabled = false;
+        }
+      });
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          adminSignOut.disabled = true;
+          adminStatus.textContent = "Signed out.";
+          approvalsList.innerHTML = '<p class="small-note">Sign in as admin to load requests.</p>';
+          if (unsubscribeApprovals) {
+            unsubscribeApprovals();
+            unsubscribeApprovals = null;
+          }
+          return;
+        }
+
+        if ((user.email || "").toLowerCase() !== ADMIN_EMAIL) {
+          adminStatus.textContent = "This account is not allowed on the admin page.";
+          await signOut(auth);
+          return;
+        }
+
+        adminSignOut.disabled = false;
+        adminStatus.textContent = `Signed in as ${user.email}.`;
+        startApprovalSubscription();
+      });
+    </script>
+  </body>
+</html>
