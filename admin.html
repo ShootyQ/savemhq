@@ -19,6 +19,13 @@
             <li><a href="states-competition.html">States Competition</a></li>
           </ul>
         </nav>
+        <div class="header-auth" aria-live="polite">
+          <span id="header-auth-status" class="small-note">Signed out</span>
+          <a id="add-plates-link" class="btn btn-secondary hidden" href="plate-entry.html">Add Plates</a>
+          <a id="header-admin-link" class="btn btn-secondary hidden" href="admin.html">Admin</a>
+          <button id="header-sign-in" class="btn btn-primary" type="button">Google Login</button>
+          <button id="header-sign-out" class="btn btn-secondary hidden" type="button">Sign Out</button>
+        </div>
       </div>
     </header>
 
@@ -34,12 +41,8 @@
       <section class="section section-card">
         <div class="container auth-grid">
           <article class="project-card">
-            <h2>Admin Sign In</h2>
-            <div class="form-actions">
-              <button class="btn btn-primary" type="button" id="admin-sign-in">Google Login</button>
-              <button class="btn btn-secondary hidden" type="button" id="admin-sign-out">Sign Out</button>
-            </div>
-            <p id="admin-status" class="small-note" aria-live="polite">Signed out.</p>
+            <h2>Admin Access</h2>
+            <p id="admin-status" class="small-note" aria-live="polite">Sign in from the top-right header to manage approvals.</p>
           </article>
 
           <article class="project-card">
@@ -70,6 +73,7 @@
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
       import {
         collection,
+        getDoc,
         getFirestore,
         onSnapshot,
         orderBy,
@@ -96,10 +100,55 @@
       const db = getFirestore(app);
       const approvalsCollection = collection(db, "loginApprovals");
 
-      const adminSignIn = document.getElementById("admin-sign-in");
+      const headerAuthStatus = document.getElementById("header-auth-status");
+      const headerSignIn = document.getElementById("header-sign-in");
+      const headerSignOut = document.getElementById("header-sign-out");
+      const addPlatesLink = document.getElementById("add-plates-link");
+      const adminLink = document.getElementById("header-admin-link");
       const adminStatus = document.getElementById("admin-status");
-      const adminSignOut = document.getElementById("admin-sign-out");
       const approvalsList = document.getElementById("approvals-list");
+      const approvalStatusFor = async (user) => {
+        const approvalRef = doc(approvalsCollection, user.uid);
+        const snapshot = await getDoc(approvalRef);
+        const normalizedEmail = (user.email || "").toLowerCase();
+
+        if (!snapshot.exists()) {
+          const status = normalizedEmail === ADMIN_EMAIL ? "approved" : "pending";
+          await setDoc(
+            approvalRef,
+            {
+              uid: user.uid,
+              email: user.email || "",
+              status,
+              requestedAt: serverTimestamp(),
+              lastLoginAttemptAt: serverTimestamp(),
+              reviewedAt: status === "approved" ? serverTimestamp() : null,
+              reviewedBy: status === "approved" ? ADMIN_EMAIL : null,
+            },
+            { merge: true }
+          );
+          return status;
+        }
+
+        const data = snapshot.data();
+        let status = data.status || "pending";
+        if (normalizedEmail === ADMIN_EMAIL && status !== "approved") {
+          status = "approved";
+        }
+
+        await setDoc(
+          approvalRef,
+          {
+            email: user.email || "",
+            status,
+            lastLoginAttemptAt: serverTimestamp(),
+            ...(status === "approved" ? { reviewedAt: serverTimestamp(), reviewedBy: ADMIN_EMAIL } : {}),
+          },
+          { merge: true }
+        );
+        return status;
+      };
+
 
       let unsubscribeApprovals = null;
 
@@ -158,16 +207,16 @@
         );
       };
 
-      adminSignIn.addEventListener("click", async () => {
+      headerSignIn.addEventListener("click", async () => {
         try {
           await signInWithPopup(auth, googleProvider);
         } catch (error) {
           const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
-          adminStatus.textContent = `Google sign-in failed (${details}).`;
+          headerAuthStatus.textContent = `Google sign-in failed (${details}).`;
         }
       });
 
-      adminSignOut.addEventListener("click", async () => {
+      headerSignOut.addEventListener("click", async () => {
         await signOut(auth);
       });
 
@@ -211,9 +260,12 @@
 
       onAuthStateChanged(auth, async (user) => {
         if (!user) {
-          adminSignIn.classList.remove("hidden");
-          adminSignOut.classList.add("hidden");
-          adminStatus.textContent = "Signed out.";
+          headerSignIn.classList.remove("hidden");
+          headerSignOut.classList.add("hidden");
+          addPlatesLink.classList.add("hidden");
+          adminLink.classList.add("hidden");
+          headerAuthStatus.textContent = "Signed out.";
+          adminStatus.textContent = "Sign in from the top-right header to manage approvals.";
           approvalsList.innerHTML = '<p class="small-note">Sign in as admin to load requests.</p>';
           if (unsubscribeApprovals) {
             unsubscribeApprovals();
@@ -222,16 +274,43 @@
           return;
         }
 
-        if ((user.email || "").toLowerCase() !== ADMIN_EMAIL) {
-          adminStatus.textContent = "This account is not allowed on the admin page.";
-          await signOut(auth);
-          return;
-        }
+        headerSignIn.classList.add("hidden");
+        headerSignOut.classList.remove("hidden");
 
-        adminSignIn.classList.add("hidden");
-        adminSignOut.classList.remove("hidden");
-        adminStatus.textContent = `Signed in as ${user.email}.`;
-        startApprovalSubscription();
+        try {
+          const status = await approvalStatusFor(user);
+          const email = (user.email || "").toLowerCase();
+          const isAdmin = email === ADMIN_EMAIL;
+
+          adminLink.classList.toggle("hidden", !isAdmin);
+          addPlatesLink.classList.toggle("hidden", !(status === "approved" || isAdmin));
+
+          if (status === "approved" || isAdmin) {
+            headerAuthStatus.textContent = `Signed in as ${user.email}.`;
+          } else if (status === "denied") {
+            headerAuthStatus.textContent = `Signed in as ${user.email} (access denied).`;
+          } else {
+            headerAuthStatus.textContent = `Signed in as ${user.email} (pending approval).`;
+          }
+
+          if (!isAdmin) {
+            adminStatus.textContent = "You are signed in, but this page is admin-only.";
+            approvalsList.innerHTML = '<p class="small-note">Only andrewpcarlson85@gmail.com can review requests.</p>';
+            if (unsubscribeApprovals) {
+              unsubscribeApprovals();
+              unsubscribeApprovals = null;
+            }
+            return;
+          }
+
+          adminStatus.textContent = `Signed in as ${user.email}.`;
+          startApprovalSubscription();
+        } catch {
+          addPlatesLink.classList.add("hidden");
+          adminLink.classList.add("hidden");
+          headerAuthStatus.textContent = "Approval check failed. Verify Firestore rules.";
+          adminStatus.textContent = "Could not verify admin status.";
+        }
       });
     </script>
   </body>

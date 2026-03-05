@@ -334,7 +334,8 @@ button:focus-visible {
   #header-sign-out,
   #entry-sign-in,
   #entry-sign-out,
-  #add-plates-link {
+  #add-plates-link,
+  #header-admin-link {
     width: 100%;
     text-align: center;
   }

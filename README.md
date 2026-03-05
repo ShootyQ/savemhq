@@ -21,7 +21,7 @@ This is a static site.
 1. In Firebase Console, create a Firestore database (Production or Test mode).
 2. In Firebase Console, enable Google provider under `Authentication > Sign-in method`.
 3. Open `admin.html` and sign in as `andrewpcarlson85@gmail.com` to review approvals.
-4. In `states-competition.html`, users click header `Google Login`.
+4. Users can click `Google Login` in the top-right header on any page (`index.html`, `states-competition.html`, `plate-entry.html`, or `admin.html`).
 5. Approved users can open `plate-entry.html` and add sightings.
 6. Live scoreboard updates continue to sync through Firestore snapshots.
 
