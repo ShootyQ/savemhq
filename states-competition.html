@@ -98,9 +98,10 @@
       import { getAnalytics, isSupported as analyticsSupported } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js";
       import {
         GoogleAuthProvider,
+        getRedirectResult,
         getAuth,
         onAuthStateChanged,
-        signInWithPopup,
+        signInWithRedirect,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
       import {
@@ -560,10 +561,15 @@
 
       signInBtn.addEventListener("click", async () => {
         try {
-          await signInWithPopup(auth, googleProvider);
+          headerAuthStatus.textContent = "Redirecting to Google login...";
+          await signInWithRedirect(auth, googleProvider);
         } catch {
           headerAuthStatus.textContent = "Google sign-in failed.";
         }
+      });
+
+      getRedirectResult(auth).catch(() => {
+        headerAuthStatus.textContent = "Google sign-in failed.";
       });
 
       signOutBtn.addEventListener("click", async () => {

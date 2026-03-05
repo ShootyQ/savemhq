@@ -76,7 +76,14 @@
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-      import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+      import {
+        GoogleAuthProvider,
+        getRedirectResult,
+        getAuth,
+        onAuthStateChanged,
+        signInWithRedirect,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
       import { arrayUnion, collection, doc, getDoc, getDocs, getFirestore, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -181,10 +188,15 @@
 
       entrySignIn.addEventListener("click", async () => {
         try {
-          await signInWithPopup(auth, provider);
+          entryAuthStatus.textContent = "Redirecting to Google login...";
+          await signInWithRedirect(auth, provider);
         } catch {
           entryAuthStatus.textContent = "Google sign-in failed.";
         }
+      });
+
+      getRedirectResult(auth).catch(() => {
+        entryAuthStatus.textContent = "Google sign-in failed.";
       });
 
       entrySignOut.addEventListener("click", async () => {
