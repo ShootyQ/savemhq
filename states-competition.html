@@ -98,10 +98,9 @@
       import { getAnalytics, isSupported as analyticsSupported } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js";
       import {
         GoogleAuthProvider,
-        getRedirectResult,
         getAuth,
         onAuthStateChanged,
-        signInWithRedirect,
+        signInWithPopup,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
       import {
@@ -561,15 +560,11 @@
 
       signInBtn.addEventListener("click", async () => {
         try {
-          headerAuthStatus.textContent = "Redirecting to Google login...";
-          await signInWithRedirect(auth, googleProvider);
-        } catch {
-          headerAuthStatus.textContent = "Google sign-in failed.";
+          await signInWithPopup(auth, googleProvider);
+        } catch (error) {
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          headerAuthStatus.textContent = `Google sign-in failed (${details}).`;
         }
-      });
-
-      getRedirectResult(auth).catch(() => {
-        headerAuthStatus.textContent = "Google sign-in failed.";
       });
 
       signOutBtn.addEventListener("click", async () => {

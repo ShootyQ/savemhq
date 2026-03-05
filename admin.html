@@ -63,10 +63,9 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
       import {
         GoogleAuthProvider,
-        getRedirectResult,
         getAuth,
         onAuthStateChanged,
-        signInWithRedirect,
+        signInWithPopup,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
       import {
@@ -161,15 +160,11 @@
 
       adminSignIn.addEventListener("click", async () => {
         try {
-          adminStatus.textContent = "Redirecting to Google login...";
-          await signInWithRedirect(auth, googleProvider);
-        } catch {
-          adminStatus.textContent = "Google sign-in failed.";
+          await signInWithPopup(auth, googleProvider);
+        } catch (error) {
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          adminStatus.textContent = `Google sign-in failed (${details}).`;
         }
-      });
-
-      getRedirectResult(auth).catch(() => {
-        adminStatus.textContent = "Google sign-in failed.";
       });
 
       adminSignOut.addEventListener("click", async () => {
