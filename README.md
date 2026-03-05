@@ -13,6 +13,13 @@ This is a static site.
 
 - Main content and sections: `index.html`
 - Visual style and layout: `styles.css`
+- Shared header/auth runtime: `js/auth-shared.js`, `js/header-shell.js`
+
+## 2026 Competition UX Notes
+
+- Mobile header now uses a compact `Menu` toggle so auth buttons do not consume most of the screen.
+- `plate-entry.html` now uses typeahead + quick state chips for faster mobile entry.
+- Monthly plate cards on `states-competition.html` are collapsed by default on mobile and can be expanded per month.
 
 ## Firebase Realtime Plate Tracker Setup
 
@@ -27,7 +34,15 @@ This is a static site.
 
 ### Suggested Firestore Rules
 
-Use rules like this so only approved users can update competition data and only the admin account can approve logins:
+Use the checked-in `firestore.rules` file so only approved users can update competition data and only the admin account can approve logins.
+
+If you use Firebase CLI, deploy with:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+Rule reference:
 
 ```txt
 rules_version = '2';

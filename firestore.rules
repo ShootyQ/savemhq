@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthed() && request.auth.token.email == "andrewpcarlson85@gmail.com";
+    }
+
+    function isApprovalOwner(uid) {
+      return isAuthed() && request.auth.uid == uid;
+    }
+
+    function isApprovedUser() {
+      return isAuthed()
+        && exists(/databases/$(database)/documents/loginApprovals/$(request.auth.uid))
+        && get(/databases/$(database)/documents/loginApprovals/$(request.auth.uid)).data.status == "approved";
+    }
+
+    match /competitions/{year}/months/{month} {
+      allow read: if isApprovedUser() || isAdmin();
+      allow write: if isApprovedUser() || isAdmin();
+    }
+
+    match /loginApprovals/{uid} {
+      allow create: if isApprovalOwner(uid)
+        && request.resource.data.status == "pending";
+
+      allow read: if isAdmin() || isApprovalOwner(uid);
+
+      allow update: if isAdmin() || (
+        isApprovalOwner(uid)
+        && request.resource.data.status == resource.data.status
+      );
+
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -16,20 +16,23 @@
     <header class="site-header">
       <div class="container nav-wrap">
         <a class="brand" href="#top" aria-label="SavemHQ home">SavemHQ</a>
-        <nav aria-label="Primary">
-          <ul class="nav-list">
-            <li><a href="#home">Home</a></li>
-            <li><a href="#projects">Projects</a></li>
-            <li><a href="#about">About</a></li>
-            <li><a href="#contact">Contact</a></li>
-          </ul>
-        </nav>
-        <div class="header-auth" aria-live="polite">
-          <span id="header-auth-status" class="small-note">Signed out</span>
-          <a id="add-plates-link" class="btn btn-secondary hidden" href="plate-entry.html">Add Plates</a>
-          <a id="header-admin-link" class="btn btn-secondary hidden" href="admin.html">Admin</a>
-          <button id="header-sign-in" class="btn btn-primary" type="button">Google Login</button>
-          <button id="header-sign-out" class="btn btn-secondary hidden" type="button">Sign Out</button>
+        <button id="header-menu-toggle" class="menu-toggle" type="button" aria-controls="header-mobile-panel" aria-expanded="false">Menu</button>
+        <div id="header-mobile-panel" class="header-panel">
+          <nav aria-label="Primary">
+            <ul class="nav-list">
+              <li><a href="#home">Home</a></li>
+              <li><a href="#projects">Projects</a></li>
+              <li><a href="#about">About</a></li>
+              <li><a href="#contact">Contact</a></li>
+            </ul>
+          </nav>
+          <div class="header-auth" aria-live="polite">
+            <span id="header-auth-status" class="small-note">Signed out</span>
+            <a id="add-plates-link" class="btn btn-secondary hidden" href="plate-entry.html">Add Plates</a>
+            <a id="header-admin-link" class="btn btn-secondary hidden" href="admin.html">Admin</a>
+            <button id="header-sign-in" class="btn btn-primary" type="button">Google Login</button>
+            <button id="header-sign-out" class="btn btn-secondary hidden" type="button">Sign Out</button>
+          </div>
         </div>
       </div>
     </header>
@@ -162,148 +165,11 @@
     </footer>
 
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-      import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-      import { collection, doc, getDoc, initializeFirestore, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { initHeaderShell } from "./js/header-shell.js";
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyADdgBbyCyPXaRuRKGAuFIWQSqTIQ9kR8s",
-        authDomain: "savemhq.firebaseapp.com",
-        projectId: "savemhq",
-        storageBucket: "savemhq.firebasestorage.app",
-        messagingSenderId: "648978749286",
-        appId: "1:648978749286:web:233b165c3902849dcc9aa7",
-        measurementId: "G-ESG98RHGSQ",
-      };
-
-      const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const provider = new GoogleAuthProvider();
-      const db = initializeFirestore(app, {
-        experimentalAutoDetectLongPolling: true,
-        useFetchStreams: false,
-      });
-      const approvals = collection(db, "loginApprovals");
-
-      const headerAuthStatus = document.getElementById("header-auth-status");
-      const signInBtn = document.getElementById("header-sign-in");
-      const signOutBtn = document.getElementById("header-sign-out");
-      const addPlatesLink = document.getElementById("add-plates-link");
-      const adminLink = document.getElementById("header-admin-link");
-
-      const approvalStatusFor = async (user) => {
-        const approvalRef = doc(approvals, user.uid);
-        const snapshot = await getDoc(approvalRef);
-        const normalizedEmail = (user.email || "").toLowerCase();
-
-        if (!snapshot.exists()) {
-          await setDoc(
-            approvalRef,
-            {
-              uid: user.uid,
-              email: user.email || "",
-              status: "pending",
-              requestedAt: serverTimestamp(),
-              lastLoginAttemptAt: serverTimestamp(),
-              reviewedAt: null,
-              reviewedBy: null,
-            },
-            { merge: true }
-          );
-
-          if (normalizedEmail === ADMIN_EMAIL) {
-            await setDoc(
-              approvalRef,
-              {
-                status: "approved",
-                reviewedAt: serverTimestamp(),
-                reviewedBy: ADMIN_EMAIL,
-              },
-              { merge: true }
-            );
-            return "approved";
-          }
-
-          return "pending";
-        }
-
-        const data = snapshot.data();
-        let status = data.status || "pending";
-
-        await setDoc(
-          approvalRef,
-          {
-            email: user.email || "",
-            lastLoginAttemptAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-
-        if (normalizedEmail === ADMIN_EMAIL && status !== "approved") {
-          await setDoc(
-            approvalRef,
-            {
-              status: "approved",
-              reviewedAt: serverTimestamp(),
-              reviewedBy: ADMIN_EMAIL,
-            },
-            { merge: true }
-          );
-          status = "approved";
-        }
-
-        return status;
-      };
-
-      signInBtn.addEventListener("click", async () => {
-        try {
-          await signInWithPopup(auth, provider);
-        } catch (error) {
-          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
-          headerAuthStatus.textContent = `Google sign-in failed (${details}).`;
-        }
-      });
-
-      signOutBtn.addEventListener("click", async () => {
-        await signOut(auth);
-      });
-
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          signInBtn.classList.remove("hidden");
-          signOutBtn.classList.add("hidden");
-          addPlatesLink.classList.add("hidden");
-          adminLink.classList.add("hidden");
-          headerAuthStatus.textContent = "Signed out.";
-          return;
-        }
-
-        signInBtn.classList.add("hidden");
-        signOutBtn.classList.remove("hidden");
-
-        try {
-          const status = await approvalStatusFor(user);
-          const email = (user.email || "").toLowerCase();
-          const isAdmin = email === ADMIN_EMAIL;
-
-          adminLink.classList.toggle("hidden", !isAdmin);
-          addPlatesLink.classList.toggle("hidden", !(status === "approved" || isAdmin));
-
-          if (status === "approved" || isAdmin) {
-            headerAuthStatus.textContent = `Signed in as ${user.email}.`;
-          } else if (status === "denied") {
-            headerAuthStatus.textContent = `Signed in as ${user.email} (access denied).`;
-          } else {
-            headerAuthStatus.textContent = `Signed in as ${user.email} (pending approval).`;
-          }
-        } catch (error) {
-          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
-          addPlatesLink.classList.add("hidden");
-          adminLink.classList.add("hidden");
-          headerAuthStatus.textContent = `Approval check failed (${details}). Verify Firestore rules.`;
-        }
-      });
+      initHeaderShell();
+      initHeaderAuth();
     </script>
   </body>
 </html>
