@@ -113,39 +113,61 @@
         const normalizedEmail = (user.email || "").toLowerCase();
 
         if (!snapshot.exists()) {
-          const status = normalizedEmail === ADMIN_EMAIL ? "approved" : "pending";
           await setDoc(
             approvalRef,
             {
               uid: user.uid,
               email: user.email || "",
-              status,
+              status: "pending",
               requestedAt: serverTimestamp(),
               lastLoginAttemptAt: serverTimestamp(),
-              reviewedAt: status === "approved" ? serverTimestamp() : null,
-              reviewedBy: status === "approved" ? ADMIN_EMAIL : null,
+              reviewedAt: null,
+              reviewedBy: null,
             },
             { merge: true }
           );
-          return status;
+
+          if (normalizedEmail === ADMIN_EMAIL) {
+            await setDoc(
+              approvalRef,
+              {
+                status: "approved",
+                reviewedAt: serverTimestamp(),
+                reviewedBy: ADMIN_EMAIL,
+              },
+              { merge: true }
+            );
+            return "approved";
+          }
+
+          return "pending";
         }
 
         const data = snapshot.data();
         let status = data.status || "pending";
-        if (normalizedEmail === ADMIN_EMAIL && status !== "approved") {
-          status = "approved";
-        }
 
         await setDoc(
           approvalRef,
           {
             email: user.email || "",
-            status,
             lastLoginAttemptAt: serverTimestamp(),
-            ...(status === "approved" ? { reviewedAt: serverTimestamp(), reviewedBy: ADMIN_EMAIL } : {}),
           },
           { merge: true }
         );
+
+        if (normalizedEmail === ADMIN_EMAIL && status !== "approved") {
+          await setDoc(
+            approvalRef,
+            {
+              status: "approved",
+              reviewedAt: serverTimestamp(),
+              reviewedBy: ADMIN_EMAIL,
+            },
+            { merge: true }
+          );
+          status = "approved";
+        }
+
         return status;
       };
 
@@ -305,10 +327,11 @@
 
           adminStatus.textContent = `Signed in as ${user.email}.`;
           startApprovalSubscription();
-        } catch {
+        } catch (error) {
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
           addPlatesLink.classList.add("hidden");
           adminLink.classList.add("hidden");
-          headerAuthStatus.textContent = "Approval check failed. Verify Firestore rules.";
+          headerAuthStatus.textContent = `Approval check failed (${details}). Verify Firestore rules.`;
           adminStatus.textContent = "Could not verify admin status.";
         }
       });

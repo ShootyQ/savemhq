@@ -220,25 +220,38 @@
         const normalizedEmail = (user.email || "").toLowerCase();
 
         if (!snapshot.exists()) {
-          const status = normalizedEmail === ADMIN_EMAIL ? "approved" : "pending";
           await setDoc(
             approvalRef,
             {
               uid: user.uid,
               email: user.email || "",
-              status,
+              status: "pending",
               requestedAt: serverTimestamp(),
               lastLoginAttemptAt: serverTimestamp(),
-              reviewedAt: status === "approved" ? serverTimestamp() : null,
-              reviewedBy: status === "approved" ? ADMIN_EMAIL : null,
+              reviewedAt: null,
+              reviewedBy: null,
             },
             { merge: true }
           );
-          return status;
+
+          if (normalizedEmail === ADMIN_EMAIL) {
+            await setDoc(
+              approvalRef,
+              {
+                status: "approved",
+                reviewedAt: serverTimestamp(),
+                reviewedBy: ADMIN_EMAIL,
+              },
+              { merge: true }
+            );
+            return "approved";
+          }
+
+          return "pending";
         }
 
         const data = snapshot.data();
-        const status = data.status || "pending";
+        let status = data.status || "pending";
         await setDoc(
           approvalRef,
           {
@@ -247,6 +260,19 @@
           },
           { merge: true }
         );
+
+        if (normalizedEmail === ADMIN_EMAIL && status !== "approved") {
+          await setDoc(
+            approvalRef,
+            {
+              status: "approved",
+              reviewedAt: serverTimestamp(),
+              reviewedBy: ADMIN_EMAIL,
+            },
+            { merge: true }
+          );
+          status = "approved";
+        }
 
         return status;
       };
@@ -320,10 +346,11 @@
             : `Signed in as ${user.email} (pending approval).`;
           plateStatus.textContent = "Account is not approved for plate entry yet.";
           return;
-        } catch {
+        } catch (error) {
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
           addPlatesLink.classList.add("hidden");
           adminLink.classList.add("hidden");
-          headerAuthStatus.textContent = "Approval check failed. Verify Firestore rules.";
+          headerAuthStatus.textContent = `Approval check failed (${details}). Verify Firestore rules.`;
           entryPanel.classList.add("hidden");
           entryLocked.classList.remove("hidden");
           return;

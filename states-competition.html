@@ -303,42 +303,61 @@
         const normalizedEmail = (user.email || "").toLowerCase();
 
         if (!snapshot.exists()) {
-          const defaultStatus = normalizedEmail === ADMIN_EMAIL ? "approved" : "pending";
           await setDoc(
             approvalRef,
             {
               uid: user.uid,
               email: user.email || "",
-              status: defaultStatus,
+              status: "pending",
               requestedAt: serverTimestamp(),
               lastLoginAttemptAt: serverTimestamp(),
-              reviewedAt: defaultStatus === "approved" ? serverTimestamp() : null,
-              reviewedBy: defaultStatus === "approved" ? ADMIN_EMAIL : null,
+              reviewedAt: null,
+              reviewedBy: null,
             },
             { merge: true }
           );
 
-          return defaultStatus;
+          if (normalizedEmail === ADMIN_EMAIL) {
+            await setDoc(
+              approvalRef,
+              {
+                status: "approved",
+                reviewedAt: serverTimestamp(),
+                reviewedBy: ADMIN_EMAIL,
+              },
+              { merge: true }
+            );
+            return "approved";
+          }
+
+          return "pending";
         }
 
         const data = snapshot.data();
         let status = data.status || "pending";
-
-        if (normalizedEmail === ADMIN_EMAIL && status !== "approved") {
-          status = "approved";
-        }
 
         await setDoc(
           approvalRef,
           {
             uid: user.uid,
             email: user.email || "",
-            status,
             lastLoginAttemptAt: serverTimestamp(),
-            ...(status === "approved" ? { reviewedAt: serverTimestamp(), reviewedBy: ADMIN_EMAIL } : {}),
           },
           { merge: true }
         );
+
+        if (normalizedEmail === ADMIN_EMAIL && status !== "approved") {
+          await setDoc(
+            approvalRef,
+            {
+              status: "approved",
+              reviewedAt: serverTimestamp(),
+              reviewedBy: ADMIN_EMAIL,
+            },
+            { merge: true }
+          );
+          status = "approved";
+        }
 
         return status;
       };
@@ -605,8 +624,9 @@
 
           signedOutMessage = "Signed out.";
           return;
-        } catch {
-          headerAuthStatus.textContent = "Approval check failed. Verify Firestore rules and try again.";
+        } catch (error) {
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          headerAuthStatus.textContent = `Approval check failed (${details}). Verify Firestore rules and try again.`;
           signInBtn.classList.add("hidden");
           signOutBtn.classList.remove("hidden");
           addPlatesLink.classList.add("hidden");
