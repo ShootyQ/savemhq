@@ -24,6 +24,12 @@
             <li><a href="#yearly-stats">Yearly Stats</a></li>
           </ul>
         </nav>
+        <div class="header-auth" aria-live="polite">
+          <span id="header-auth-status" class="small-note">Signed out</span>
+          <a id="add-plates-link" class="btn btn-secondary hidden" href="plate-entry.html">Add Plates</a>
+          <button id="header-sign-in" class="btn btn-primary" type="button">Google Login</button>
+          <button id="header-sign-out" class="btn btn-secondary hidden" type="button">Sign Out</button>
+        </div>
       </div>
     </header>
 
@@ -42,60 +48,6 @@
           <div class="hero-actions">
             <a class="btn btn-primary" href="#monthly-scoreboard">See Monthly Scores</a>
             <a class="btn btn-secondary" href="index.html#projects">Back to Projects</a>
-          </div>
-        </div>
-      </section>
-
-      <section id="live-controls" class="section section-card">
-        <div class="container">
-          <h2>Live Tracker Login</h2>
-          <p class="section-intro">
-            Sign in so each of you can add sightings during the month. New entries sync in real time.
-          </p>
-          <p class="small-note">
-            Admin approvals: <a href="admin.html">Open login approvals</a>
-          </p>
-
-          <div class="auth-grid">
-            <article class="project-card">
-              <h3>Sign In</h3>
-              <form id="auth-form" class="stack-form">
-                <label for="email">Email</label>
-                <input id="email" name="email" type="email" autocomplete="email" required />
-
-                <label for="password">Password</label>
-                <input id="password" name="password" type="password" autocomplete="current-password" required />
-
-                <div class="form-actions">
-                  <button class="btn btn-primary" type="submit">Sign In</button>
-                  <button class="btn btn-secondary" id="create-account" type="button">Create Account</button>
-                </div>
-              </form>
-              <p id="auth-status" class="small-note" aria-live="polite">Signed out.</p>
-              <button class="btn btn-secondary" id="sign-out" type="button" disabled>Sign Out</button>
-            </article>
-
-            <article class="project-card">
-              <h3>Add Plate Sighting</h3>
-              <form id="plate-form" class="stack-form" aria-describedby="plate-help">
-                <label for="month-select">Month</label>
-                <select id="month-select" name="month" required></select>
-
-                <label for="person-select">Who saw it?</label>
-                <select id="person-select" name="person" required>
-                  <option value="andy">Andy</option>
-                  <option value="savannah">Savannah</option>
-                </select>
-
-                <label for="state-input">State</label>
-                <input id="state-input" name="state" list="state-list" placeholder="e.g. Texas" required />
-                <datalist id="state-list"></datalist>
-
-                <button class="btn btn-primary" type="submit" disabled id="add-plate">Add Plate</button>
-              </form>
-              <p id="plate-help" class="small-note">Duplicates for the same person/month are ignored automatically.</p>
-              <p id="plate-status" class="small-note" aria-live="polite">Sign in to add sightings.</p>
-            </article>
           </div>
         </div>
       </section>
@@ -145,14 +97,13 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
       import { getAnalytics, isSupported as analyticsSupported } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js";
       import {
-        createUserWithEmailAndPassword,
+        GoogleAuthProvider,
         getAuth,
         onAuthStateChanged,
-        signInWithEmailAndPassword,
+        signInWithPopup,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
       import {
-        arrayUnion,
         collection,
         doc,
         getDoc,
@@ -314,19 +265,15 @@
       const monthlyGrid = document.getElementById("monthly-grid");
       const monthlyPlates = document.getElementById("monthly-plates");
       const yearlyGrid = document.getElementById("yearly-grid");
-      const authForm = document.getElementById("auth-form");
-      const createAccountBtn = document.getElementById("create-account");
-      const signOutBtn = document.getElementById("sign-out");
-      const authStatus = document.getElementById("auth-status");
-      const plateForm = document.getElementById("plate-form");
-      const plateStatus = document.getElementById("plate-status");
-      const addPlateBtn = document.getElementById("add-plate");
-      const monthSelect = document.getElementById("month-select");
-      const stateList = document.getElementById("state-list");
+      const headerAuthStatus = document.getElementById("header-auth-status");
+      const signInBtn = document.getElementById("header-sign-in");
+      const signOutBtn = document.getElementById("header-sign-out");
+      const addPlatesLink = document.getElementById("add-plates-link");
 
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
+      const googleProvider = new GoogleAuthProvider();
       const competitionYear = competitionData.year;
       const monthsCollection = collection(db, "competitions", String(competitionYear), "months");
       const approvalCollection = collection(db, "loginApprovals");
@@ -338,8 +285,6 @@
         }
       });
 
-      stateList.innerHTML = ALL_STATES.map((state) => `<option value="${state}"></option>`).join("");
-
       const slugifyMonth = (monthName) =>
         monthName
           .toLowerCase()
@@ -349,12 +294,6 @@
       const monthMetaById = new Map(
         competitionData.months.map((monthData, index) => [slugifyMonth(monthData.month), { month: monthData.month, order: index }])
       );
-
-      const normalizeState = (rawState) => {
-        const trimmed = rawState.trim().toLowerCase();
-        const match = ALL_STATES.find((state) => state.toLowerCase() === trimmed);
-        return match || "";
-      };
 
       const approvalStatusFor = async (user) => {
         const approvalRef = doc(approvalCollection, user.uid);
@@ -425,10 +364,6 @@
             order: Number.isFinite(monthData.order) ? monthData.order : index,
           });
         });
-
-        monthSelect.innerHTML = months
-          .map((monthData) => `<option value="${slugifyMonth(monthData.month)}">${monthData.month}</option>`)
-          .join("");
       };
 
       const renderCompetition = (months) => {
@@ -598,7 +533,7 @@
             } catch (error) {
               renderCompetition(competitionData.months);
               renderMonthOptions(competitionData.months);
-              plateStatus.textContent = "Could not load Firestore data yet. Check Firebase rules/config.";
+              headerAuthStatus.textContent = "Could not load Firestore data yet. Check Firebase rules/config.";
               return;
             }
           }
@@ -619,40 +554,15 @@
         () => {
           renderCompetition(competitionData.months);
           renderMonthOptions(competitionData.months);
-          plateStatus.textContent = "Realtime sync unavailable. Showing local fallback data.";
+          headerAuthStatus.textContent = "Realtime sync unavailable. Showing local fallback data.";
         }
       );
 
-      authForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const formData = new FormData(authForm);
-        const email = String(formData.get("email") || "").trim();
-        const password = String(formData.get("password") || "").trim();
-
+      signInBtn.addEventListener("click", async () => {
         try {
-          await signInWithEmailAndPassword(auth, email, password);
-          authStatus.textContent = `Signed in as ${email}.`;
+          await signInWithPopup(auth, googleProvider);
         } catch {
-          authStatus.textContent = "Sign in failed. Check your email/password.";
-        }
-      });
-
-      createAccountBtn.addEventListener("click", async () => {
-        const formData = new FormData(authForm);
-        const email = String(formData.get("email") || "").trim();
-        const password = String(formData.get("password") || "").trim();
-
-        if (!email || !password) {
-          authStatus.textContent = "Enter email and password first.";
-          return;
-        }
-
-        try {
-          await createUserWithEmailAndPassword(auth, email, password);
-          signedOutMessage = "Account created. Waiting for admin approval before login access.";
-          authStatus.textContent = signedOutMessage;
-        } catch {
-          authStatus.textContent = "Account creation failed. Check Firebase Auth settings.";
+          headerAuthStatus.textContent = "Google sign-in failed.";
         }
       });
 
@@ -664,19 +574,16 @@
         const isSignedIn = Boolean(user);
 
         if (!isSignedIn) {
-          addPlateBtn.disabled = true;
-          signOutBtn.disabled = true;
-          authStatus.textContent = signedOutMessage;
-          plateStatus.textContent = "Sign in to add sightings.";
+          signInBtn.classList.remove("hidden");
+          signOutBtn.classList.add("hidden");
+          addPlatesLink.classList.add("hidden");
+          headerAuthStatus.textContent = signedOutMessage;
           return;
         }
 
         try {
           const approvalStatus = await approvalStatusFor(user);
           if (approvalStatus !== "approved") {
-            addPlateBtn.disabled = true;
-            signOutBtn.disabled = true;
-
             if (approvalStatus === "denied") {
               signedOutMessage = "Login denied. Contact Andrew if this should be allowed.";
             } else {
@@ -688,66 +595,15 @@
           }
         } catch {
           signedOutMessage = "Approval check failed. Verify Firestore rules and try again.";
-          addPlateBtn.disabled = true;
-          signOutBtn.disabled = true;
           await signOut(auth);
           return;
         }
 
-        addPlateBtn.disabled = false;
-        signOutBtn.disabled = false;
+        signInBtn.classList.add("hidden");
+        signOutBtn.classList.remove("hidden");
+        addPlatesLink.classList.remove("hidden");
         signedOutMessage = "Signed out.";
-
-        authStatus.textContent = `Signed in as ${user.email}.`;
-        plateStatus.textContent = "Ready to add a sighting.";
-      });
-
-      plateForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-
-        const user = auth.currentUser;
-        if (!user) {
-          plateStatus.textContent = "Please sign in first.";
-          return;
-        }
-
-        const formData = new FormData(plateForm);
-        const monthId = String(formData.get("month") || "").trim();
-        const person = String(formData.get("person") || "").trim();
-        const state = normalizeState(String(formData.get("state") || ""));
-
-        if (!monthId || !state) {
-          plateStatus.textContent = "Choose a month and enter a valid U.S. state.";
-          return;
-        }
-
-        const validPeople = ["andy", "savannah"];
-        if (!validPeople.includes(person)) {
-          plateStatus.textContent = "Pick a valid player.";
-          return;
-        }
-
-        const monthRef = doc(monthsCollection, monthId);
-        const stateField = person === "andy" ? "andyStates" : "savannahStates";
-        const monthMeta = monthMetaById.get(monthId);
-
-        try {
-          await setDoc(
-            monthRef,
-            {
-              month: monthMeta ? monthMeta.month : monthId,
-              order: monthMeta ? monthMeta.order : 999,
-              [stateField]: arrayUnion(state),
-              updatedAt: serverTimestamp(),
-            },
-            { merge: true }
-          );
-
-          plateForm.reset();
-          plateStatus.textContent = `${state} added for ${person === "andy" ? "Andy" : "Savannah"}.`;
-        } catch {
-          plateStatus.textContent = "Could not add sighting. Check Firestore permissions.";
-        }
+        headerAuthStatus.textContent = `Signed in as ${user.email}.`;
       });
 
       renderCompetition(competitionData.months);

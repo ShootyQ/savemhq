@@ -96,6 +96,17 @@ a:hover {
   padding: 0.9rem 0;
 }
 
+.header-auth {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.hidden {
+  display: none !important;
+}
+
 .brand {
   text-decoration: none;
   font-weight: 800;
@@ -313,8 +324,17 @@ button:focus-visible {
     flex-wrap: wrap;
   }
 
+  .header-auth {
+    width: 100%;
+  }
+
   .form-actions .btn,
-  #sign-out {
+  #sign-out,
+  #header-sign-in,
+  #header-sign-out,
+  #entry-sign-in,
+  #entry-sign-out,
+  #add-plates-link {
     width: 100%;
     text-align: center;
   }

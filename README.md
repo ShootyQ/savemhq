@@ -16,14 +16,14 @@ This is a static site.
 
 ## Firebase Realtime Plate Tracker Setup
 
-`states-competition.html` now uses Firebase Auth + Firestore so users can request login and add plate sightings in real time after admin approval.
+`states-competition.html` now uses a compact Google login in the header, and plate entry happens on a separate private page.
 
-1. In Firebase Console, enable `Authentication > Sign-in method > Email/Password`.
-2. In Firebase Console, create a Firestore database (Production or Test mode).
-3. Open `admin.html` and sign in as `andrewpcarlson85@gmail.com`.
-4. In `states-competition.html`, users create/sign in with email/password. New users are marked `pending` until approved.
-5. Approve or deny users in `admin.html`.
-6. Approved users can add plate sightings, and both browsers update automatically through Firestore snapshots.
+1. In Firebase Console, create a Firestore database (Production or Test mode).
+2. In Firebase Console, enable Google provider under `Authentication > Sign-in method`.
+3. Open `admin.html` and sign in as `andrewpcarlson85@gmail.com` to review approvals.
+4. In `states-competition.html`, users click header `Google Login`.
+5. Approved users can open `plate-entry.html` and add sightings.
+6. Live scoreboard updates continue to sync through Firestore snapshots.
 
 ### Suggested Firestore Rules
 

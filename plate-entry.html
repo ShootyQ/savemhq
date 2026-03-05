@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Private Plate Entry | SavemHQ</title>
+    <meta name="description" content="Private page for approved users to add monthly plate sightings." />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a class="brand" href="index.html" aria-label="SavemHQ home">SavemHQ</a>
+        <nav aria-label="Primary">
+          <ul class="nav-list">
+            <li><a href="states-competition.html">Back to Scoreboard</a></li>
+            <li><a href="admin.html">Admin Approvals</a></li>
+          </ul>
+        </nav>
+        <div class="header-auth" aria-live="polite">
+          <span id="entry-auth-status" class="small-note">Signed out</span>
+          <button id="entry-sign-in" class="btn btn-primary" type="button">Google Login</button>
+          <button id="entry-sign-out" class="btn btn-secondary hidden" type="button">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner">
+          <p class="tagline">Private</p>
+          <h1>Add Plate Sighting</h1>
+          <p class="subheadline">Only approved logins can submit entries here.</p>
+        </div>
+      </section>
+
+      <section class="section section-card">
+        <div class="container">
+          <div id="entry-panel" class="project-card hidden">
+            <h2>Plate Entry Form</h2>
+            <form id="plate-form" class="stack-form" aria-describedby="plate-help">
+              <label for="month-select">Month</label>
+              <select id="month-select" name="month" required></select>
+
+              <label for="person-select">Who saw it?</label>
+              <select id="person-select" name="person" required>
+                <option value="andy">Andy</option>
+                <option value="savannah">Savannah</option>
+              </select>
+
+              <label for="state-input">State</label>
+              <input id="state-input" name="state" list="state-list" placeholder="e.g. Texas" required />
+              <datalist id="state-list"></datalist>
+
+              <button class="btn btn-primary" type="submit" id="add-plate">Add Plate</button>
+            </form>
+            <p id="plate-help" class="small-note">Duplicates for the same person/month are ignored automatically.</p>
+            <p id="plate-status" class="small-note" aria-live="polite">Sign in to begin.</p>
+          </div>
+
+          <div id="entry-locked" class="project-card">
+            <h2>Access Required</h2>
+            <p class="small-note">Sign in with Google. Your account must be approved by Andrew before this form appears.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>SavemHQ private tools.</p>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+      import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+      import { arrayUnion, collection, doc, getDoc, getDocs, getFirestore, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyADdgBbyCyPXaRuRKGAuFIWQSqTIQ9kR8s",
+        authDomain: "savemhq.firebaseapp.com",
+        projectId: "savemhq",
+        storageBucket: "savemhq.firebasestorage.app",
+        messagingSenderId: "648978749286",
+        appId: "1:648978749286:web:233b165c3902849dcc9aa7",
+        measurementId: "G-ESG98RHGSQ",
+      };
+
+      const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
+      const COMPETITION_YEAR = 2026;
+      const DEFAULT_MONTHS = ["January", "February", "March"];
+      const ALL_STATES = [
+        "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida",
+        "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland",
+        "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+        "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania",
+        "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+        "West Virginia", "Wisconsin", "Wyoming", "District of Columbia"
+      ];
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const provider = new GoogleAuthProvider();
+      const approvals = collection(db, "loginApprovals");
+      const monthsCollection = collection(db, "competitions", String(COMPETITION_YEAR), "months");
+
+      const entryAuthStatus = document.getElementById("entry-auth-status");
+      const entrySignIn = document.getElementById("entry-sign-in");
+      const entrySignOut = document.getElementById("entry-sign-out");
+      const entryPanel = document.getElementById("entry-panel");
+      const entryLocked = document.getElementById("entry-locked");
+      const plateForm = document.getElementById("plate-form");
+      const monthSelect = document.getElementById("month-select");
+      const plateStatus = document.getElementById("plate-status");
+      const stateList = document.getElementById("state-list");
+
+      const slugifyMonth = (monthName) => monthName.toLowerCase().trim().replace(/\s+/g, "-");
+
+      const normalizeState = (rawState) => {
+        const trimmed = rawState.trim().toLowerCase();
+        const match = ALL_STATES.find((state) => state.toLowerCase() === trimmed);
+        return match || "";
+      };
+
+      const ensureApprovalRecord = async (user) => {
+        const approvalRef = doc(approvals, user.uid);
+        const snapshot = await getDoc(approvalRef);
+        const normalizedEmail = (user.email || "").toLowerCase();
+
+        if (!snapshot.exists()) {
+          const status = normalizedEmail === ADMIN_EMAIL ? "approved" : "pending";
+          await setDoc(
+            approvalRef,
+            {
+              uid: user.uid,
+              email: user.email || "",
+              status,
+              requestedAt: serverTimestamp(),
+              lastLoginAttemptAt: serverTimestamp(),
+              reviewedAt: status === "approved" ? serverTimestamp() : null,
+              reviewedBy: status === "approved" ? ADMIN_EMAIL : null,
+            },
+            { merge: true }
+          );
+          return status;
+        }
+
+        const data = snapshot.data();
+        const status = data.status || "pending";
+        await setDoc(
+          approvalRef,
+          {
+            email: user.email || "",
+            lastLoginAttemptAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        return status;
+      };
+
+      const loadMonths = async () => {
+        const snapshot = await getDocs(monthsCollection);
+        if (snapshot.empty) {
+          monthSelect.innerHTML = DEFAULT_MONTHS.map((month) => `<option value="${slugifyMonth(month)}">${month}</option>`).join("");
+          return;
+        }
+
+        const months = snapshot.docs
+          .map((monthDoc) => monthDoc.data())
+          .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+
+        monthSelect.innerHTML = months
+          .map((monthData) => `<option value="${slugifyMonth(monthData.month || "")}">${monthData.month || "Unknown"}</option>`)
+          .join("");
+      };
+
+      entrySignIn.addEventListener("click", async () => {
+        try {
+          await signInWithPopup(auth, provider);
+        } catch {
+          entryAuthStatus.textContent = "Google sign-in failed.";
+        }
+      });
+
+      entrySignOut.addEventListener("click", async () => {
+        await signOut(auth);
+      });
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          entryAuthStatus.textContent = "Signed out";
+          entrySignIn.classList.remove("hidden");
+          entrySignOut.classList.add("hidden");
+          entryPanel.classList.add("hidden");
+          entryLocked.classList.remove("hidden");
+          return;
+        }
+
+        try {
+          const status = await ensureApprovalRecord(user);
+          if (status !== "approved") {
+            entryAuthStatus.textContent = status === "denied"
+              ? "Access denied. Contact Andrew if this should be allowed."
+              : "Pending approval. Andrew needs to approve this account.";
+            await signOut(auth);
+            return;
+          }
+        } catch {
+          entryAuthStatus.textContent = "Approval check failed. Verify Firestore rules.";
+          await signOut(auth);
+          return;
+        }
+
+        entryAuthStatus.textContent = `Signed in as ${user.email}`;
+        entrySignIn.classList.add("hidden");
+        entrySignOut.classList.remove("hidden");
+        entryPanel.classList.remove("hidden");
+        entryLocked.classList.add("hidden");
+
+        await loadMonths();
+      });
+
+      plateForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const user = auth.currentUser;
+        if (!user) {
+          plateStatus.textContent = "Sign in first.";
+          return;
+        }
+
+        const formData = new FormData(plateForm);
+        const monthId = String(formData.get("month") || "").trim();
+        const person = String(formData.get("person") || "").trim();
+        const state = normalizeState(String(formData.get("state") || ""));
+
+        if (!monthId || !state) {
+          plateStatus.textContent = "Choose a month and enter a valid state.";
+          return;
+        }
+
+        const stateField = person === "andy" ? "andyStates" : person === "savannah" ? "savannahStates" : "";
+        if (!stateField) {
+          plateStatus.textContent = "Choose who saw the plate.";
+          return;
+        }
+
+        const monthName = monthSelect.options[monthSelect.selectedIndex]?.textContent || monthId;
+
+        try {
+          await setDoc(
+            doc(monthsCollection, monthId),
+            {
+              month: monthName,
+              [stateField]: arrayUnion(state),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+          plateForm.reset();
+          plateStatus.textContent = `${state} added for ${stateField === "andyStates" ? "Andy" : "Savannah"}.`;
+        } catch {
+          plateStatus.textContent = "Could not save plate. Check Firestore rules.";
+        }
+      });
+
+      stateList.innerHTML = ALL_STATES.map((state) => `<option value="${state}"></option>`).join("");
+    </script>
+  </body>
+</html>

@@ -35,18 +35,10 @@
         <div class="container auth-grid">
           <article class="project-card">
             <h2>Admin Sign In</h2>
-            <form id="admin-auth-form" class="stack-form">
-              <label for="email">Email</label>
-              <input id="email" name="email" type="email" autocomplete="email" required />
-
-              <label for="password">Password</label>
-              <input id="password" name="password" type="password" autocomplete="current-password" required />
-
-              <div class="form-actions">
-                <button class="btn btn-primary" type="submit">Sign In</button>
-                <button class="btn btn-secondary" type="button" id="admin-sign-out" disabled>Sign Out</button>
-              </div>
-            </form>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="button" id="admin-sign-in">Google Login</button>
+              <button class="btn btn-secondary hidden" type="button" id="admin-sign-out">Sign Out</button>
+            </div>
             <p id="admin-status" class="small-note" aria-live="polite">Signed out.</p>
           </article>
 
@@ -70,9 +62,10 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
       import {
+        GoogleAuthProvider,
         getAuth,
         onAuthStateChanged,
-        signInWithEmailAndPassword,
+        signInWithPopup,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
       import {
@@ -99,10 +92,11 @@
       const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
+      const googleProvider = new GoogleAuthProvider();
       const db = getFirestore(app);
       const approvalsCollection = collection(db, "loginApprovals");
 
-      const adminAuthForm = document.getElementById("admin-auth-form");
+      const adminSignIn = document.getElementById("admin-sign-in");
       const adminStatus = document.getElementById("admin-status");
       const adminSignOut = document.getElementById("admin-sign-out");
       const approvalsList = document.getElementById("approvals-list");
@@ -164,16 +158,11 @@
         );
       };
 
-      adminAuthForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const formData = new FormData(adminAuthForm);
-        const email = String(formData.get("email") || "").trim();
-        const password = String(formData.get("password") || "").trim();
-
+      adminSignIn.addEventListener("click", async () => {
         try {
-          await signInWithEmailAndPassword(auth, email, password);
+          await signInWithPopup(auth, googleProvider);
         } catch {
-          adminStatus.textContent = "Sign in failed.";
+          adminStatus.textContent = "Google sign-in failed.";
         }
       });
 
@@ -221,7 +210,8 @@
 
       onAuthStateChanged(auth, async (user) => {
         if (!user) {
-          adminSignOut.disabled = true;
+          adminSignIn.classList.remove("hidden");
+          adminSignOut.classList.add("hidden");
           adminStatus.textContent = "Signed out.";
           approvalsList.innerHTML = '<p class="small-note">Sign in as admin to load requests.</p>';
           if (unsubscribeApprovals) {
@@ -237,7 +227,8 @@
           return;
         }
 
-        adminSignOut.disabled = false;
+        adminSignIn.classList.add("hidden");
+        adminSignOut.classList.remove("hidden");
         adminStatus.textContent = `Signed in as ${user.email}.`;
         startApprovalSubscription();
       });
