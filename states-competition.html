@@ -60,6 +60,7 @@
         <div class="container">
           <h2>Monthly Scoreboard (2026)</h2>
           <p class="section-intro">Live data from Firebase updates this page for both players automatically.</p>
+          <p id="data-source-note" class="small-note">Data source: Firestore realtime.</p>
           <div id="monthly-grid" class="project-grid" aria-live="polite"></div>
         </div>
       </section>
@@ -117,6 +118,11 @@
             month: "January",
             andyStates: [],
             savannahStates: [],
+            manualCounts: {
+              andy: 29,
+              savannah: 29,
+            },
+            locked: true,
           },
           {
             month: "February",
@@ -194,6 +200,7 @@
       const monthlyPlates = document.getElementById("monthly-plates");
       const yearlyGrid = document.getElementById("yearly-grid");
       const headerAuthStatus = document.getElementById("header-auth-status");
+      const dataSourceNote = document.getElementById("data-source-note");
       const competitionYear = competitionData.year;
       const monthsCollection = collection(db, "competitions", String(competitionYear), "months");
       const COLLAPSE_STORAGE_PREFIX = "savemhq-month-collapsed-";
@@ -264,21 +271,26 @@
         const monthScores = months.map((monthData) => {
           const andyStates = Array.isArray(monthData.andyStates) ? monthData.andyStates : [];
           const savannahStates = Array.isArray(monthData.savannahStates) ? monthData.savannahStates : [];
+          const manualAndy = Number(monthData?.manualCounts?.andy);
+          const manualSavannah = Number(monthData?.manualCounts?.savannah);
+          const useManualCounts = Number.isFinite(manualAndy) && Number.isFinite(manualSavannah);
           const monthlyStates = Array.from(new Set([...savannahStates, ...andyStates]));
-          const andy = andyStates.length;
-          const savannah = savannahStates.length;
+          const andy = useManualCounts ? manualAndy : andyStates.length;
+          const savannah = useManualCounts ? manualSavannah : savannahStates.length;
           const winner = winnerForMonth({ andy, savannah });
 
           return {
             ...monthData,
             andy,
             savannah,
+            useManualCounts,
             andyStates,
             savannahStates,
             statesSeen: monthlyStates,
             winner,
             totalSpots: andy + savannah,
             uniqueStates: monthlyStates.length,
+            locked: Boolean(monthData.locked),
           };
         });
 
@@ -290,6 +302,7 @@
                 <p><strong>Andy:</strong> ${monthData.andy} states</p>
                 <p><strong>Savannah:</strong> ${monthData.savannah} states</p>
                 <p><strong>Winner:</strong> ${monthData.winner}</p>
+                <p><strong>Month:</strong> ${monthData.locked ? "Locked" : "Open"}</p>
               </article>
             `
           )
@@ -319,9 +332,9 @@
                 <p><strong>Unique states seen:</strong> ${monthData.uniqueStates}</p>
                 <div class="month-card-details ${isCollapsed ? "is-collapsed" : ""}" data-month-id="${monthId}">
                   <p><strong>Savannah saw:</strong></p>
-                  <div class="month-states-wrap">${savannahStatePills || '<p class="small-note">No sightings logged yet.</p>'}</div>
+                  <div class="month-states-wrap">${savannahStatePills || `<p class="small-note">${monthData.useManualCounts ? "No state-level logs for this finalized month." : "No sightings logged yet."}</p>`}</div>
                   <p><strong>Andy saw:</strong></p>
-                  <div class="month-states-wrap">${andyStatePills || '<p class="small-note">No sightings logged yet.</p>'}</div>
+                  <div class="month-states-wrap">${andyStatePills || `<p class="small-note">${monthData.useManualCounts ? "No state-level logs for this finalized month." : "No sightings logged yet."}</p>`}</div>
                 </div>
               </article>
             `;
@@ -420,6 +433,8 @@
             order: index,
             andyStates: monthData.andyStates,
             savannahStates: monthData.savannahStates,
+            manualCounts: monthData.manualCounts || null,
+            locked: Boolean(monthData.locked),
             updatedAt: serverTimestamp(),
           });
         });
@@ -462,6 +477,9 @@
               console.error("Could not seed month data", error);
               renderCompetition(competitionData.months);
               renderMonthOptions(competitionData.months);
+              if (dataSourceNote) {
+                dataSourceNote.textContent = "Data source: Local fallback (seed failed).";
+              }
               headerAuthStatus.textContent = "Could not load Firestore data yet. Check Firebase rules/config.";
               return;
             }
@@ -474,6 +492,8 @@
               order: Number.isFinite(Number(data.order)) ? Number(data.order) : null,
               andyStates: Array.isArray(data.andyStates) ? data.andyStates : [],
               savannahStates: Array.isArray(data.savannahStates) ? data.savannahStates : [],
+              manualCounts: data.manualCounts && typeof data.manualCounts === "object" ? data.manualCounts : null,
+              locked: Boolean(data.locked),
             };
           });
 
@@ -487,10 +507,16 @@
 
           renderCompetition(months);
           renderMonthOptions(months);
+          if (dataSourceNote) {
+            dataSourceNote.textContent = "Data source: Firestore realtime.";
+          }
         },
         () => {
           renderCompetition(competitionData.months);
           renderMonthOptions(competitionData.months);
+          if (dataSourceNote) {
+            dataSourceNote.textContent = "Data source: Local fallback (realtime unavailable).";
+          }
           headerAuthStatus.textContent = "Realtime sync unavailable. Showing local fallback data.";
         }
       );

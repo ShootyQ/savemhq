@@ -37,7 +37,7 @@
         <div class="container hero-inner">
           <p class="tagline">Private</p>
           <h1>Quick Plate Add</h1>
-          <p class="subheadline">Built for phones: pick player, tap a plate image, save.</p>
+          <p class="subheadline">Built for phones: choose month and tap a state to add or undo instantly.</p>
         </div>
       </section>
 
@@ -46,20 +46,12 @@
           <div id="entry-panel" class="hidden">
             <article class="project-card entry-shell">
               <h2>Log A State Sighting</h2>
-              <p class="small-note">Quick mode for phones: choose month, choose person, type state, save.</p>
+              <p class="small-note">You are auto-mapped to your profile. Tap once to add. Tap again to undo.</p>
 
               <div class="entry-grid">
                 <div class="entry-row">
                   <label for="month-select">Month</label>
                   <select id="month-select" name="month" required></select>
-                </div>
-
-                <div class="entry-row">
-                  <p class="entry-label">Who saw it?</p>
-                  <div class="player-toggle" role="group" aria-label="Who saw the plate">
-                    <button id="player-andy" class="btn btn-secondary is-active" type="button" data-person="andy">Andy</button>
-                    <button id="player-savannah" class="btn btn-secondary" type="button" data-person="savannah">Savannah</button>
-                  </div>
                 </div>
               </div>
 
@@ -79,12 +71,7 @@
               </div>
 
               <p id="selected-state" class="small-note">No state selected yet.</p>
-              <p id="plate-status" class="small-note" aria-live="polite">Search and tap a state to enable save.</p>
-
-              <div class="sticky-save-bar">
-                <button class="btn btn-primary save-plate-btn" type="button" id="add-plate" disabled>Save Plate Sighting</button>
-                <p class="small-note">Duplicates for the same person and month are ignored automatically.</p>
-              </div>
+              <p id="plate-status" class="small-note" aria-live="polite">Tap a state to add it for this month. Tap again to remove it.</p>
             </article>
           </div>
 
@@ -103,7 +90,15 @@
     </footer>
 
     <script type="module">
-      import { arrayUnion, collection, doc, getDocs, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+      import {
+        arrayRemove,
+        arrayUnion,
+        collection,
+        doc,
+        onSnapshot,
+        serverTimestamp,
+        setDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
       import { auth, db, initHeaderAuth } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
 
@@ -132,6 +127,10 @@
       ];
       const RECENT_STATES_STORAGE_KEY = "savemhq-recent-states";
       const monthsCollection = collection(db, "competitions", String(COMPETITION_YEAR), "months");
+      const EMAIL_TO_PERSON = {
+        "andrewpcarlson85@gmail.com": "andy",
+        "savannahbcarlson@gmail.com": "savannah",
+      };
       const monthOrderById = new Map(DEFAULT_MONTHS.map((monthName, index) => [slugifyMonth(monthName), index]));
 
       const entryPanel = document.getElementById("entry-panel");
@@ -142,14 +141,14 @@
       const recentStates = document.getElementById("recent-states");
       const selectedStateText = document.getElementById("selected-state");
       const plateStatus = document.getElementById("plate-status");
-      const savePlateBtn = document.getElementById("add-plate");
-      const playerAndyBtn = document.getElementById("player-andy");
-      const playerSavannahBtn = document.getElementById("player-savannah");
 
-      let selectedPerson = "andy";
-      let selectedState = "";
-      let isSaving = false;
+      const monthDataById = new Map();
+      const pendingStateWrites = new Set();
+      let selectedPerson = "";
+      let currentUserEmail = "";
+      let canEdit = false;
       let monthsLoaded = false;
+      let monthsUnsubscribe = null;
 
       function slugifyMonth(monthName) {
         return String(monthName || "").toLowerCase().trim().replace(/\s+/g, "-");
@@ -159,22 +158,20 @@
         return ALL_STATES.find((state) => state.toLowerCase() === String(rawState || "").trim().toLowerCase()) || "";
       }
 
-      function setPerson(person) {
-        selectedPerson = person;
-        playerAndyBtn.classList.toggle("is-active", person === "andy");
-        playerSavannahBtn.classList.toggle("is-active", person === "savannah");
+      function personFromEmail(email) {
+        return EMAIL_TO_PERSON[String(email || "").toLowerCase()] || "";
       }
 
-      function setSelectedState(stateName) {
-        selectedState = stateName;
-        if (!selectedState) {
-          selectedStateText.textContent = "No state selected yet.";
-          savePlateBtn.disabled = true;
-        } else {
-          selectedStateText.textContent = `Selected: ${selectedState}`;
-          savePlateBtn.disabled = isSaving;
+      function stateFieldForPerson(person) {
+        if (person === "andy") {
+          return "andyStates";
         }
-        renderStateResults(stateSearch.value);
+
+        if (person === "savannah") {
+          return "savannahStates";
+        }
+
+        return "";
       }
 
       function getRecentStates() {
@@ -203,6 +200,7 @@
 
       function renderRecentStates() {
         const states = getRecentStates();
+        const selectedStates = activeStatesForSelection();
         if (!states.length) {
           recentStates.innerHTML = '<p class="small-note">No recent states yet.</p>';
           return;
@@ -211,9 +209,55 @@
         recentStates.innerHTML = states
           .map(
             (stateName) =>
-              `<button class="quick-chip ${selectedState === stateName ? "is-selected" : ""}" type="button" data-state="${stateName}">${stateName}</button>`
+              `<button class="quick-chip ${selectedStates.has(stateName) ? "is-selected" : ""}" type="button" data-state="${stateName}" ${!canEdit ? "disabled" : ""}>${stateName}</button>`
           )
           .join("");
+      }
+
+      function selectedMonthId() {
+        return String(monthSelect.value || "").trim();
+      }
+
+      function selectedMonthName() {
+        return String(monthSelect.options[monthSelect.selectedIndex]?.textContent || selectedMonthId() || "").trim();
+      }
+
+      function selectedMonthOrder() {
+        const monthId = selectedMonthId();
+        return Number(monthSelect.options[monthSelect.selectedIndex]?.dataset.order || monthOrderById.get(monthId) || 0);
+      }
+
+      function activeStatesForSelection() {
+        const monthId = selectedMonthId();
+        if (!monthId || !selectedPerson) {
+          return new Set();
+        }
+
+        const monthData = monthDataById.get(monthId);
+        const fieldName = stateFieldForPerson(selectedPerson);
+        if (!monthData || !fieldName) {
+          return new Set();
+        }
+
+        return new Set(Array.isArray(monthData[fieldName]) ? monthData[fieldName] : []);
+      }
+
+      function selectedMonthLocked() {
+        const monthData = monthDataById.get(selectedMonthId());
+        return Boolean(monthData?.locked);
+      }
+
+      function refreshEntrySummary() {
+        if (!canEdit || !selectedPerson) {
+          selectedStateText.textContent = "Read-only mode. You are not mapped to Andy or Savannah.";
+          return;
+        }
+
+        const monthName = selectedMonthName();
+        const personLabel = selectedPerson === "andy" ? "Andy" : "Savannah";
+        const monthStates = activeStatesForSelection();
+        const lockLabel = selectedMonthLocked() ? "Locked" : "Open";
+        selectedStateText.textContent = `${personLabel} mode | ${monthName} (${lockLabel}) | ${monthStates.size} states logged.`;
       }
 
       function sortedResults(searchText) {
@@ -231,38 +275,53 @@
 
       function renderStateResults(searchText = "") {
         const results = sortedResults(searchText).slice(0, 20);
+        const selectedStates = activeStatesForSelection();
+        const monthId = selectedMonthId();
+
         if (!results.length) {
           stateResults.innerHTML = '<p class="small-note">No matching states.</p>';
           return;
         }
 
         stateResults.innerHTML = results
-          .map(
-            (stateName) =>
-              `<button class="state-option ${selectedState === stateName ? "is-selected" : ""}" type="button" data-state="${stateName}">${stateName}</button>`
-          )
+          .map((stateName) => {
+            const pendingKey = `${monthId}:${selectedPerson}:${stateName}`;
+            const isPending = pendingStateWrites.has(pendingKey);
+            const isSelected = selectedStates.has(stateName);
+            return `<button class="state-option ${isSelected ? "is-selected" : ""} ${isPending ? "is-pending" : ""}" type="button" data-state="${stateName}" ${isPending || !canEdit ? "disabled" : ""}>${stateName}</button>`;
+          })
           .join("");
       }
 
-      async function loadMonths() {
+      function loadMonthsFromDocuments(documents) {
         const monthNames = [...DEFAULT_MONTHS];
 
-        try {
-          const snapshot = await getDocs(monthsCollection);
-          snapshot.docs.forEach((monthDoc) => {
-            const monthName = String(monthDoc.data().month || "").trim();
-            if (!monthName) {
-              return;
-            }
-            const monthId = slugifyMonth(monthName);
-            if (!monthOrderById.has(monthId)) {
-              monthOrderById.set(monthId, monthOrderById.size);
-              monthNames.push(monthName);
-            }
+        monthDataById.clear();
+        documents.forEach((monthDoc) => {
+          const data = monthDoc.data();
+          const monthName = String(data.month || "").trim();
+          const monthId = slugifyMonth(monthName || monthDoc.id);
+          if (!monthName) {
+            return;
+          }
+
+          monthDataById.set(monthId, {
+            id: monthId,
+            month: monthName,
+            order: Number.isFinite(Number(data.order)) ? Number(data.order) : monthOrderById.get(monthId) || monthOrderById.size,
+            locked: Boolean(data.locked),
+            andyStates: Array.isArray(data.andyStates) ? data.andyStates : [],
+            savannahStates: Array.isArray(data.savannahStates) ? data.savannahStates : [],
           });
-        } catch (error) {
-          console.error("Could not preload month list", error);
-        }
+
+          if (!monthOrderById.has(monthId)) {
+            monthOrderById.set(monthId, monthOrderById.size);
+          }
+
+          if (!monthNames.includes(monthName)) {
+            monthNames.push(monthName);
+          }
+        });
 
         monthSelect.innerHTML = monthNames
           .map((monthName) => {
@@ -271,17 +330,96 @@
             return `<option value="${monthId}" data-order="${order}">${monthName}</option>`;
           })
           .join("");
+
+        const options = Array.from(monthSelect.options);
+        options.sort((left, right) => Number(left.dataset.order) - Number(right.dataset.order));
+        monthSelect.innerHTML = options.map((option) => option.outerHTML).join("");
       }
 
-      playerAndyBtn.addEventListener("click", () => {
-        setPerson("andy");
-      });
+      async function toggleState(stateName) {
+        if (!canEdit) {
+          return;
+        }
 
-      playerSavannahBtn.addEventListener("click", () => {
-        setPerson("savannah");
-      });
+        const state = normalizeState(stateName);
+        const monthId = selectedMonthId();
+        const monthName = selectedMonthName();
+        const monthOrder = selectedMonthOrder();
+        const stateField = stateFieldForPerson(selectedPerson);
+
+        if (!state || !monthId || !stateField) {
+          plateStatus.textContent = "Select a month first.";
+          return;
+        }
+
+        const monthData = monthDataById.get(monthId) || {
+          id: monthId,
+          month: monthName,
+          order: monthOrder,
+          locked: false,
+          andyStates: [],
+          savannahStates: [],
+        };
+
+        if (monthData.locked) {
+          plateStatus.textContent = `${monthName} is locked. Ask admin to unlock it first.`;
+          return;
+        }
+
+        const currentStates = Array.isArray(monthData[stateField]) ? [...monthData[stateField]] : [];
+        const hadState = currentStates.includes(state);
+        const nextStates = hadState ? currentStates.filter((entry) => entry !== state) : [...currentStates, state];
+        const pendingKey = `${monthId}:${selectedPerson}:${state}`;
+
+        pendingStateWrites.add(pendingKey);
+        monthDataById.set(monthId, {
+          ...monthData,
+          [stateField]: nextStates,
+        });
+        renderStateResults(stateSearch.value);
+        refreshEntrySummary();
+
+        try {
+          await setDoc(
+            doc(monthsCollection, monthId),
+            {
+              month: monthName,
+              order: monthOrder,
+              [stateField]: hadState ? arrayRemove(state) : arrayUnion(state),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+
+          if (!hadState) {
+            saveRecentState(state);
+            renderRecentStates();
+          }
+
+          plateStatus.textContent = hadState
+            ? `Removed ${state} from ${monthName} for ${selectedPerson === "andy" ? "Andy" : "Savannah"}.`
+            : `Added ${state} to ${monthName} for ${selectedPerson === "andy" ? "Andy" : "Savannah"}.`;
+        } catch (error) {
+          console.error("Could not toggle state", error);
+          monthDataById.set(monthId, {
+            ...monthData,
+            [stateField]: currentStates,
+          });
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          plateStatus.textContent = `Could not update state (${details}).`;
+        } finally {
+          pendingStateWrites.delete(pendingKey);
+          renderStateResults(stateSearch.value);
+          refreshEntrySummary();
+        }
+      }
 
       stateSearch.addEventListener("input", () => {
+        renderStateResults(stateSearch.value);
+      });
+
+      monthSelect.addEventListener("change", () => {
+        refreshEntrySummary();
         renderStateResults(stateSearch.value);
       });
 
@@ -291,7 +429,7 @@
           return;
         }
         const stateName = normalizeState(target.dataset.state);
-        setSelectedState(stateName);
+        toggleState(stateName);
       });
 
       stateResults.addEventListener("click", (event) => {
@@ -300,63 +438,7 @@
           return;
         }
         const stateName = normalizeState(target.dataset.state);
-        setSelectedState(stateName);
-      });
-
-      savePlateBtn.addEventListener("click", async () => {
-        if (isSaving) {
-          return;
-        }
-
-        const user = auth.currentUser;
-        if (!user) {
-          plateStatus.textContent = "Sign in first.";
-          return;
-        }
-
-        const monthId = String(monthSelect.value || "").trim();
-        const monthOption = monthSelect.options[monthSelect.selectedIndex];
-        const monthName = String(monthOption?.textContent || monthId || "").trim();
-        const monthOrder = Number(monthOption?.dataset.order || monthOrderById.get(monthId) || 0);
-        const state = normalizeState(selectedState);
-        const stateField = selectedPerson === "andy" ? "andyStates" : selectedPerson === "savannah" ? "savannahStates" : "";
-
-        if (!monthId || !state || !stateField) {
-          plateStatus.textContent = "Choose month, player, and state first.";
-          return;
-        }
-
-        isSaving = true;
-        savePlateBtn.disabled = true;
-        plateStatus.textContent = "Saving...";
-
-        try {
-          await setDoc(
-            doc(monthsCollection, monthId),
-            {
-              month: monthName,
-              order: monthOrder,
-              [stateField]: arrayUnion(state),
-              updatedAt: serverTimestamp(),
-            },
-            { merge: true }
-          );
-
-          plateStatus.textContent = `${state} saved for ${stateField === "andyStates" ? "Andy" : "Savannah"} in ${monthName}.`;
-          saveRecentState(state);
-          renderRecentStates();
-          setSelectedState("");
-          stateSearch.value = "";
-          renderStateResults();
-          stateSearch.focus();
-        } catch (error) {
-          console.error("Could not save plate sighting", error);
-          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
-          plateStatus.textContent = `Could not save (${details}). Check account approval and Firestore rules.`;
-        } finally {
-          isSaving = false;
-          savePlateBtn.disabled = !selectedState;
-        }
+        toggleState(stateName);
       });
 
       initHeaderShell();
@@ -366,6 +448,10 @@
             entryPanel.classList.add("hidden");
             entryLocked.classList.remove("hidden");
             plateStatus.textContent = "Sign in with Google to add plate sightings.";
+            if (monthsUnsubscribe) {
+              monthsUnsubscribe();
+              monthsUnsubscribe = null;
+            }
             return;
           }
 
@@ -382,22 +468,49 @@
             return;
           }
 
+          currentUserEmail = String(user.email || "").toLowerCase();
+          selectedPerson = personFromEmail(currentUserEmail);
+
+          if (!selectedPerson) {
+            entryPanel.classList.add("hidden");
+            entryLocked.classList.remove("hidden");
+            plateStatus.textContent = "Only Andrew or Savannah can edit plate entries. Redirecting to scoreboard...";
+            setTimeout(() => {
+              if (window.location.pathname.endsWith("plate-entry.html")) {
+                window.location.href = "states-competition.html";
+              }
+            }, 1400);
+            return;
+          }
+
+          canEdit = true;
+
           entryPanel.classList.remove("hidden");
           entryLocked.classList.add("hidden");
 
           if (!monthsLoaded) {
-            await loadMonths();
+            monthsUnsubscribe = onSnapshot(
+              monthsCollection,
+              (snapshot) => {
+                loadMonthsFromDocuments(snapshot.docs);
+                refreshEntrySummary();
+                renderStateResults(stateSearch.value);
+              },
+              (error) => {
+                console.error("Could not subscribe to months", error);
+              }
+            );
             monthsLoaded = true;
           }
 
+          plateStatus.textContent = "Tap a state to add it. Tap again to remove it.";
+          refreshEntrySummary();
           renderRecentStates();
           renderStateResults(stateSearch.value);
           stateSearch.focus();
         },
       });
 
-      setPerson("andy");
-      setSelectedState("");
       renderRecentStates();
       renderStateResults();
     </script>

@@ -21,7 +21,16 @@ service cloud.firestore {
 
     match /competitions/{year}/months/{month} {
       allow read: if isApprovedUser() || isAdmin();
-      allow write: if isApprovedUser() || isAdmin();
+      allow create: if isApprovedUser() || isAdmin();
+      allow update: if isAdmin() || (
+        isApprovedUser()
+        && resource.data.locked != true
+        && request.resource.data.locked == resource.data.locked
+        && request.resource.data.lockedAt == resource.data.lockedAt
+        && request.resource.data.lockedBy == resource.data.lockedBy
+        && request.resource.data.manualCounts == resource.data.manualCounts
+      );
+      allow delete: if isAdmin();
     }
 
     match /loginApprovals/{uid} {

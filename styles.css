@@ -400,6 +400,15 @@ a:hover {
   background: color-mix(in srgb, var(--accent-soft) 78%, white);
 }
 
+.state-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.state-option.is-pending {
+  border-style: dashed;
+}
+
 .save-plate-btn {
   width: 100%;
   padding-block: 0.95rem;

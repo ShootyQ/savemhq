@@ -18,8 +18,13 @@ This is a static site.
 ## 2026 Competition UX Notes
 
 - Mobile header now uses a compact `Menu` toggle so auth buttons do not consume most of the screen.
-- `plate-entry.html` now uses typeahead + quick state chips for faster mobile entry.
+- `plate-entry.html` now uses tap-to-toggle state entry: tap a state to add it, tap again to remove it.
+- Player identity is automatic from login email:
+	- `andrewpcarlson85@gmail.com` -> Andy
+	- `savannahbcarlson@gmail.com` -> Savannah
+	- Other accounts are read-only on plate entry.
 - Monthly plate cards on `states-competition.html` are collapsed by default on mobile and can be expanded per month.
+- Month locks are managed from `admin.html`. Locked months cannot be edited in plate entry.
 
 ## Firebase Realtime Plate Tracker Setup
 

@@ -55,6 +55,17 @@
               <p class="small-note">Sign in as admin to load requests.</p>
             </div>
           </article>
+
+          <article class="project-card">
+            <h2>Month Locks</h2>
+            <p class="small-note">Lock a month to freeze plate edits. Unlock to resume edits.</p>
+            <div class="form-actions">
+              <button id="apply-january-lock" class="btn btn-secondary" type="button">Apply January 29-29 Lock</button>
+            </div>
+            <div id="month-locks-list" class="stack-form" aria-live="polite">
+              <p class="small-note">Sign in as admin to manage month locks.</p>
+            </div>
+          </article>
         </div>
       </section>
     </main>
@@ -68,6 +79,7 @@
     <script type="module">
       import {
         collection,
+        deleteField,
         doc,
         onSnapshot,
         orderBy,
@@ -78,15 +90,42 @@
       import { ADMIN_EMAIL, db, initHeaderAuth } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
 
+      const COMPETITION_YEAR = 2026;
+      const DEFAULT_MONTHS = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+
       const approvalsCollection = collection(db, "loginApprovals");
+      const monthsCollection = collection(db, "competitions", String(COMPETITION_YEAR), "months");
 
       const adminStatus = document.getElementById("admin-status");
       const approvalsList = document.getElementById("approvals-list");
+      const applyJanuaryLockBtn = document.getElementById("apply-january-lock");
+      const monthLocksList = document.getElementById("month-locks-list");
       initHeaderShell();
 
       let unsubscribeApprovals = null;
+      let unsubscribeMonths = null;
       let currentUserEmail = "";
       let currentIsAdmin = false;
+      let januaryPresetApplied = false;
+
+      const slugifyMonth = (monthName) =>
+        String(monthName || "")
+          .toLowerCase()
+          .trim()
+          .replace(/\s+/g, "-");
 
       const formatDate = (value) => {
         if (!value || typeof value.toDate !== "function") {
@@ -143,18 +182,116 @@
         );
       };
 
-      headerSignIn.addEventListener("click", async () => {
-        try {
-          await signInWithPopup(auth, googleProvider);
-        } catch (error) {
-          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
-          headerAuthStatus.textContent = `Google sign-in failed (${details}).`;
+      const monthScoreText = (data) => {
+        const manualAndy = Number(data?.manualCounts?.andy);
+        const manualSavannah = Number(data?.manualCounts?.savannah);
+        if (Number.isFinite(manualAndy) && Number.isFinite(manualSavannah)) {
+          return `Manual score: Andy ${manualAndy}, Savannah ${manualSavannah}`;
         }
-      });
 
-      headerSignOut.addEventListener("click", async () => {
-        await signOut(auth);
-      });
+        const andyCount = Array.isArray(data?.andyStates) ? data.andyStates.length : 0;
+        const savannahCount = Array.isArray(data?.savannahStates) ? data.savannahStates.length : 0;
+        return `Logged states: Andy ${andyCount}, Savannah ${savannahCount}`;
+      };
+
+      const renderMonthLocks = (documents) => {
+        const byId = new Map(
+          documents.map((snapshot) => {
+            const data = snapshot.data();
+            return [snapshot.id, { id: snapshot.id, ...data }];
+          })
+        );
+
+        const rows = DEFAULT_MONTHS.map((monthName) => {
+          const monthId = slugifyMonth(monthName);
+          const row = byId.get(monthId) || {
+            id: monthId,
+            month: monthName,
+            order: DEFAULT_MONTHS.indexOf(monthName),
+            locked: false,
+            andyStates: [],
+            savannahStates: [],
+          };
+          return {
+            ...row,
+            month: row.month || monthName,
+            order: Number.isFinite(Number(row.order)) ? Number(row.order) : DEFAULT_MONTHS.indexOf(monthName),
+            locked: Boolean(row.locked),
+          };
+        });
+
+        monthLocksList.innerHTML = rows
+          .sort((left, right) => left.order - right.order)
+          .map((monthData) => {
+            const lockLabel = monthData.locked ? "Locked" : "Open";
+            const action = monthData.locked ? "unlock" : "lock";
+            const actionLabel = monthData.locked ? "Unlock" : "Lock";
+            const lockedBy = monthData.lockedBy ? `<p><strong>Locked by:</strong> ${monthData.lockedBy}</p>` : "";
+            return `
+              <article class="project-card">
+                <h3>${monthData.month}</h3>
+                <p><strong>Status:</strong> ${lockLabel}</p>
+                <p>${monthScoreText(monthData)}</p>
+                ${lockedBy}
+                <div class="form-actions">
+                  <button class="btn btn-secondary" type="button" data-lock-action="${action}" data-month-id="${monthData.id}">${actionLabel}</button>
+                </div>
+              </article>
+            `;
+          })
+          .join("");
+      };
+
+      const startMonthSubscription = () => {
+        if (unsubscribeMonths) {
+          unsubscribeMonths();
+        }
+
+        unsubscribeMonths = onSnapshot(
+          monthsCollection,
+          (snapshot) => {
+            renderMonthLocks(snapshot.docs);
+          },
+          () => {
+            monthLocksList.innerHTML = '<p class="small-note">Could not load month locks.</p>';
+          }
+        );
+      };
+
+      const applyJanuaryPresetLock = async () => {
+        if (!currentIsAdmin || currentUserEmail !== ADMIN_EMAIL) {
+          adminStatus.textContent = "Only admin can apply January lock preset.";
+          return;
+        }
+
+        applyJanuaryLockBtn.disabled = true;
+        try {
+          await setDoc(
+            doc(monthsCollection, "january"),
+            {
+              month: "January",
+              order: 0,
+              andyStates: [],
+              savannahStates: [],
+              manualCounts: {
+                andy: 29,
+                savannah: 29,
+              },
+              locked: true,
+              lockedAt: serverTimestamp(),
+              lockedBy: currentUserEmail,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+          adminStatus.textContent = "January is now locked as a 29-29 tie.";
+        } catch (error) {
+          console.error("Could not apply January preset", error);
+          adminStatus.textContent = "Could not apply January lock preset.";
+        } finally {
+          applyJanuaryLockBtn.disabled = false;
+        }
+      };
 
       approvalsList.addEventListener("click", async (event) => {
         const target = event.target;
@@ -194,6 +331,62 @@
         }
       });
 
+      monthLocksList.addEventListener("click", async (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        const action = target.dataset.lockAction;
+        const monthId = target.dataset.monthId;
+        if (!action || !monthId) {
+          return;
+        }
+
+        if (!currentIsAdmin || currentUserEmail !== ADMIN_EMAIL) {
+          adminStatus.textContent = "Only admin can change month locks.";
+          return;
+        }
+
+        target.disabled = true;
+        try {
+          if (action === "lock") {
+            await setDoc(
+              doc(monthsCollection, monthId),
+              {
+                locked: true,
+                lockedAt: serverTimestamp(),
+                lockedBy: currentUserEmail,
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true }
+            );
+            adminStatus.textContent = `${monthId} locked.`;
+          } else {
+            await setDoc(
+              doc(monthsCollection, monthId),
+              {
+                locked: false,
+                lockedAt: deleteField(),
+                lockedBy: deleteField(),
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true }
+            );
+            adminStatus.textContent = `${monthId} unlocked.`;
+          }
+        } catch (error) {
+          console.error("Could not update month lock", error);
+          adminStatus.textContent = "Could not update month lock.";
+        } finally {
+          target.disabled = false;
+        }
+      });
+
+      applyJanuaryLockBtn.addEventListener("click", () => {
+        applyJanuaryPresetLock();
+      });
+
       initHeaderAuth({
         onStateChange: ({ user, isAdmin, approvalStatus }) => {
         if (!user) {
@@ -205,6 +398,11 @@
             unsubscribeApprovals();
             unsubscribeApprovals = null;
           }
+          if (unsubscribeMonths) {
+            unsubscribeMonths();
+            unsubscribeMonths = null;
+          }
+          monthLocksList.innerHTML = '<p class="small-note">Sign in as admin to manage month locks.</p>';
           return;
         }
 
@@ -223,10 +421,20 @@
               unsubscribeApprovals();
               unsubscribeApprovals = null;
             }
+            if (unsubscribeMonths) {
+              unsubscribeMonths();
+              unsubscribeMonths = null;
+            }
+            monthLocksList.innerHTML = '<p class="small-note">Only admin can manage month locks.</p>';
             return;
         }
         adminStatus.textContent = `Signed in as ${user.email}.`;
         startApprovalSubscription();
+        startMonthSubscription();
+        if (!januaryPresetApplied) {
+          januaryPresetApplied = true;
+          applyJanuaryPresetLock();
+        }
       },
       });
     </script>
