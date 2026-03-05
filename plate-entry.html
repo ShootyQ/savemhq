@@ -132,6 +132,7 @@
         "savannahbcarlson@gmail.com": "savannah",
       };
       const monthOrderById = new Map(DEFAULT_MONTHS.map((monthName, index) => [slugifyMonth(monthName), index]));
+      const CURRENT_MONTH_ID = slugifyMonth(new Date().toLocaleString("en-US", { month: "long" }));
 
       const entryPanel = document.getElementById("entry-panel");
       const entryLocked = document.getElementById("entry-locked");
@@ -294,6 +295,7 @@
       }
 
       function loadMonthsFromDocuments(documents) {
+        const previouslySelectedMonthId = selectedMonthId();
         const monthNames = [...DEFAULT_MONTHS];
 
         monthDataById.clear();
@@ -334,6 +336,12 @@
         const options = Array.from(monthSelect.options);
         options.sort((left, right) => Number(left.dataset.order) - Number(right.dataset.order));
         monthSelect.innerHTML = options.map((option) => option.outerHTML).join("");
+
+        const preferredMonthId = previouslySelectedMonthId || CURRENT_MONTH_ID;
+        const preferredOption = Array.from(monthSelect.options).find((option) => option.value === preferredMonthId) || monthSelect.options[0];
+        if (preferredOption) {
+          monthSelect.value = preferredOption.value;
+        }
       }
 
       async function toggleState(stateName) {

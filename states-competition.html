@@ -119,7 +119,7 @@
             andyStates: [],
             savannahStates: [],
             manualCounts: {
-              andy: 29,
+              andy: 28,
               savannah: 29,
             },
             locked: true,
@@ -246,6 +246,59 @@
             order: Number.isFinite(monthData.order) ? monthData.order : index,
           });
         });
+      };
+
+      const hasScoreData = (monthData) => {
+        const andyCount = Array.isArray(monthData.andyStates) ? monthData.andyStates.length : 0;
+        const savannahCount = Array.isArray(monthData.savannahStates) ? monthData.savannahStates.length : 0;
+        const manualAndy = Number(monthData?.manualCounts?.andy);
+        const manualSavannah = Number(monthData?.manualCounts?.savannah);
+        const hasManual = Number.isFinite(manualAndy) && Number.isFinite(manualSavannah);
+        return andyCount + savannahCount > 0 || hasManual;
+      };
+
+      const mergeWithFallbackMonths = (firestoreMonths) => {
+        const monthById = new Map();
+        firestoreMonths.forEach((monthData) => {
+          const monthId = slugifyMonth(monthData.month || "");
+          if (!monthId) {
+            return;
+          }
+          monthById.set(monthId, monthData);
+        });
+
+        competitionData.months.forEach((fallbackMonth, index) => {
+          const monthId = slugifyMonth(fallbackMonth.month);
+          const fallbackValue = {
+            month: fallbackMonth.month,
+            order: index,
+            andyStates: Array.isArray(fallbackMonth.andyStates) ? fallbackMonth.andyStates : [],
+            savannahStates: Array.isArray(fallbackMonth.savannahStates) ? fallbackMonth.savannahStates : [],
+            manualCounts: fallbackMonth.manualCounts || null,
+            locked: Boolean(fallbackMonth.locked),
+          };
+
+          const existing = monthById.get(monthId);
+          if (!existing) {
+            monthById.set(monthId, fallbackValue);
+            return;
+          }
+
+          if (!hasScoreData(existing)) {
+            monthById.set(monthId, {
+              ...fallbackValue,
+              ...existing,
+              month: existing.month || fallbackValue.month,
+              order: existing.order ?? fallbackValue.order,
+              andyStates: Array.isArray(existing.andyStates) && existing.andyStates.length ? existing.andyStates : fallbackValue.andyStates,
+              savannahStates: Array.isArray(existing.savannahStates) && existing.savannahStates.length ? existing.savannahStates : fallbackValue.savannahStates,
+              manualCounts: existing.manualCounts || fallbackValue.manualCounts,
+              locked: Boolean(existing.locked),
+            });
+          }
+        });
+
+        return Array.from(monthById.values());
       };
 
       const collapseStorageKey = (monthId) => `${COLLAPSE_STORAGE_PREFIX}${monthId}`;
@@ -485,7 +538,7 @@
             }
           }
 
-          const months = snapshot.docs.map((documentSnapshot) => {
+          const firestoreMonths = snapshot.docs.map((documentSnapshot) => {
             const data = documentSnapshot.data();
             return {
               month: data.month,
@@ -496,6 +549,8 @@
               locked: Boolean(data.locked),
             };
           });
+
+          const months = mergeWithFallbackMonths(firestoreMonths);
 
           months.sort((left, right) => {
             const leftId = slugifyMonth(left.month || "");
