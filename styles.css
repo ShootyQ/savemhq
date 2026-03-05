@@ -207,6 +207,101 @@ a:hover {
   gap: 0.6rem;
 }
 
+.entry-controls {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.entry-row {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.entry-label {
+  margin: 0;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.entry-row input,
+.entry-row select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.62rem 0.72rem;
+  font: inherit;
+  color: var(--text);
+  background: #ffffff;
+}
+
+.player-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.player-toggle .btn.is-active {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
+.plate-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.plate-tile {
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: #ffffff;
+  padding: 0.45rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plate-tile.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.plate-img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 0.6rem;
+  display: block;
+  background: #f3f5ff;
+}
+
+.plate-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.plate-name {
+  display: block;
+  margin-top: 0.4rem;
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.93rem;
+}
+
+.sticky-save-bar {
+  position: sticky;
+  bottom: 0.7rem;
+  z-index: 5;
+}
+
+.save-plate-btn {
+  width: 100%;
+  padding-block: 0.95rem;
+  font-size: 1rem;
+}
+
 .btn {
   display: inline-block;
   text-decoration: none;
@@ -338,5 +433,9 @@ button:focus-visible {
   #header-admin-link {
     width: 100%;
     text-align: center;
+  }
+
+  .plate-gallery {
+    grid-template-columns: 1fr;
   }
 }

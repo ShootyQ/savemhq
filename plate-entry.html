@@ -33,33 +33,48 @@
       <section class="hero section">
         <div class="container hero-inner">
           <p class="tagline">Private</p>
-          <h1>Add Plate Sighting</h1>
-          <p class="subheadline">Only approved logins can submit entries here.</p>
+          <h1>Quick Plate Add</h1>
+          <p class="subheadline">Built for phones: pick player, tap a plate image, save.</p>
         </div>
       </section>
 
       <section class="section section-card">
         <div class="container">
-          <div id="entry-panel" class="project-card hidden">
-            <h2>Plate Entry Form</h2>
-            <form id="plate-form" class="stack-form" aria-describedby="plate-help">
-              <label for="month-select">Month</label>
-              <select id="month-select" name="month" required></select>
+          <div id="entry-panel" class="hidden">
+            <article class="project-card entry-controls">
+              <h2>Add Plate</h2>
+              <div class="entry-row">
+                <label for="month-select">Month</label>
+                <select id="month-select" name="month" required></select>
+              </div>
 
-              <label for="person-select">Who saw it?</label>
-              <select id="person-select" name="person" required>
-                <option value="andy">Andy</option>
-                <option value="savannah">Savannah</option>
-              </select>
+              <div class="entry-row">
+                <p class="entry-label">Who saw it?</p>
+                <div class="player-toggle" role="group" aria-label="Who saw the plate">
+                  <button id="player-andy" class="btn btn-secondary is-active" type="button" data-person="andy">Andy</button>
+                  <button id="player-savannah" class="btn btn-secondary" type="button" data-person="savannah">Savannah</button>
+                </div>
+              </div>
 
-              <label for="state-input">State</label>
-              <input id="state-input" name="state" list="state-list" placeholder="e.g. Texas" required />
-              <datalist id="state-list"></datalist>
+              <div class="entry-row">
+                <label for="state-search">Search states</label>
+                <input id="state-search" type="search" placeholder="Type to filter..." autocomplete="off" />
+              </div>
 
-              <button class="btn btn-primary" type="submit" id="add-plate">Add Plate</button>
-            </form>
-            <p id="plate-help" class="small-note">Duplicates for the same person/month are ignored automatically.</p>
-            <p id="plate-status" class="small-note" aria-live="polite">Sign in to begin.</p>
+              <p id="selected-state" class="small-note">No state selected yet.</p>
+              <p id="plate-status" class="small-note" aria-live="polite">Tap a plate image to select a state.</p>
+            </article>
+
+            <article class="project-card">
+              <h2>Tap A Plate</h2>
+              <div id="plate-gallery" class="plate-gallery" aria-live="polite"></div>
+              <p id="empty-gallery" class="small-note hidden">No states match your search.</p>
+            </article>
+
+            <article class="project-card sticky-save-bar">
+              <button class="btn btn-primary save-plate-btn" type="button" id="add-plate" disabled>Save Plate Sighting</button>
+              <p class="small-note">Duplicates for the same person/month are ignored automatically.</p>
+            </article>
           </div>
 
           <div id="entry-locked" class="project-card">
@@ -108,6 +123,10 @@
         "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
         "West Virginia", "Wisconsin", "Wyoming", "District of Columbia"
       ];
+      const PLATE_FILE_OVERRIDES = {
+        arkansas: "Arkansas.webp",
+        tennessee: "tennessee.jpg",
+      };
 
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
@@ -123,18 +142,77 @@
       const adminLink = document.getElementById("header-admin-link");
       const entryPanel = document.getElementById("entry-panel");
       const entryLocked = document.getElementById("entry-locked");
-      const plateForm = document.getElementById("plate-form");
       const monthSelect = document.getElementById("month-select");
+      const stateSearch = document.getElementById("state-search");
+      const selectedStateText = document.getElementById("selected-state");
+      const plateGallery = document.getElementById("plate-gallery");
+      const emptyGallery = document.getElementById("empty-gallery");
       const plateStatus = document.getElementById("plate-status");
-      const stateList = document.getElementById("state-list");
+      const savePlateBtn = document.getElementById("add-plate");
+      const playerAndyBtn = document.getElementById("player-andy");
+      const playerSavannahBtn = document.getElementById("player-savannah");
+
+      let selectedPerson = "andy";
+      let selectedState = "";
 
       const slugifyMonth = (monthName) => monthName.toLowerCase().trim().replace(/\s+/g, "-");
 
-      const normalizeState = (rawState) => {
-        const trimmed = rawState.trim().toLowerCase();
-        const match = ALL_STATES.find((state) => state.toLowerCase() === trimmed);
-        return match || "";
+      const plateImageFile = (stateName) => {
+        const key = stateName.toLowerCase();
+        if (PLATE_FILE_OVERRIDES[key]) {
+          return PLATE_FILE_OVERRIDES[key];
+        }
+        return `${key}.webp`;
       };
+
+      const plateImagePath = (stateName) => `images/plates/${plateImageFile(stateName)}`;
+
+      const setPerson = (person) => {
+        selectedPerson = person;
+        playerAndyBtn.classList.toggle("is-active", person === "andy");
+        playerSavannahBtn.classList.toggle("is-active", person === "savannah");
+      };
+
+      const updateSelectedStateUI = () => {
+        if (!selectedState) {
+          selectedStateText.textContent = "No state selected yet.";
+          savePlateBtn.disabled = true;
+          return;
+        }
+
+        selectedStateText.textContent = `Selected: ${selectedState}`;
+        savePlateBtn.disabled = false;
+      };
+
+      const renderPlateGallery = (searchText = "") => {
+        const search = searchText.trim().toLowerCase();
+        const filteredStates = ALL_STATES.filter((stateName) => stateName.toLowerCase().includes(search));
+
+        if (!filteredStates.length) {
+          plateGallery.innerHTML = "";
+          emptyGallery.classList.remove("hidden");
+          return;
+        }
+
+        emptyGallery.classList.add("hidden");
+        plateGallery.innerHTML = filteredStates
+          .map((stateName) => {
+            const isSelected = stateName === selectedState;
+            const imageMarkup = stateName === "District of Columbia"
+              ? '<div class="plate-img plate-fallback" aria-hidden="true">N/A</div>'
+              : `<img class="plate-img" loading="lazy" src="${plateImagePath(stateName)}" alt="${stateName} license plate" />`;
+
+            return `
+              <button class="plate-tile ${isSelected ? "is-selected" : ""}" type="button" data-state="${stateName}">
+                ${imageMarkup}
+                <span class="plate-name">${stateName}</span>
+              </button>
+            `;
+          })
+          .join("");
+      };
+
+      const normalizeState = (rawState) => ALL_STATES.find((state) => state.toLowerCase() === rawState.trim().toLowerCase()) || "";
 
       const ensureApprovalRecord = async (user) => {
         const approvalRef = doc(approvals, user.uid);
@@ -230,6 +308,8 @@
             entryPanel.classList.remove("hidden");
             entryLocked.classList.add("hidden");
             await loadMonths();
+            updateSelectedStateUI();
+            renderPlateGallery(stateSearch.value);
             return;
           }
 
@@ -250,26 +330,50 @@
         }
       });
 
-      plateForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
+      playerAndyBtn.addEventListener("click", () => {
+        setPerson("andy");
+      });
 
+      playerSavannahBtn.addEventListener("click", () => {
+        setPerson("savannah");
+      });
+
+      stateSearch.addEventListener("input", () => {
+        renderPlateGallery(stateSearch.value);
+      });
+
+      plateGallery.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const tile = target.closest(".plate-tile");
+        if (!(tile instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        selectedState = String(tile.dataset.state || "");
+        updateSelectedStateUI();
+        renderPlateGallery(stateSearch.value);
+      });
+
+      savePlateBtn.addEventListener("click", async () => {
         const user = auth.currentUser;
         if (!user) {
           plateStatus.textContent = "Sign in first.";
           return;
         }
 
-        const formData = new FormData(plateForm);
-        const monthId = String(formData.get("month") || "").trim();
-        const person = String(formData.get("person") || "").trim();
-        const state = normalizeState(String(formData.get("state") || ""));
+        const monthId = String(monthSelect.value || "").trim();
+        const state = normalizeState(selectedState);
 
         if (!monthId || !state) {
-          plateStatus.textContent = "Choose a month and enter a valid state.";
+          plateStatus.textContent = "Pick a month and tap a plate first.";
           return;
         }
 
-        const stateField = person === "andy" ? "andyStates" : person === "savannah" ? "savannahStates" : "";
+        const stateField = selectedPerson === "andy" ? "andyStates" : selectedPerson === "savannah" ? "savannahStates" : "";
         if (!stateField) {
           plateStatus.textContent = "Choose who saw the plate.";
           return;
@@ -287,14 +391,18 @@
             },
             { merge: true }
           );
-          plateForm.reset();
           plateStatus.textContent = `${state} added for ${stateField === "andyStates" ? "Andy" : "Savannah"}.`;
+          selectedState = "";
+          updateSelectedStateUI();
+          renderPlateGallery(stateSearch.value);
         } catch {
           plateStatus.textContent = "Could not save plate. Check Firestore rules.";
         }
       });
 
-      stateList.innerHTML = ALL_STATES.map((state) => `<option value="${state}"></option>`).join("");
+      setPerson("andy");
+      updateSelectedStateUI();
+      renderPlateGallery();
     </script>
   </body>
 </html>
