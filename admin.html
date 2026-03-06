@@ -98,6 +98,11 @@
 
       const approvalsCollection = collection(db, "loginApprovals");
       const monthsCollection = collection(db, "competitions", String(COMPETITION_YEAR), "months");
+      const PERSON_OPTIONS = [
+        { value: "", label: "Unassigned" },
+        { value: "andy", label: "Andy" },
+        { value: "savannah", label: "Savannah" },
+      ];
 
       const adminStatus = document.getElementById("admin-status");
       const approvalsList = document.getElementById("approvals-list");
@@ -134,6 +139,26 @@
         return value.toDate().toLocaleString();
       };
 
+      const personLabel = (personValue) => PERSON_OPTIONS.find((option) => option.value === personValue)?.label || "Unassigned";
+
+      const personFieldValue = (data) => {
+        const explicit = String(data.person || "").toLowerCase();
+        if (explicit === "andy" || explicit === "savannah") {
+          return explicit;
+        }
+
+        const email = String(data.email || "").toLowerCase();
+        if (email === ADMIN_EMAIL) {
+          return "andy";
+        }
+
+        if (email === "savannahbcarlson@gmail.com") {
+          return "savannah";
+        }
+
+        return "";
+      };
+
       const renderApprovals = (docs) => {
         if (!docs.length) {
           approvalsList.innerHTML = '<p class="small-note">No login requests found.</p>';
@@ -146,23 +171,40 @@
             const status = data.status || "pending";
             const isAdminRecord = (data.email || "").toLowerCase() === ADMIN_EMAIL;
             const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+            const assignedPerson = personFieldValue(data);
+            const personOptions = PERSON_OPTIONS.map((option) => `<option value="${option.value}" ${option.value === assignedPerson ? "selected" : ""}>${option.label}</option>`).join("");
 
             return `
               <article class="project-card">
                 <h3>${data.email || "Unknown email"}</h3>
                 <p><strong>Status:</strong> ${statusLabel}</p>
+                <p><strong>Player:</strong> ${personLabel(assignedPerson)}</p>
                 <p><strong>Requested:</strong> ${formatDate(data.requestedAt)}</p>
                 <p><strong>Last login attempt:</strong> ${formatDate(data.lastLoginAttemptAt)}</p>
                 <p><strong>Reviewed by:</strong> ${data.reviewedBy || "N/A"}</p>
+                <label class="entry-label" for="person-${approvalDoc.id}">Assign player</label>
+                <select id="person-${approvalDoc.id}" data-person-select data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>
+                  ${personOptions}
+                </select>
                 <div class="form-actions">
                   <button class="btn btn-primary" data-action="approved" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Accept</button>
                   <button class="btn btn-secondary" data-action="denied" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Do Not Accept</button>
+                  <button class="btn btn-secondary" data-action="save-person" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Save Player</button>
                 </div>
               </article>
             `;
           })
           .join("");
         refreshRevealMotion({ scope: approvalsList });
+      };
+
+      const selectedPersonForUid = (uid) => {
+        const select = approvalsList.querySelector(`[data-person-select][data-uid="${uid}"]`);
+        if (!(select instanceof HTMLSelectElement)) {
+          return "";
+        }
+
+        return String(select.value || "").toLowerCase();
       };
 
       const startApprovalSubscription = () => {
@@ -311,11 +353,28 @@
           return;
         }
 
+        const assignedPerson = selectedPersonForUid(uid);
+        const payload = {
+          person: assignedPerson || null,
+          personLabel: personLabel(assignedPerson),
+        };
+
         target.disabled = true;
         try {
+          if (action === "save-person") {
+            await setDoc(
+              doc(approvalsCollection, uid),
+              payload,
+              { merge: true }
+            );
+            adminStatus.textContent = assignedPerson ? `Saved player assignment: ${personLabel(assignedPerson)}.` : "Cleared player assignment.";
+            return;
+          }
+
           await setDoc(
             doc(approvalsCollection, uid),
             {
+              ...payload,
               status: action,
               reviewedAt: serverTimestamp(),
               reviewedBy: currentUserEmail,

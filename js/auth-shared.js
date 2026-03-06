@@ -47,6 +47,19 @@ export const getKnownUserProfile = (email) => KNOWN_USER_PROFILES[String(email |
 
 export const getPersonFromEmail = (email) => getKnownUserProfile(email)?.person || "";
 
+const approvalFieldsForEmail = (email) => {
+  const knownProfile = getKnownUserProfile(email);
+
+  if (!knownProfile) {
+    return {};
+  }
+
+  return {
+    person: knownProfile.person,
+    personLabel: knownProfile.displayName,
+  };
+};
+
 const signedInLabelForUser = (user) => {
   const email = String(user?.email || "").trim();
   const knownProfile = getKnownUserProfile(email);
@@ -81,6 +94,7 @@ export const ensureApprovalRecord = async (user) => {
   const normalizedEmail = (user.email || "").toLowerCase();
   const knownProfile = getKnownUserProfile(normalizedEmail);
   const shouldAutoApprove = Boolean(knownProfile?.autoApprove);
+  const knownApprovalFields = approvalFieldsForEmail(normalizedEmail);
 
   if (!snapshot.exists()) {
     await setDoc(
@@ -88,6 +102,7 @@ export const ensureApprovalRecord = async (user) => {
       {
         uid: user.uid,
         email: user.email || "",
+        ...knownApprovalFields,
         status: shouldAutoApprove ? "approved" : "pending",
         requestedAt: serverTimestamp(),
         lastLoginAttemptAt: serverTimestamp(),
@@ -98,20 +113,28 @@ export const ensureApprovalRecord = async (user) => {
     );
 
     if (shouldAutoApprove) {
-      return "approved";
+      return {
+        status: "approved",
+        person: knownApprovalFields.person || "",
+      };
     }
 
-    return "pending";
+    return {
+      status: "pending",
+      person: "",
+    };
   }
 
   const data = snapshot.data();
   let status = data.status || "pending";
+  let person = String(data.person || knownApprovalFields.person || "");
 
   await setDoc(
     approvalRef,
     {
       uid: user.uid,
       email: user.email || "",
+      ...knownApprovalFields,
       lastLoginAttemptAt: serverTimestamp(),
     },
     { merge: true }
@@ -130,7 +153,10 @@ export const ensureApprovalRecord = async (user) => {
     status = "approved";
   }
 
-  return status;
+  return {
+    status,
+    person,
+  };
 };
 
 const setSignedOutState = (headerElements, signedOutText) => {
@@ -178,7 +204,9 @@ export const initHeaderAuth = ({ onStateChange, signedOutText = "Signed out." } 
     signOutBtn?.classList.remove("hidden");
 
     try {
-      const approvalStatus = await ensureApprovalRecord(user);
+      const approval = await ensureApprovalRecord(user);
+      const approvalStatus = approval.status;
+      const approvalPerson = approval.person;
       const knownProfile = getKnownUserProfile(user.email);
       const isAdmin = Boolean(knownProfile?.isAdmin);
       const signedInLabel = signedInLabelForUser(user);
@@ -196,7 +224,7 @@ export const initHeaderAuth = ({ onStateChange, signedOutText = "Signed out." } 
         }
       }
 
-      onStateChange?.({ user, isAdmin, approvalStatus });
+      onStateChange?.({ user, isAdmin, approvalStatus, approvalPerson });
     } catch (error) {
       const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
       addPlatesLink?.classList.add("hidden");
@@ -208,6 +236,7 @@ export const initHeaderAuth = ({ onStateChange, signedOutText = "Signed out." } 
         user,
         isAdmin: false,
         approvalStatus: "error",
+        approvalPerson: "",
         error,
       });
     }

@@ -72,7 +72,7 @@
         serverTimestamp,
         setDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-      import { auth, db, initHeaderAuth } from "./js/auth-shared.js";
+      import { auth, db, getPersonFromEmail, initHeaderAuth } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
@@ -111,10 +111,6 @@
       ];
       const RECENT_STATES_STORAGE_KEY = "savemhq-recent-states";
       const monthsCollection = collection(db, "competitions", String(COMPETITION_YEAR), "months");
-      const EMAIL_TO_PERSON = {
-        "andrewpcarlson85@gmail.com": "andy",
-        "savannahbcarlson@gmail.com": "savannah",
-      };
       const monthOrderById = new Map(DEFAULT_MONTHS.map((monthName, index) => [slugifyMonth(monthName), index]));
       const CURRENT_MONTH_ID = slugifyMonth(new Date().toLocaleString("en-US", { month: "long" }));
 
@@ -140,10 +136,6 @@
 
       function normalizeState(rawState) {
         return ALL_STATES.find((state) => state.toLowerCase() === String(rawState || "").trim().toLowerCase()) || "";
-      }
-
-      function personFromEmail(email) {
-        return EMAIL_TO_PERSON[String(email || "").toLowerCase()] || "";
       }
 
       function stateFieldForPerson(person) {
@@ -422,7 +414,7 @@
       initHeaderShell();
       initRevealMotion();
       initHeaderAuth({
-        onStateChange: async ({ user, isAdmin, approvalStatus }) => {
+        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson }) => {
           if (!user) {
             entryPanel.classList.add("hidden");
             entryLocked.classList.remove("hidden");
@@ -448,12 +440,12 @@
           }
 
           currentUserEmail = String(user.email || "").toLowerCase();
-          selectedPerson = personFromEmail(currentUserEmail);
+          selectedPerson = String(approvalPerson || getPersonFromEmail(currentUserEmail) || "").toLowerCase();
 
           if (!selectedPerson) {
             entryPanel.classList.add("hidden");
             entryLocked.classList.remove("hidden");
-            plateStatus.textContent = "Only Andrew or Savannah can edit plate entries. Redirecting to scoreboard...";
+            plateStatus.textContent = "Your login is approved, but no player is assigned yet. Ask admin to set Andy or Savannah on your approval record.";
             setTimeout(() => {
               if (window.location.pathname.endsWith("plate-entry.html")) {
                 window.location.href = "states-competition.html";
