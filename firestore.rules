@@ -31,16 +31,32 @@ service cloud.firestore {
         );
     }
 
+    function monthWriteKeysAreAllowed() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+        "month",
+        "order",
+        "andyStates",
+        "savannahStates",
+        "updatedAt"
+      ]);
+    }
+
     match /competitions/{year}/months/{month} {
       allow read: if true;
-      allow create: if isApprovedUser() || isAdmin();
+      allow create: if isAdmin() || (
+        isApprovedUser()
+        && request.resource.data.keys().hasOnly([
+          "month",
+          "order",
+          "andyStates",
+          "savannahStates",
+          "updatedAt"
+        ])
+      );
       allow update: if isAdmin() || (
         isApprovedUser()
         && resource.data.locked != true
-        && request.resource.data.locked == resource.data.locked
-        && request.resource.data.lockedAt == resource.data.lockedAt
-        && request.resource.data.lockedBy == resource.data.lockedBy
-        && request.resource.data.manualCounts == resource.data.manualCounts
+        && monthWriteKeysAreAllowed()
       );
       allow delete: if isAdmin();
     }
