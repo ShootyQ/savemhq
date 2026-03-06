@@ -68,6 +68,30 @@ body {
   transform: translateY(0) scale(1);
 }
 
+body[data-page="home"] {
+  background:
+    radial-gradient(58rem 34rem at -4% -6%, #dfeef2 0%, transparent 72%),
+    radial-gradient(54rem 32rem at 112% -2%, #f7e8d4 0%, transparent 70%),
+    linear-gradient(180deg, #f6f9fa 0%, #f8f1e8 62%, #f7efe3 100%);
+}
+
+body[data-page="home"] .site-header {
+  background: rgba(251, 246, 239, 0.9);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #d9cdbf;
+}
+
+body[data-page="home"] .nav-wrap {
+  padding-block: 0.62rem;
+}
+
+body[data-page="home"] .brand {
+  background: linear-gradient(155deg, #fff9f0, #e9f1f3);
+  border-color: #cfdedf;
+  box-shadow: 0 4px 16px rgba(76, 105, 114, 0.1);
+}
+
 body[data-page="competition"] .reveal-item {
   transform: translateY(18px) translateX(-2px) scale(0.992);
 }
@@ -325,6 +349,82 @@ a:hover {
   flex-wrap: wrap;
   gap: 0.8rem;
   margin-top: 0.2rem;
+}
+
+.home-hero-grid {
+  grid-template-columns: minmax(0, 1.08fr) minmax(17rem, 0.92fr);
+  gap: 1.2rem;
+  align-items: start;
+}
+
+.home-hero-copy {
+  display: grid;
+  gap: 1rem;
+}
+
+.home-hero-showcase {
+  position: relative;
+  display: grid;
+  gap: 0.72rem;
+  padding: 1.1rem;
+  border-radius: 1.25rem;
+  border: 1px solid #d8cab8;
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(126, 168, 178, 0.23), transparent 42%),
+    linear-gradient(165deg, rgba(255, 251, 245, 0.98), rgba(241, 234, 224, 0.9));
+  box-shadow: 0 20px 40px rgba(70, 52, 34, 0.16);
+}
+
+.home-hero-showcase::after {
+  content: "";
+  position: absolute;
+  inset: auto 1rem -0.6rem 1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: rgba(84, 60, 38, 0.17);
+  filter: blur(9px);
+  z-index: -1;
+}
+
+.showcase-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.showcase-list li {
+  color: #554a3f;
+}
+
+.home-mood-band {
+  padding-block: 1rem 1.45rem;
+}
+
+.home-mood-band::before {
+  display: none;
+}
+
+.mood-band-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.mood-band-pill span {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #d9cfbf;
+  background: #fff8ef;
+  color: #6c5d4c;
+  font-size: 0.81rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.32rem 0.7rem;
 }
 
 .section-kicker {
@@ -946,6 +1046,15 @@ select:focus-visible {
     font-size: 0.84rem;
   }
 
+  .home-hero-grid {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+
+  .home-hero-showcase {
+    padding: 0.95rem;
+  }
+
   body[data-page="competition"] #monthly-grid,
   body[data-page="competition"] #monthly-plates,
   body[data-page="competition"] #yearly-grid {
@@ -1053,6 +1162,10 @@ select:focus-visible {
 
   .plate-gallery {
     grid-template-columns: 1fr;
+  }
+
+  .home-mood-band {
+    padding-top: 0.6rem;
   }
 
   .footer-nav {
