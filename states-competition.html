@@ -276,7 +276,7 @@
       const mergeWithFallbackMonths = (firestoreMonths) => {
         const monthById = new Map();
         firestoreMonths.forEach((monthData) => {
-          const monthId = slugifyMonth(monthData.month || "");
+          const monthId = slugifyMonth(monthData.month || monthData.id || "");
           if (!monthId) {
             return;
           }
@@ -616,9 +616,11 @@
 
           const firestoreMonths = snapshot.docs.map((documentSnapshot) => {
             const data = documentSnapshot.data();
+            const meta = monthMetaById.get(documentSnapshot.id);
             return {
-              month: data.month,
-              order: Number.isFinite(Number(data.order)) ? Number(data.order) : null,
+              id: documentSnapshot.id,
+              month: data.month || meta?.month || null,
+              order: Number.isFinite(Number(data.order)) ? Number(data.order) : meta?.order ?? null,
               andyStates: Array.isArray(data.andyStates) ? data.andyStates : [],
               savannahStates: Array.isArray(data.savannahStates) ? data.savannahStates : [],
               manualCounts: data.manualCounts && typeof data.manualCounts === "object" ? data.manualCounts : null,

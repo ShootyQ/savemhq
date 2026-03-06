@@ -117,6 +117,15 @@
           .trim()
           .replace(/\s+/g, "-");
 
+      const monthNameFromId = (monthId) =>
+        DEFAULT_MONTHS.find((monthName) => slugifyMonth(monthName) === monthId) || monthId;
+
+      const monthOrderFromId = (monthId) => {
+        const monthName = monthNameFromId(monthId);
+        const index = DEFAULT_MONTHS.indexOf(monthName);
+        return index >= 0 ? index : DEFAULT_MONTHS.length;
+      };
+
       const formatDate = (value) => {
         if (!value || typeof value.toDate !== "function") {
           return "N/A";
@@ -342,10 +351,15 @@
 
         target.disabled = true;
         try {
+          const monthName = monthNameFromId(monthId);
+          const monthOrder = monthOrderFromId(monthId);
+
           if (action === "lock") {
             await setDoc(
               doc(monthsCollection, monthId),
               {
+                month: monthName,
+                order: monthOrder,
                 locked: true,
                 lockedAt: serverTimestamp(),
                 lockedBy: currentUserEmail,
@@ -353,11 +367,13 @@
               },
               { merge: true }
             );
-            adminStatus.textContent = `${monthId} locked.`;
+            adminStatus.textContent = `${monthName} locked.`;
           } else {
             await setDoc(
               doc(monthsCollection, monthId),
               {
+                month: monthName,
+                order: monthOrder,
                 locked: false,
                 lockedAt: deleteField(),
                 lockedBy: deleteField(),
@@ -365,7 +381,7 @@
               },
               { merge: true }
             );
-            adminStatus.textContent = `${monthId} unlocked.`;
+            adminStatus.textContent = `${monthName} unlocked.`;
           }
         } catch (error) {
           console.error("Could not update month lock", error);
