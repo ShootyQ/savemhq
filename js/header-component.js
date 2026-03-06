@@ -30,20 +30,28 @@ export const mountSiteHeader = ({
   root.innerHTML = `
     <header class="site-header">
       <div class="container nav-wrap">
-        <a class="brand" href="${escapeHtml(brandHref)}" aria-label="SavemHQ home">SavemHQ</a>
+        <a class="brand" href="${escapeHtml(brandHref)}" aria-label="SavemHQ home">
+          <span class="brand-mark" aria-hidden="true">S</span>
+          <span class="brand-copy">
+            <span class="brand-title">SavemHQ</span>
+            <span class="brand-sub">Coastal Build Studio</span>
+          </span>
+        </a>
         <button id="header-menu-toggle" class="menu-toggle" type="button" aria-controls="header-mobile-panel" aria-expanded="false">Menu</button>
         <div id="header-mobile-panel" class="header-panel">
-          <nav aria-label="Primary">
+          <nav class="header-nav" aria-label="Primary">
             <ul class="nav-list">
               ${navMarkup(navLinks, currentPath)}
             </ul>
           </nav>
-          <div class="header-auth" aria-live="polite">
-            <span id="header-auth-status" class="small-note">Signed out</span>
-            <a id="add-plates-link" class="btn btn-secondary hidden" href="plate-entry.html">Add Plates</a>
-            <a id="header-admin-link" class="btn btn-secondary hidden" href="admin.html">Admin</a>
-            <button id="header-sign-in" class="btn btn-primary" type="button">Google Login</button>
-            <button id="header-sign-out" class="btn btn-secondary hidden" type="button">Sign Out</button>
+          <div class="header-auth-shell">
+            <div class="header-auth" aria-live="polite">
+              <span id="header-auth-status" class="small-note">Signed out</span>
+              <a id="add-plates-link" class="btn btn-secondary hidden" href="plate-entry.html">Add Plates</a>
+              <a id="header-admin-link" class="btn btn-secondary hidden" href="admin.html">Admin</a>
+              <button id="header-sign-in" class="btn btn-primary" type="button">Google Login</button>
+              <button id="header-sign-out" class="btn btn-secondary hidden" type="button">Sign Out</button>
+            </div>
           </div>
         </div>
       </div>
