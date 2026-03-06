@@ -9,14 +9,26 @@ service cloud.firestore {
       return isAuthed() && request.auth.token.email == "andrewpcarlson85@gmail.com";
     }
 
+    function isAutoApprovedUser() {
+      return isAuthed() && (
+        request.auth.token.email == "andrewpcarlson85@gmail.com"
+        || request.auth.token.email == "savannahbcarlson@gmail.com"
+      );
+    }
+
     function isApprovalOwner(uid) {
       return isAuthed() && request.auth.uid == uid;
     }
 
     function isApprovedUser() {
       return isAuthed()
-        && exists(/databases/$(database)/documents/loginApprovals/$(request.auth.uid))
-        && get(/databases/$(database)/documents/loginApprovals/$(request.auth.uid)).data.status == "approved";
+        && (
+          isAutoApprovedUser()
+          || (
+            exists(/databases/$(database)/documents/loginApprovals/$(request.auth.uid))
+            && get(/databases/$(database)/documents/loginApprovals/$(request.auth.uid)).data.status == "approved"
+          )
+        );
     }
 
     match /competitions/{year}/months/{month} {
@@ -35,13 +47,29 @@ service cloud.firestore {
 
     match /loginApprovals/{uid} {
       allow create: if isApprovalOwner(uid)
-        && request.resource.data.status == "pending";
+        && request.resource.data.uid == request.auth.uid
+        && (
+          request.resource.data.status == "pending"
+          || (
+            isAutoApprovedUser()
+            && request.resource.data.status == "approved"
+            && request.resource.data.reviewedBy == request.auth.token.email
+          )
+        );
 
       allow read: if isAdmin() || isApprovalOwner(uid);
 
       allow update: if isAdmin() || (
         isApprovalOwner(uid)
+        && request.resource.data.uid == resource.data.uid
         && request.resource.data.status == resource.data.status
+      ) || (
+        isApprovalOwner(uid)
+        && isAutoApprovedUser()
+        && request.resource.data.uid == resource.data.uid
+        && resource.data.status != "approved"
+        && request.resource.data.status == "approved"
+        && request.resource.data.reviewedBy == request.auth.token.email
       );
 
       allow delete: if isAdmin();

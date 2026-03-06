@@ -26,6 +26,37 @@ export const firebaseConfig = {
 };
 
 export const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
+export const SAVANNAH_EMAIL = "savannahbcarlson@gmail.com";
+
+const KNOWN_USER_PROFILES = {
+  [ADMIN_EMAIL]: {
+    displayName: "Andy",
+    person: "andy",
+    autoApprove: true,
+    isAdmin: true,
+  },
+  [SAVANNAH_EMAIL]: {
+    displayName: "Savannah",
+    person: "savannah",
+    autoApprove: true,
+    isAdmin: false,
+  },
+};
+
+export const getKnownUserProfile = (email) => KNOWN_USER_PROFILES[String(email || "").toLowerCase()] || null;
+
+export const getPersonFromEmail = (email) => getKnownUserProfile(email)?.person || "";
+
+const signedInLabelForUser = (user) => {
+  const email = String(user?.email || "").trim();
+  const knownProfile = getKnownUserProfile(email);
+
+  if (knownProfile?.displayName && email) {
+    return `${knownProfile.displayName} (${email})`;
+  }
+
+  return String(user?.displayName || email || "your account").trim();
+};
 
 export const app = initializeApp(firebaseConfig);
 export const db = initializeFirestore(app, {
@@ -48,6 +79,8 @@ export const ensureApprovalRecord = async (user) => {
   const approvalRef = doc(approvalsCollection, user.uid);
   const snapshot = await getDoc(approvalRef);
   const normalizedEmail = (user.email || "").toLowerCase();
+  const knownProfile = getKnownUserProfile(normalizedEmail);
+  const shouldAutoApprove = Boolean(knownProfile?.autoApprove);
 
   if (!snapshot.exists()) {
     await setDoc(
@@ -55,25 +88,16 @@ export const ensureApprovalRecord = async (user) => {
       {
         uid: user.uid,
         email: user.email || "",
-        status: "pending",
+        status: shouldAutoApprove ? "approved" : "pending",
         requestedAt: serverTimestamp(),
         lastLoginAttemptAt: serverTimestamp(),
-        reviewedAt: null,
-        reviewedBy: null,
+        reviewedAt: shouldAutoApprove ? serverTimestamp() : null,
+        reviewedBy: shouldAutoApprove ? normalizedEmail : null,
       },
       { merge: true }
     );
 
-    if (normalizedEmail === ADMIN_EMAIL) {
-      await setDoc(
-        approvalRef,
-        {
-          status: "approved",
-          reviewedAt: serverTimestamp(),
-          reviewedBy: ADMIN_EMAIL,
-        },
-        { merge: true }
-      );
+    if (shouldAutoApprove) {
       return "approved";
     }
 
@@ -93,13 +117,13 @@ export const ensureApprovalRecord = async (user) => {
     { merge: true }
   );
 
-  if (normalizedEmail === ADMIN_EMAIL && status !== "approved") {
+  if (shouldAutoApprove && status !== "approved") {
     await setDoc(
       approvalRef,
       {
         status: "approved",
         reviewedAt: serverTimestamp(),
-        reviewedBy: ADMIN_EMAIL,
+        reviewedBy: normalizedEmail,
       },
       { merge: true }
     );
@@ -155,18 +179,20 @@ export const initHeaderAuth = ({ onStateChange, signedOutText = "Signed out." } 
 
     try {
       const approvalStatus = await ensureApprovalRecord(user);
-      const isAdmin = (user.email || "").toLowerCase() === ADMIN_EMAIL;
+      const knownProfile = getKnownUserProfile(user.email);
+      const isAdmin = Boolean(knownProfile?.isAdmin);
+      const signedInLabel = signedInLabelForUser(user);
 
       adminLink?.classList.toggle("hidden", !isAdmin);
       addPlatesLink?.classList.toggle("hidden", !(approvalStatus === "approved" || isAdmin));
 
       if (headerAuthStatus) {
         if (approvalStatus === "approved" || isAdmin) {
-          headerAuthStatus.textContent = `Signed in as ${user.email}.`;
+          headerAuthStatus.textContent = `Signed in as ${signedInLabel}.`;
         } else if (approvalStatus === "denied") {
-          headerAuthStatus.textContent = `Signed in as ${user.email} (access denied).`;
+          headerAuthStatus.textContent = `Signed in as ${signedInLabel} (access denied).`;
         } else {
-          headerAuthStatus.textContent = `Signed in as ${user.email} (pending approval).`;
+          headerAuthStatus.textContent = `Signed in as ${signedInLabel} (pending approval).`;
         }
       }
 

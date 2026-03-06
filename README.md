@@ -23,6 +23,7 @@ This is a static site.
 	- `andrewpcarlson85@gmail.com` -> Andy
 	- `savannahbcarlson@gmail.com` -> Savannah
 	- Other accounts are read-only on plate entry.
+- Andrew and Savannah are auto-approved on first sign-in; other accounts still require approval from the admin page.
 - Monthly plate cards on `states-competition.html` are collapsed by default on mobile and can be expanded per month.
 - Month locks are managed from `admin.html`. Locked months cannot be edited in plate entry.
 
