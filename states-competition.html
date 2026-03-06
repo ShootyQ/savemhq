@@ -245,6 +245,16 @@
         return "is-open";
       };
 
+      const leaderLabel = (monthData) => {
+        if (monthData.andy === 0 && monthData.savannah === 0) {
+          return "No leader yet";
+        }
+        if (monthData.andy === monthData.savannah) {
+          return "Even";
+        }
+        return monthData.andy > monthData.savannah ? "Andy" : "Savannah";
+      };
+
       const renderMonthOptions = (months) => {
         months.forEach((monthData, index) => {
           monthMetaById.set(slugifyMonth(monthData.month), {
@@ -357,12 +367,21 @@
           .map(
             (monthData) => {
               const leadCount = Math.abs(monthData.andy - monthData.savannah);
+              const leader = leaderLabel(monthData);
               const leadLabel =
-                monthData.winner === "In progress"
+                leader === "No leader yet"
                   ? "No spots logged yet"
-                  : monthData.winner === "Tie"
+                  : leader === "Even"
                     ? "Dead even"
-                    : `${monthData.winner} leads by ${leadCount}`;
+                    : `${leader} leads by ${leadCount}`;
+              const resultPrefix = monthData.locked ? "Winner" : "Winning";
+              const resultValue =
+                leader === "No leader yet"
+                  ? "No leader yet"
+                  : leader === "Even" && monthData.locked
+                    ? "Tie"
+                    : leader;
+              const resultClass = leader === "No leader yet" ? "is-open" : winnerClass(leader === "Even" ? "Tie" : leader);
 
               return `
               <article class="project-card month-score-card">
@@ -384,7 +403,7 @@
                   <span style="width: ${monthData.totalSpots ? Math.round((monthData.andy / monthData.totalSpots) * 100) : 50}%"></span>
                 </div>
                 <div class="month-meta-row">
-                  <span class="winner-pill ${winnerClass(monthData.winner)}">Winner: ${monthData.winner}</span>
+                  <span class="winner-pill ${resultClass}">${resultPrefix}: ${resultValue}</span>
                   <span class="small-note">${leadLabel}</span>
                   <span class="small-note">Unique states: ${monthData.uniqueStates}</span>
                 </div>
@@ -434,9 +453,10 @@
           })
           .join("");
 
-        const completedMonths = monthScores.filter((monthData) => monthData.winner !== "In progress");
-        const andyWins = completedMonths.filter((monthData) => monthData.winner === "Andy").length;
-        const savannahWins = completedMonths.filter((monthData) => monthData.winner === "Savannah").length;
+        const finalizedMonths = monthScores.filter((monthData) => monthData.locked);
+        const decidedFinalizedMonths = finalizedMonths.filter((monthData) => monthData.winner === "Andy" || monthData.winner === "Savannah");
+        const andyWins = decidedFinalizedMonths.filter((monthData) => monthData.winner === "Andy").length;
+        const savannahWins = decidedFinalizedMonths.filter((monthData) => monthData.winner === "Savannah").length;
         const combinedStatesSet = new Set(monthScores.flatMap((monthData) => monthData.statesSeen));
 
         const bestMonth = monthScores.reduce(
@@ -447,6 +467,10 @@
         let currentStreakWinner = "None";
         let currentStreakCount = 0;
         for (let index = monthScores.length - 1; index >= 0; index -= 1) {
+          if (!monthScores[index].locked) {
+            continue;
+          }
+
           const winner = monthScores[index].winner;
           if (winner === "In progress" || winner === "Tie") {
             continue;
@@ -471,6 +495,10 @@
         let runCount = 0;
 
         monthScores.forEach((monthData) => {
+          if (!monthData.locked) {
+            return;
+          }
+
           if (monthData.winner === "In progress" || monthData.winner === "Tie") {
             runWinner = "";
             runCount = 0;
@@ -496,6 +524,7 @@
             <p class="year-stat-value">${andyWins} - ${savannahWins}</p>
             <p><strong>Andy:</strong> ${andyWins}</p>
             <p><strong>Savannah:</strong> ${savannahWins}</p>
+            <p class="small-note"><strong>Finalized months counted:</strong> ${finalizedMonths.length}</p>
           </article>
           <article class="project-card year-stat-card">
             <h3>Total Unique States Seen</h3>

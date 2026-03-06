@@ -20,7 +20,7 @@ service cloud.firestore {
     }
 
     match /competitions/{year}/months/{month} {
-      allow read: if isApprovedUser() || isAdmin();
+      allow read: if true;
       allow create: if isApprovedUser() || isAdmin();
       allow update: if isAdmin() || (
         isApprovedUser()
