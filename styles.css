@@ -801,6 +801,36 @@ body[data-page="competition"] .month-states-wrap .state-pill {
   gap: 0.9rem;
 }
 
+.entry-hero-compact {
+  padding-block: 0.9rem 0.4rem;
+}
+
+.entry-hero-compact::before {
+  display: none;
+}
+
+body[data-page="entry"] .entry-hero-compact h1 {
+  font-size: clamp(1.55rem, 5.2vw, 2.15rem);
+  margin-bottom: 0.3rem;
+}
+
+body[data-page="entry"] .entry-shell {
+  gap: 0.7rem;
+}
+
+body[data-page="entry"] .state-results {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.42rem;
+  max-height: none;
+  overflow: visible;
+}
+
+body[data-page="entry"] .state-option {
+  text-align: center;
+  font-size: 0.83rem;
+  padding: 0.48rem 0.42rem;
+}
+
 .entry-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1205,6 +1235,10 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  body[data-page="entry"] .state-results {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .score-duo {
     grid-template-columns: 1fr;
   }
@@ -1278,6 +1312,11 @@ select:focus-visible {
   .month-toggle-btn {
     font-size: 0.74rem;
     padding: 0.22rem 0.56rem;
+  }
+
+  body[data-page="entry"] .state-option {
+    font-size: 0.79rem;
+    padding: 0.44rem 0.34rem;
   }
 
   body[data-page="competition"] .score-value {

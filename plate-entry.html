@@ -12,14 +12,10 @@
     <div id="site-header-root"></div>
 
     <main id="main-content">
-      <section class="hero section">
-        <div class="container hero-inner">
-          <p class="tagline">Private Entry Studio</p>
+      <section class="section entry-hero-compact">
+        <div class="container">
           <h1>Quick Plate Add</h1>
-          <p class="subheadline">Choose a month, search any state, and tap once to add or remove instantly.</p>
-          <div class="hero-surface">
-            <p class="intro">Optimized for fast phone updates with approval-aware access and realtime sync.</p>
-          </div>
+          <p class="small-note">Pick month, then tap states. Tap again to undo.</p>
         </div>
       </section>
 
@@ -27,19 +23,14 @@
         <div class="container">
           <div id="entry-panel" class="hidden">
             <article class="project-card entry-shell">
-              <h2>Log A State Sighting</h2>
-              <p class="small-note">You are auto-mapped to your profile. Tap once to add and again to undo.</p>
+              <h2>Tap States</h2>
+              <p class="small-note">You are auto-mapped to your profile for quick logging.</p>
 
               <div class="entry-grid">
                 <div class="entry-row">
                   <label for="month-select">Month</label>
                   <select id="month-select" name="month" required></select>
                 </div>
-              </div>
-
-              <div class="entry-row">
-                <label for="state-search">State Search</label>
-                <input id="state-search" type="search" placeholder="Type a state (ex: Tex, Carol, District)" autocomplete="off" />
               </div>
 
               <div class="entry-row">
@@ -130,7 +121,6 @@
       const entryPanel = document.getElementById("entry-panel");
       const entryLocked = document.getElementById("entry-locked");
       const monthSelect = document.getElementById("month-select");
-      const stateSearch = document.getElementById("state-search");
       const stateResults = document.getElementById("state-results");
       const recentStates = document.getElementById("recent-states");
       const selectedStateText = document.getElementById("selected-state");
@@ -254,21 +244,12 @@
         selectedStateText.textContent = `${personLabel} mode | ${monthName} (${lockLabel}) | ${monthStates.size} states logged.`;
       }
 
-      function sortedResults(searchText) {
-        const search = String(searchText || "").trim().toLowerCase();
-        const states = ALL_STATES.filter((stateName) => stateName.toLowerCase().includes(search));
-        return states.sort((left, right) => {
-          const leftStarts = left.toLowerCase().startsWith(search);
-          const rightStarts = right.toLowerCase().startsWith(search);
-          if (leftStarts !== rightStarts) {
-            return leftStarts ? -1 : 1;
-          }
-          return left.localeCompare(right);
-        });
+      function sortedResults() {
+        return [...ALL_STATES].sort((left, right) => left.localeCompare(right));
       }
 
-      function renderStateResults(searchText = "") {
-        const results = sortedResults(searchText).slice(0, 20);
+      function renderStateResults() {
+        const results = sortedResults();
         const selectedStates = activeStatesForSelection();
         const monthId = selectedMonthId();
 
@@ -377,7 +358,7 @@
           ...monthData,
           [stateField]: nextStates,
         });
-        renderStateResults(stateSearch.value);
+        renderStateResults();
         refreshEntrySummary();
 
         try {
@@ -410,18 +391,14 @@
           plateStatus.textContent = `Could not update state (${details}).`;
         } finally {
           pendingStateWrites.delete(pendingKey);
-          renderStateResults(stateSearch.value);
+          renderStateResults();
           refreshEntrySummary();
         }
       }
 
-      stateSearch.addEventListener("input", () => {
-        renderStateResults(stateSearch.value);
-      });
-
       monthSelect.addEventListener("change", () => {
         refreshEntrySummary();
-        renderStateResults(stateSearch.value);
+        renderStateResults();
       });
 
       recentStates.addEventListener("click", (event) => {
@@ -496,7 +473,7 @@
               (snapshot) => {
                 loadMonthsFromDocuments(snapshot.docs);
                 refreshEntrySummary();
-                renderStateResults(stateSearch.value);
+                renderStateResults();
               },
               (error) => {
                 console.error("Could not subscribe to months", error);
@@ -508,9 +485,8 @@
           plateStatus.textContent = "Tap a state to add it. Tap again to remove it.";
           refreshEntrySummary();
           renderRecentStates();
-          renderStateResults(stateSearch.value);
+          renderStateResults();
           refreshRevealMotion({ scope: entryPanel });
-          stateSearch.focus();
         },
       });
 
