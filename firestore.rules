@@ -41,6 +41,10 @@ service cloud.firestore {
       ]);
     }
 
+    function monthIsUnlocked() {
+      return !resource.data.keys().hasAny(["locked"]) || resource.data.locked != true;
+    }
+
     match /competitions/{year}/months/{month} {
       allow read: if true;
       allow create: if isAdmin() || (
@@ -55,7 +59,7 @@ service cloud.firestore {
       );
       allow update: if isAdmin() || (
         isApprovedUser()
-        && resource.data.locked != true
+        && monthIsUnlocked()
         && monthWriteKeysAreAllowed()
       );
       allow delete: if isAdmin();
