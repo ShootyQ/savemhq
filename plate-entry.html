@@ -134,6 +134,10 @@
         return String(monthName || "").toLowerCase().trim().replace(/\s+/g, "-");
       }
 
+      function monthNameFromId(monthId) {
+        return DEFAULT_MONTHS.find((monthName) => slugifyMonth(monthName) === String(monthId || "").toLowerCase()) || String(monthId || "");
+      }
+
       function normalizeState(rawState) {
         return ALL_STATES.find((state) => state.toLowerCase() === String(rawState || "").trim().toLowerCase()) || "";
       }
@@ -267,11 +271,8 @@
         monthDataById.clear();
         documents.forEach((monthDoc) => {
           const data = monthDoc.data();
-          const monthName = String(data.month || "").trim();
-          const monthId = slugifyMonth(monthName || monthDoc.id);
-          if (!monthName) {
-            return;
-          }
+          const monthId = slugifyMonth(monthDoc.id);
+          const monthName = String(data.month || monthNameFromId(monthDoc.id)).trim();
 
           monthDataById.set(monthId, {
             id: monthId,
