@@ -7,37 +7,16 @@
     <meta name="description" content="Admin page to approve or deny SavemHQ login requests." />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body data-page="admin">
     <a class="skip-link" href="#main-content">Skip to content</a>
-
-    <header class="site-header">
-      <div class="container nav-wrap">
-        <a class="brand" href="index.html" aria-label="SavemHQ home">SavemHQ</a>
-        <button id="header-menu-toggle" class="menu-toggle" type="button" aria-controls="header-mobile-panel" aria-expanded="false">Menu</button>
-        <div id="header-mobile-panel" class="header-panel">
-          <nav aria-label="Primary">
-            <ul class="nav-list">
-              <li><a href="index.html">Home</a></li>
-              <li><a href="states-competition.html">States Competition</a></li>
-            </ul>
-          </nav>
-          <div class="header-auth" aria-live="polite">
-            <span id="header-auth-status" class="small-note">Signed out</span>
-            <a id="add-plates-link" class="btn btn-secondary hidden" href="plate-entry.html">Add Plates</a>
-            <a id="header-admin-link" class="btn btn-secondary hidden" href="admin.html">Admin</a>
-            <button id="header-sign-in" class="btn btn-primary" type="button">Google Login</button>
-            <button id="header-sign-out" class="btn btn-secondary hidden" type="button">Sign Out</button>
-          </div>
-        </div>
-      </div>
-    </header>
+    <div id="site-header-root"></div>
 
     <main id="main-content">
       <section class="hero section">
         <div class="container hero-inner">
-          <p class="tagline">Admin only</p>
+          <p class="tagline">Operations Deck</p>
           <h1>Login Approval Center</h1>
-          <p class="subheadline">Review new sign-ins and approve or deny access.</p>
+          <p class="subheadline">Review requests, manage access, and lock finalized months with confidence.</p>
         </div>
       </section>
 
@@ -50,7 +29,7 @@
 
           <article class="project-card">
             <h2>Approval Queue</h2>
-            <p class="small-note">Only approved users can access the plate tracker.</p>
+            <p class="small-note">Only approved users can access private plate entry.</p>
             <div id="approvals-list" class="stack-form" aria-live="polite">
               <p class="small-note">Sign in as admin to load requests.</p>
             </div>
@@ -89,6 +68,17 @@
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
       import { ADMIN_EMAIL, db, initHeaderAuth } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Competition", href: "states-competition.html" },
+          { label: "Admin", href: "admin.html" },
+        ],
+      });
 
       const COMPETITION_YEAR = 2026;
       const DEFAULT_MONTHS = [
@@ -163,6 +153,7 @@
             `;
           })
           .join("");
+        refreshRevealMotion({ scope: approvalsList });
       };
 
       const startApprovalSubscription = () => {
@@ -240,6 +231,7 @@
             `;
           })
           .join("");
+        refreshRevealMotion({ scope: monthLocksList });
       };
 
       const startMonthSubscription = () => {
@@ -437,6 +429,7 @@
         }
       },
       });
+      initRevealMotion();
     </script>
   </body>
 </html>

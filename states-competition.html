@@ -10,56 +10,35 @@
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body data-page="competition">
     <a class="skip-link" href="#main-content">Skip to content</a>
-
-    <header class="site-header">
-      <div class="container nav-wrap">
-        <a class="brand" href="index.html" aria-label="SavemHQ home">SavemHQ</a>
-        <button id="header-menu-toggle" class="menu-toggle" type="button" aria-controls="header-mobile-panel" aria-expanded="false">Menu</button>
-        <div id="header-mobile-panel" class="header-panel">
-          <nav aria-label="Primary">
-            <ul class="nav-list">
-              <li><a href="index.html">Home</a></li>
-              <li><a href="#monthly-scoreboard">Monthly Scoreboard</a></li>
-              <li><a href="#plate-views">Plate Tracker</a></li>
-              <li><a href="#yearly-stats">Yearly Stats</a></li>
-            </ul>
-          </nav>
-          <div class="header-auth" aria-live="polite">
-            <span id="header-auth-status" class="small-note">Signed out</span>
-            <a id="add-plates-link" class="btn btn-secondary hidden" href="plate-entry.html">Add Plates</a>
-            <a id="header-admin-link" class="btn btn-secondary hidden" href="admin.html">Admin</a>
-            <button id="header-sign-in" class="btn btn-primary" type="button">Google Login</button>
-            <button id="header-sign-out" class="btn btn-secondary hidden" type="button">Sign Out</button>
-          </div>
-        </div>
-      </div>
-    </header>
+    <div id="site-header-root"></div>
 
     <main id="main-content">
       <section class="hero section">
         <div class="container hero-inner">
-          <p class="tagline">Family side quest unlocked</p>
+          <p class="tagline">License Plate League</p>
           <h1>Andy and Savannah's States Competition</h1>
           <p class="subheadline">
-            A monthly race to spot the most state license plates, plus the bragging rights that follow.
+            A live family rivalry with monthly winners, spotted-state logs, and year-to-date momentum.
           </p>
-          <p class="intro">
-            This page keeps score each month, tracks which state plates we’ve seen, and rolls it all up into
-            fun yearly stats. Winner gets glory. Loser gets motivated.
-          </p>
+          <div class="hero-surface">
+            <p class="intro">
+              The board below updates from Firestore in realtime. Track monthly results, review exactly which states were logged, and watch streaks evolve across the year.
+            </p>
+          </div>
           <div class="hero-actions">
             <a class="btn btn-primary" href="#monthly-scoreboard">See Monthly Scores</a>
-            <a class="btn btn-secondary" href="index.html#projects">Back to Projects</a>
+            <a class="btn btn-secondary" href="#plate-views">Browse State Logs</a>
           </div>
         </div>
       </section>
 
       <section id="monthly-scoreboard" class="section section-card">
         <div class="container">
+          <p class="section-kicker">Scoreboard</p>
           <h2>Monthly Scoreboard (2026)</h2>
-          <p class="section-intro">Live data from Firebase updates this page for both players automatically.</p>
+          <p class="section-intro">Live totals for each month with lock status and winner callouts.</p>
           <p id="data-source-note" class="small-note">Data source: Firestore realtime.</p>
           <div id="monthly-grid" class="project-grid" aria-live="polite"></div>
         </div>
@@ -67,17 +46,19 @@
 
       <section id="plate-views" class="section">
         <div class="container">
+          <p class="section-kicker">State Logs</p>
           <h2>Plates Seen By Month</h2>
           <p class="section-intro">
-            Which state plates showed up each month of the competition.
+            Expand each card to inspect Savannah and Andy sightings side by side.
           </p>
           <div id="monthly-plates" class="project-grid" aria-live="polite"></div>
-          <p class="small-note">Tip: each month card is generated from the same data block as the scoreboard.</p>
+          <p class="small-note">Tip: month cards are generated from the same source as the scoreboard for consistency.</p>
         </div>
       </section>
 
       <section id="yearly-stats" class="section section-card">
         <div class="container">
+          <p class="section-kicker">Season Summary</p>
           <h2>Yearly Fun Stats</h2>
           <div id="yearly-grid" class="project-grid" aria-live="polite"></div>
         </div>
@@ -110,6 +91,18 @@
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
       import { app, db, initHeaderAuth } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Monthly", href: "#monthly-scoreboard" },
+          { label: "States", href: "#plate-views" },
+          { label: "Yearly", href: "#yearly-stats" },
+        ],
+      });
 
       const competitionData = {
         year: 2026,
@@ -239,6 +232,19 @@
         return "Tie";
       };
 
+      const winnerClass = (winner) => {
+        if (winner === "Andy") {
+          return "is-andy";
+        }
+        if (winner === "Savannah") {
+          return "is-savannah";
+        }
+        if (winner === "Tie") {
+          return "is-tie";
+        }
+        return "is-open";
+      };
+
       const renderMonthOptions = (months) => {
         months.forEach((monthData, index) => {
           monthMetaById.set(slugifyMonth(monthData.month), {
@@ -349,15 +355,42 @@
 
         monthlyGrid.innerHTML = monthScores
           .map(
-            (monthData) => `
-              <article class="project-card">
-                <h3>${monthData.month}</h3>
-                <p><strong>Andy:</strong> ${monthData.andy} states</p>
-                <p><strong>Savannah:</strong> ${monthData.savannah} states</p>
-                <p><strong>Winner:</strong> ${monthData.winner}</p>
-                <p><strong>Month:</strong> ${monthData.locked ? "Locked" : "Open"}</p>
+            (monthData) => {
+              const leadCount = Math.abs(monthData.andy - monthData.savannah);
+              const leadLabel =
+                monthData.winner === "In progress"
+                  ? "No spots logged yet"
+                  : monthData.winner === "Tie"
+                    ? "Dead even"
+                    : `${monthData.winner} leads by ${leadCount}`;
+
+              return `
+              <article class="project-card month-score-card">
+                <div class="month-card-header month-headline">
+                  <h3>${monthData.month}</h3>
+                  <span class="status-chip ${monthData.locked ? "is-locked" : "is-open"}">${monthData.locked ? "Locked" : "Open"}</span>
+                </div>
+                <div class="score-duo">
+                  <div class="score-lane">
+                    <p class="score-label">Andy</p>
+                    <p class="score-value">${monthData.andy}</p>
+                  </div>
+                  <div class="score-lane">
+                    <p class="score-label">Savannah</p>
+                    <p class="score-value">${monthData.savannah}</p>
+                  </div>
+                </div>
+                <div class="score-bar" aria-hidden="true">
+                  <span style="width: ${monthData.totalSpots ? Math.round((monthData.andy / monthData.totalSpots) * 100) : 50}%"></span>
+                </div>
+                <div class="month-meta-row">
+                  <span class="winner-pill ${winnerClass(monthData.winner)}">Winner: ${monthData.winner}</span>
+                  <span class="small-note">${leadLabel}</span>
+                  <span class="small-note">Unique states: ${monthData.uniqueStates}</span>
+                </div>
               </article>
-            `
+            `;
+            }
           )
           .join("");
 
@@ -382,12 +415,19 @@
                     ${isCollapsed ? "Show states" : "Hide states"}
                   </button>
                 </div>
-                <p><strong>Unique states seen:</strong> ${monthData.uniqueStates}</p>
+                <div class="month-plate-meta">
+                  <span><strong>Unique states:</strong> ${monthData.uniqueStates}</span>
+                  <span><strong>Total spots:</strong> ${monthData.totalSpots}</span>
+                </div>
                 <div class="month-card-details ${isCollapsed ? "is-collapsed" : ""}" data-month-id="${monthId}">
-                  <p><strong>Savannah saw:</strong></p>
-                  <div class="month-states-wrap">${savannahStatePills || `<p class="small-note">${monthData.useManualCounts ? "No state-level logs for this finalized month." : "No sightings logged yet."}</p>`}</div>
-                  <p><strong>Andy saw:</strong></p>
-                  <div class="month-states-wrap">${andyStatePills || `<p class="small-note">${monthData.useManualCounts ? "No state-level logs for this finalized month." : "No sightings logged yet."}</p>`}</div>
+                  <div class="player-state-block">
+                    <p class="player-state-title">Savannah spotted</p>
+                    <div class="month-states-wrap">${savannahStatePills || `<p class="small-note">${monthData.useManualCounts ? "No state-level logs for this finalized month." : "No sightings logged yet."}</p>`}</div>
+                  </div>
+                  <div class="player-state-block">
+                    <p class="player-state-title">Andy spotted</p>
+                    <div class="month-states-wrap">${andyStatePills || `<p class="small-note">${monthData.useManualCounts ? "No state-level logs for this finalized month." : "No sightings logged yet."}</p>`}</div>
+                  </div>
                 </div>
               </article>
             `;
@@ -451,22 +491,29 @@
         });
 
         yearlyGrid.innerHTML = `
-          <article class="project-card">
+          <article class="project-card year-stat-card">
             <h3>Monthly Wins</h3>
+            <p class="year-stat-value">${andyWins} - ${savannahWins}</p>
             <p><strong>Andy:</strong> ${andyWins}</p>
             <p><strong>Savannah:</strong> ${savannahWins}</p>
           </article>
-          <article class="project-card">
+          <article class="project-card year-stat-card">
             <h3>Total Unique States Seen</h3>
+            <p class="year-stat-value">${combinedStatesSet.size}</p>
             <p><strong>Combined ${competitionYear}:</strong> ${combinedStatesSet.size}</p>
             <p><strong>Best spotting month:</strong> ${bestMonth.month} (${bestMonth.totalSpots} total spots)</p>
           </article>
-          <article class="project-card">
+          <article class="project-card year-stat-card">
             <h3>Streak Watch</h3>
+            <p class="year-stat-value">${longestStreakCount}</p>
             <p><strong>Current streak:</strong> ${currentStreakWinner} (${currentStreakCount} month${currentStreakCount === 1 ? "" : "s"})</p>
             <p><strong>Longest streak:</strong> ${longestStreakWinner} (${longestStreakCount} month${longestStreakCount === 1 ? "" : "s"})</p>
           </article>
         `;
+
+        refreshRevealMotion({ scope: monthlyGrid });
+        refreshRevealMotion({ scope: monthlyPlates });
+        refreshRevealMotion({ scope: yearlyGrid });
 
         document.querySelector("#monthly-scoreboard h2").textContent = `Monthly Scoreboard (${competitionYear})`;
       };
@@ -578,6 +625,7 @@
 
       initHeaderShell();
       initHeaderAuth();
+      initRevealMotion();
 
       renderCompetition(competitionData.months);
       renderMonthOptions(competitionData.months);

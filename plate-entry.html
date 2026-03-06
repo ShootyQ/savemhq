@@ -7,37 +7,19 @@
     <meta name="description" content="Private page for approved users to add monthly plate sightings." />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body data-page="entry">
     <a class="skip-link" href="#main-content">Skip to content</a>
-
-    <header class="site-header">
-      <div class="container nav-wrap">
-        <a class="brand" href="index.html" aria-label="SavemHQ home">SavemHQ</a>
-        <button id="header-menu-toggle" class="menu-toggle" type="button" aria-controls="header-mobile-panel" aria-expanded="false">Menu</button>
-        <div id="header-mobile-panel" class="header-panel">
-          <nav aria-label="Primary">
-            <ul class="nav-list">
-              <li><a href="states-competition.html">Back to Scoreboard</a></li>
-              <li><a href="admin.html">Admin Approvals</a></li>
-            </ul>
-          </nav>
-          <div class="header-auth" aria-live="polite">
-            <span id="header-auth-status" class="small-note">Signed out</span>
-            <a id="add-plates-link" class="btn btn-secondary hidden" href="plate-entry.html">Add Plates</a>
-            <a id="header-admin-link" class="btn btn-secondary hidden" href="admin.html">Admin</a>
-            <button id="header-sign-in" class="btn btn-primary" type="button">Google Login</button>
-            <button id="header-sign-out" class="btn btn-secondary hidden" type="button">Sign Out</button>
-          </div>
-        </div>
-      </div>
-    </header>
+    <div id="site-header-root"></div>
 
     <main id="main-content">
       <section class="hero section">
         <div class="container hero-inner">
-          <p class="tagline">Private</p>
+          <p class="tagline">Private Entry Studio</p>
           <h1>Quick Plate Add</h1>
-          <p class="subheadline">Built for phones: choose month and tap a state to add or undo instantly.</p>
+          <p class="subheadline">Choose a month, search any state, and tap once to add or remove instantly.</p>
+          <div class="hero-surface">
+            <p class="intro">Optimized for fast phone updates with approval-aware access and realtime sync.</p>
+          </div>
         </div>
       </section>
 
@@ -46,7 +28,7 @@
           <div id="entry-panel" class="hidden">
             <article class="project-card entry-shell">
               <h2>Log A State Sighting</h2>
-              <p class="small-note">You are auto-mapped to your profile. Tap once to add. Tap again to undo.</p>
+              <p class="small-note">You are auto-mapped to your profile. Tap once to add and again to undo.</p>
 
               <div class="entry-grid">
                 <div class="entry-row">
@@ -101,6 +83,17 @@
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
       import { auth, db, initHeaderAuth } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Scoreboard", href: "states-competition.html" },
+          { label: "Plate Entry", href: "plate-entry.html" },
+          { label: "Admin", href: "admin.html" },
+        ],
+      });
 
       const COMPETITION_YEAR = 2026;
       const DEFAULT_MONTHS = [
@@ -450,6 +443,7 @@
       });
 
       initHeaderShell();
+      initRevealMotion();
       initHeaderAuth({
         onStateChange: async ({ user, isAdmin, approvalStatus }) => {
           if (!user) {
@@ -515,6 +509,7 @@
           refreshEntrySummary();
           renderRecentStates();
           renderStateResults(stateSearch.value);
+          refreshRevealMotion({ scope: entryPanel });
           stateSearch.focus();
         },
       });

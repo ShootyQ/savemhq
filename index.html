@@ -10,149 +10,112 @@
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body data-page="home">
     <a class="skip-link" href="#main-content">Skip to content</a>
-
-    <header class="site-header">
-      <div class="container nav-wrap">
-        <a class="brand" href="#top" aria-label="SavemHQ home">SavemHQ</a>
-        <button id="header-menu-toggle" class="menu-toggle" type="button" aria-controls="header-mobile-panel" aria-expanded="false">Menu</button>
-        <div id="header-mobile-panel" class="header-panel">
-          <nav aria-label="Primary">
-            <ul class="nav-list">
-              <li><a href="#home">Home</a></li>
-              <li><a href="#projects">Projects</a></li>
-              <li><a href="#about">About</a></li>
-              <li><a href="#contact">Contact</a></li>
-            </ul>
-          </nav>
-          <div class="header-auth" aria-live="polite">
-            <span id="header-auth-status" class="small-note">Signed out</span>
-            <a id="add-plates-link" class="btn btn-secondary hidden" href="plate-entry.html">Add Plates</a>
-            <a id="header-admin-link" class="btn btn-secondary hidden" href="admin.html">Admin</a>
-            <button id="header-sign-in" class="btn btn-primary" type="button">Google Login</button>
-            <button id="header-sign-out" class="btn btn-secondary hidden" type="button">Sign Out</button>
-          </div>
-        </div>
-      </div>
-    </header>
+    <div id="site-header-root"></div>
 
     <main id="main-content">
       <section id="home" class="hero section">
         <div class="container hero-inner">
-          <p class="tagline">A tiny headquarters for family, fun, and projects.</p>
-          <h1>Welcome to SavemHQ</h1>
+          <p class="tagline">Warm driftwood. Bright ideas. Family-built.</p>
+          <h1>A Brighter Home for Every SavemHQ Project</h1>
           <p class="subheadline">
-            This is my little internet workshop. If you’re lost, you’re in the right place.
+            A breezy digital living room where classroom tools, side quests, and family competitions all live in one polished place.
           </p>
-          <p class="intro">
-            Hey, I’m Andy. This is SavemHQ, my personal landing pad for projects, experiments, and
-            family-fueled creativity. If you stumbled in here randomly, welcome. If you came looking for
-            something specific, the navigation below should help you find the right door.
-          </p>
-          <p class="wink">Warning: occasional nerd content ahead.</p>
+          <div class="hero-surface">
+            <p class="intro">
+              SavemHQ is where useful products and playful experiments share the same table. Every section is being rebuilt with a lighter coastal feel, faster pathways, and a cleaner sense of purpose.
+            </p>
+            <p class="wink">Think: beach house energy, but for shipping projects.</p>
+          </div>
           <div class="hero-actions">
             <a class="btn btn-primary" href="#projects">Explore the Projects</a>
-            <a class="btn btn-secondary" href="#about">About this site</a>
+            <a class="btn btn-secondary" href="states-competition.html">Open the Competition Board</a>
           </div>
         </div>
       </section>
 
-      <section id="about" class="section section-card">
+      <section id="projects" class="section section-card">
         <div class="container">
-          <h2>What is SavemHQ?</h2>
-          <p>
-            SavemHQ is my “general domain” for whatever I’m making, testing, or daydreaming about.
-            Sometimes it’s an app idea. Sometimes it’s a classroom thing. Sometimes it’s something for my
-            kids. If you see half-finished bits, that’s not a bug. It’s the point.
-          </p>
-          <p>
-            “SAVEM” is a little family acronym, and “HQ” felt right because most of my projects start as a
-            mission briefing and end as a side quest.
-          </p>
-        </div>
-      </section>
-
-      <section id="projects" class="section">
-        <div class="container">
-          <h2>Projects &amp; Side Quests</h2>
+          <p class="section-kicker">Featured Work</p>
+          <h2>Built to Be Useful, Not Just Pretty</h2>
           <p class="section-intro">
-            Here’s the current lineup. Some links go to live demos, some go to docs, and some go to “this
-            exists and I’m not ready to show it yet.”
+            The core lineup combines practical tools and high-energy family builds, each with a clear purpose and a little personality.
           </p>
 
           <div class="project-grid">
             <article class="project-card">
               <h3><a href="https://www.timetodismiss.com" target="_blank" rel="noopener noreferrer">Time To Dismiss</a></h3>
-              <p>School logistics helper to keep pickup and dismissal less chaotic.</p>
-              <p><strong>Status:</strong> Building</p>
-              <p><strong>Tags:</strong> EdTech, Family, Utility</p>
+              <p>Operational support for schools so dismissal runs calm, clear, and predictable.</p>
+              <p><strong>Status:</strong> Expanding workflows</p>
+              <p><strong>Focus:</strong> EdTech systems</p>
             </article>
 
             <article class="project-card">
-              <h3><a href="https://www.classcrave.com" target="_blank" rel="noopener noreferrer">Class CRAVE / Classroom Adventures</a></h3>
-              <p>A gamified classroom XP system that makes learning feel like a campaign.</p>
-              <p><strong>Status:</strong> Building</p>
-              <p><strong>Tags:</strong> EdTech, Gamification, Classroom</p>
+              <h3><a href="https://www.classcrave.com" target="_blank" rel="noopener noreferrer">Class CRAVE</a></h3>
+              <p>Classroom adventures and progression loops that make learning feel like campaign mode.</p>
+              <p><strong>Status:</strong> Active build</p>
+              <p><strong>Focus:</strong> Gamified instruction</p>
             </article>
 
             <article class="project-card">
-              <h3><a href="states-competition.html">Andy and Savannah's States Competition</a></h3>
-              <p>
-                Monthly license plate battle tracker to see who spots the most states, with yearly stats
-                and fun streaks.
-              </p>
-              <p><strong>Status:</strong> Building</p>
-              <p><strong>Tags:</strong> Family, Competition, Data</p>
+              <h3><a href="states-competition.html">States Competition</a></h3>
+              <p>Live monthly plate tracking, rivalry stats, and quick-entry tools for real-time updates.</p>
+              <p><strong>Status:</strong> Live and improving</p>
+              <p><strong>Focus:</strong> Family data game</p>
             </article>
 
             <article class="project-card">
-              <h3>Random Builds</h3>
-              <p>The junk drawer: tiny tools and experiments that solve oddly specific problems.</p>
-              <p><strong>Status:</strong> Live</p>
-              <p><strong>Tags:</strong> Utilities, Experiments, Tiny Tools</p>
+              <h3>Studio Experiments</h3>
+              <p>The rotating shelf of tiny utilities, prototypes, and "let's just test this" builds.</p>
+              <p><strong>Status:</strong> Ongoing</p>
+              <p><strong>Focus:</strong> Micro tools</p>
             </article>
           </div>
-
-          <p class="small-note">
-            Eventually these may split into subdomains. For now, everything lives here like a friendly pile
-            of LEGO.
-          </p>
         </div>
       </section>
 
-      <section id="now" class="section section-card">
-        <div class="container">
-          <h2>What I’m doing lately</h2>
-          <p>
-            Right now I’m usually working on one of three things: building something useful, making
-            something fun, or trying to become a slightly more functional human. This section changes
-            whenever I remember it exists.
-          </p>
-          <ul class="now-list">
-            <li><strong>Building:</strong> Time To Dismiss workflows</li>
-            <li><strong>Learning:</strong> Spanish and voice acting fundamentals</li>
-            <li><strong>Creating:</strong> classroom content</li>
-          </ul>
+      <section id="about" class="section">
+        <div class="container split-grid">
+          <article class="project-card">
+            <p class="section-kicker">About HQ</p>
+            <h2>Why This Exists</h2>
+            <p>
+              SavemHQ is the umbrella for projects that are practical, personal, and actively evolving. It is intentionally hands-on, occasionally messy, and always moving.
+            </p>
+            <p>
+              "SAVEM" is a family acronym. "HQ" fits because every new idea starts here first.
+            </p>
+          </article>
+
+          <article class="project-card">
+            <p class="section-kicker">Right Now</p>
+            <h2>Current Focus</h2>
+            <ul class="now-list">
+              <li><strong>Shipping:</strong> better competition UX and data clarity</li>
+              <li><strong>Refining:</strong> school operations tooling</li>
+              <li><strong>Creating:</strong> classroom content and creative systems</li>
+            </ul>
+          </article>
         </div>
       </section>
 
-      <section id="contact" class="section">
+      <section id="contact" class="section section-card">
         <div class="container">
-          <h2>Say hi</h2>
+          <p class="section-kicker">Contact</p>
+          <h2>Open Door, Small Team</h2>
           <p>
-            If you found something here that’s useful, interesting, or confusing, feel free to reach out.
-            I’m not a brand. This isn’t customer support. It’s just me, building stuff.
+            If you found something useful here or want to collaborate on education-first product ideas, reach out. This is independent work with real-world goals.
           </p>
-          <p class="contact-line">Drop a note: contact form coming soon.</p>
-          <p class="small-note">I don’t sell data. I barely even organize it.</p>
+          <p class="contact-line">Contact form is next on deck.</p>
+          <p class="small-note">No data selling. No funnel games. Just projects.</p>
         </div>
       </section>
     </main>
 
     <footer class="site-footer" id="top">
       <div class="container footer-wrap">
-        <p>© SavemHQ. Built for fun, held together with curiosity.</p>
+        <p>© SavemHQ. Built with curiosity, coffee, and side quests.</p>
         <nav aria-label="Footer">
           <ul class="footer-nav">
             <li><a href="#home">Home</a></li>
@@ -167,9 +130,22 @@
     <script type="module">
       import { initHeaderAuth } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initRevealMotion } from "./js/reveal-motion.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "#home" },
+          { label: "Projects", href: "#projects" },
+          { label: "About", href: "#about" },
+          { label: "Contact", href: "#contact" },
+        ],
+      });
 
       initHeaderShell();
       initHeaderAuth();
+      initRevealMotion();
     </script>
   </body>
 </html>
