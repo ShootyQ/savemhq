@@ -265,16 +265,32 @@
         `;
       };
 
+      const createMarkerAvatarHtml = (subjectMeta) => {
+        if (Array.isArray(subjectMeta.imageStack) && subjectMeta.imageStack.length) {
+          return `
+            <span class="trip-map-stack" aria-hidden="true">
+              ${subjectMeta.imageStack
+                .map(
+                  (imageSrc, index) => `<img class="trip-map-stack-image" src="${escapeHtml(imageSrc)}" alt="" data-stack-index="${index + 1}" />`
+                )
+                .join("")}
+            </span>
+          `;
+        }
+
+        if (subjectMeta.imageSrc) {
+          return `<img class="trip-map-photo" src="${escapeHtml(subjectMeta.imageSrc)}" alt="" aria-hidden="true" />`;
+        }
+
+        return `<span class="trip-map-fallback" aria-hidden="true">${escapeHtml(subjectMeta.shortLabel)}</span>`;
+      };
+
       const createMarkerHtml = (event) => {
         const subjectMeta = getSubjectMeta(event.subject, event.subjectLabel);
         const eventTypeMeta = getEventTypeMeta(event.eventType);
         return `
           <div class="trip-map-marker ${subjectMeta.className}">
-            ${createSubjectAvatarHtml(subjectMeta, {
-              className: "trip-subject-avatar trip-map-avatar",
-              imageClassName: "trip-subject-avatar-image trip-map-avatar-image",
-              decorative: true,
-            })}
+            ${createMarkerAvatarHtml(subjectMeta)}
             ${eventTypeMeta.badge ? `<span class="trip-map-badge">${escapeHtml(eventTypeMeta.badge)}</span>` : ""}
           </div>
         `;
