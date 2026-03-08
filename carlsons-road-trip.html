@@ -271,11 +271,11 @@
         return `
           <div class="trip-map-marker ${subjectMeta.className}">
             ${createSubjectAvatarHtml(subjectMeta, {
-              className: "trip-map-avatar",
-              imageClassName: "trip-map-avatar-image",
+              className: "trip-subject-avatar trip-map-avatar",
+              imageClassName: "trip-subject-avatar-image trip-map-avatar-image",
               decorative: true,
             })}
-            <span class="trip-map-badge">${escapeHtml(eventTypeMeta.badge)}</span>
+            ${eventTypeMeta.badge ? `<span class="trip-map-badge">${escapeHtml(eventTypeMeta.badge)}</span>` : ""}
           </div>
         `;
       };
@@ -299,7 +299,7 @@
               </div>
             </div>
             <p>${escapeHtml(event.content)}</p>
-            <p class="small-note">${escapeHtml(event.routeLeg || "Route in progress")} · ${escapeHtml(event.createdLabel)}</p>
+            <p class="small-note">${escapeHtml(event.createdLabel)}</p>
           </div>
         `;
       };
@@ -376,9 +376,8 @@
                     <div>
                       <strong>${escapeHtml(subjectMeta.label)}</strong>
                       <div class="trip-meta-line">
-                        <span class="trip-category-badge ${escapeHtml(eventTypeMeta.className)}">${escapeHtml(eventTypeMeta.badge)} ${escapeHtml(eventTypeMeta.label)}</span>
+                        <span class="trip-category-badge ${escapeHtml(eventTypeMeta.className)}">${eventTypeMeta.badge ? `${escapeHtml(eventTypeMeta.badge)} ` : ""}${escapeHtml(eventTypeMeta.label)}</span>
                         <span class="trip-avatar-badge">${escapeHtml(event.personLabel || "Road Trip")}</span>
-                        <span class="trip-subject-pill">${escapeHtml(event.routeLeg || "Location not pinned")}</span>
                       </div>
                     </div>
                   </div>

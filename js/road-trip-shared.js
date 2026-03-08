@@ -30,7 +30,7 @@ export const ROAD_TRIP_ROUTE_POINTS = [
 ];
 
 export const ROAD_TRIP_EVENT_TYPES = {
-  "kid-said": { label: "Talking", badge: "Q", className: "is-quote" },
+  "kid-said": { label: "Quotes", badge: "", className: "is-quote" },
   song: { label: "Singing", badge: "♪", className: "is-song" },
   doing: { label: "What We're Doing", badge: "D", className: "is-stop" },
 };
