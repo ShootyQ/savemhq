@@ -41,6 +41,16 @@ service cloud.firestore {
       );
     }
 
+    function resourcePersonMatchesAuthedRoadTripLogger() {
+      return (
+        request.auth.token.email == "andrewpcarlson85@gmail.com"
+        && resource.data.person == "andy"
+      ) || (
+        request.auth.token.email == "savannahbcarlson@gmail.com"
+        && resource.data.person == "savannah"
+      );
+    }
+
     function roadTripEventKeysAreAllowed() {
       return request.resource.data.keys().hasAll([
         "tripId",
@@ -146,7 +156,11 @@ service cloud.firestore {
         && requestPersonMatchesAuthedRoadTripLogger()
         && request.resource.data.tripId == tripId;
       allow update: if false;
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (
+        isAutoApprovedUser()
+        && resource.data.tripId == tripId
+        && resourcePersonMatchesAuthedRoadTripLogger()
+      );
     }
   }
 }

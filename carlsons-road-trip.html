@@ -40,22 +40,6 @@
               <a class="btn btn-secondary" href="carlsons-sing-along.html">Log What We're Doing</a>
             </div>
           </div>
-
-          <aside class="trip-highlight-card" aria-label="Trip route overview">
-            <p class="section-kicker">Route Snapshot</p>
-            <h2>The Loop</h2>
-            <div class="trip-leg-list">
-              <span class="trip-leg-chip"><strong>Leg 1</strong> Minneapolis to Nashville</span>
-              <span class="trip-leg-chip"><strong>Leg 2</strong> Nashville to Asheville</span>
-              <span class="trip-leg-chip"><strong>Leg 3</strong> Asheville to Minneapolis via Wisconsin</span>
-            </div>
-            <div class="trip-pill-row">
-              <span class="trip-pill">Realtime Firebase feed</span>
-              <span class="trip-pill">Tap-to-log from phones</span>
-              <span class="trip-pill">Map updates without refresh</span>
-            </div>
-            <p class="small-note">Public read is enabled for the hub. Logging still requires Andrew or Savannah to sign in.</p>
-          </aside>
         </div>
       </section>
 
@@ -113,6 +97,7 @@
               <p class="section-kicker">Recent Activity</p>
               <h2>What Just Happened</h2>
               <p class="small-note">Newest entries stay at the top. Unmapped entries still appear here.</p>
+              <p id="trip-feed-status" class="small-note">Sign in as an approved logger to remove a mistaken post.</p>
             </div>
             <div id="trip-feed-list" class="trip-feed-list" aria-live="polite">
               <article class="trip-empty-card">
@@ -177,6 +162,7 @@
       import { mountSiteHeader } from "./js/header-component.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
       import {
+        deleteRoadTripEvent,
         ROAD_TRIP_EVENT_TYPES,
         ROAD_TRIP_ROUTE_POINTS,
         escapeHtml,
@@ -197,6 +183,7 @@
 
       const mapStatus = document.getElementById("trip-map-status");
       const tripFeedList = document.getElementById("trip-feed-list");
+      const tripFeedStatus = document.getElementById("trip-feed-status");
       const personFilter = document.getElementById("trip-person-filter");
       const eventFilter = document.getElementById("trip-event-filter");
       const totalEvents = document.getElementById("trip-total-events");
@@ -206,6 +193,10 @@
       let allEvents = [];
       let map = null;
       let eventLayer = null;
+      let approvalPerson = "";
+      let canDeleteOwnEvents = false;
+      let isAdmin = false;
+      let deletingEventId = "";
 
       const createMarkerHtml = (event) => {
         const subjectMeta = getSubjectMeta(event.subject, event.subjectLabel);
@@ -265,6 +256,18 @@
         });
       };
 
+      const canDeleteEvent = (event) => {
+        if (isAdmin) {
+          return true;
+        }
+
+        return canDeleteOwnEvents && approvalPerson && event.person === approvalPerson;
+      };
+
+      const updateFeedStatus = (message) => {
+        tripFeedStatus.textContent = message;
+      };
+
       const renderFeed = (events) => {
         if (!events.length) {
           tripFeedList.innerHTML = `
@@ -280,6 +283,8 @@
           .map((event) => {
             const eventTypeMeta = getEventTypeMeta(event.eventType);
             const subjectMeta = getSubjectMeta(event.subject, event.subjectLabel);
+            const showDelete = canDeleteEvent(event);
+            const isDeleting = deletingEventId && deletingEventId === event.id;
 
             return `
               <article class="trip-feed-item">
@@ -292,7 +297,10 @@
                       <span class="trip-subject-pill">${escapeHtml(event.routeLeg || "Location not pinned")}</span>
                     </div>
                   </div>
-                  <span class="small-note">${escapeHtml(event.createdLabel)}</span>
+                  <div class="trip-feed-actions">
+                    <span class="small-note">${escapeHtml(event.createdLabel)}</span>
+                    ${showDelete ? `<button class="trip-delete-button" type="button" data-event-id="${escapeHtml(event.id)}" ${isDeleting ? "disabled" : ""}>${isDeleting ? "Deleting..." : "Delete"}</button>` : ""}
+                  </div>
                 </div>
                 <p>${escapeHtml(event.content)}</p>
               </article>
@@ -344,12 +352,77 @@
       };
 
       initHeaderShell();
-      initHeaderAuth();
       initRevealMotion();
       initializeMap();
 
+      tripFeedList.addEventListener("click", async (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+
+        const deleteButton = target.closest(".trip-delete-button");
+        if (!deleteButton) {
+          return;
+        }
+
+        const eventId = String(deleteButton.getAttribute("data-event-id") || "").trim();
+        const eventRecord = allEvents.find((item) => item.id === eventId);
+
+        if (!eventId || !eventRecord || !canDeleteEvent(eventRecord)) {
+          updateFeedStatus("You do not have permission to delete that log.");
+          return;
+        }
+
+        const subjectMeta = getSubjectMeta(eventRecord.subject, eventRecord.subjectLabel);
+        const confirmed = window.confirm(`Delete this log for ${subjectMeta.label}? This cannot be undone.`);
+        if (!confirmed) {
+          return;
+        }
+
+        deletingEventId = eventId;
+        renderFeed(filteredEvents());
+        updateFeedStatus("Deleting log...");
+
+        try {
+          await deleteRoadTripEvent(eventId);
+          updateFeedStatus("Log deleted.");
+        } catch (error) {
+          console.error("Could not delete road trip event", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          updateFeedStatus(`Could not delete log (${details}).`);
+        } finally {
+          deletingEventId = "";
+          renderFeed(filteredEvents());
+        }
+      });
+
       personFilter.addEventListener("change", refreshFromFilters);
       eventFilter.addEventListener("change", refreshFromFilters);
+
+      initHeaderAuth({
+        onStateChange: ({ user, isAdmin: nextIsAdmin, approvalStatus, approvalPerson: nextApprovalPerson }) => {
+          approvalPerson = String(nextApprovalPerson || "").toLowerCase();
+          isAdmin = Boolean(nextIsAdmin);
+          canDeleteOwnEvents = Boolean(user) && (approvalStatus === "approved" || isAdmin);
+
+          if (!user) {
+            updateFeedStatus("Sign in as an approved logger to remove a mistaken post.");
+          } else if (isAdmin) {
+            updateFeedStatus("Signed in as admin. You can delete any road-trip log.");
+          } else if (canDeleteOwnEvents && approvalPerson) {
+            updateFeedStatus(`Signed in as ${approvalPerson}. You can delete your own logs.`);
+          } else if (approvalStatus === "pending") {
+            updateFeedStatus("Your sign-in is pending approval, so delete is disabled.");
+          } else if (approvalStatus === "denied") {
+            updateFeedStatus("This account cannot delete road-trip logs.");
+          } else {
+            updateFeedStatus("Delete is available only to approved road-trip loggers.");
+          }
+
+          renderFeed(filteredEvents());
+        },
+      });
 
       subscribeToRoadTripEvents({
         onData: (events) => {

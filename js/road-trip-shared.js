@@ -1,6 +1,8 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
+  doc,
   limit,
   onSnapshot,
   orderBy,
@@ -57,6 +59,8 @@ export const ROAD_TRIP_GAMES = [
 ];
 
 const tripEventsCollection = collection(db, "roadTrips", ROAD_TRIP_ID, "events");
+
+const tripEventDocument = (eventId) => doc(tripEventsCollection, String(eventId || "").trim());
 
 export const escapeHtml = (value) =>
   String(value ?? "")
@@ -228,6 +232,16 @@ export const submitRoadTripEvent = async ({
   });
 
   return location;
+};
+
+export const deleteRoadTripEvent = async (eventId) => {
+  const normalizedEventId = String(eventId || "").trim();
+
+  if (!normalizedEventId) {
+    throw new Error("missing-road-trip-event-id");
+  }
+
+  await deleteDoc(tripEventDocument(normalizedEventId));
 };
 
 export const subscribeToRoadTripEvents = ({ onData, onError } = {}) => {
