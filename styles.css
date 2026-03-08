@@ -1081,6 +1081,462 @@ body[data-page="entry"] .state-option {
   box-shadow: 0 8px 18px rgba(62, 111, 114, 0.12);
 }
 
+body[data-page="road-trip-hub"] {
+  background:
+    radial-gradient(56rem 30rem at -8% -2%, rgba(255, 228, 194, 0.78) 0%, transparent 72%),
+    radial-gradient(48rem 26rem at 108% 0%, rgba(178, 230, 236, 0.92) 0%, transparent 68%),
+    radial-gradient(32rem 18rem at 68% 22%, rgba(149, 191, 145, 0.18) 0%, transparent 72%),
+    linear-gradient(180deg, #f8f7ef 0%, #eff7f6 52%, #f5ebdd 100%);
+}
+
+body[data-page="road-trip-log"] {
+  background:
+    radial-gradient(50rem 30rem at 8% -4%, rgba(213, 242, 244, 0.78) 0%, transparent 70%),
+    radial-gradient(42rem 24rem at 104% 0%, rgba(247, 228, 198, 0.84) 0%, transparent 70%),
+    linear-gradient(180deg, #f6faf8 0%, #f7f2e9 100%);
+}
+
+body[data-page="road-trip-hub"] .site-header,
+body[data-page="road-trip-log"] .site-header {
+  background: rgba(249, 252, 247, 0.92);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.trip-hero-grid {
+  grid-template-columns: minmax(0, 1.12fr) minmax(18rem, 0.88fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.trip-highlight-card,
+.trip-summary-card,
+.trip-map-shell,
+.trip-feed-shell,
+.trip-log-shell,
+.trip-empty-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.trip-highlight-card::before,
+.trip-summary-card::before,
+.trip-map-shell::before,
+.trip-feed-shell::before,
+.trip-log-shell::before,
+.trip-empty-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.26), transparent 36%);
+  pointer-events: none;
+}
+
+.trip-highlight-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.1rem;
+  border-radius: 1.35rem;
+  border: 1px solid #cbe0da;
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(55, 164, 188, 0.24), transparent 36%),
+    radial-gradient(85% 85% at 0% 100%, rgba(120, 177, 138, 0.24), transparent 46%),
+    linear-gradient(165deg, rgba(255, 250, 243, 0.98), rgba(231, 246, 243, 0.94));
+  box-shadow: var(--shadow-md);
+}
+
+.trip-pill-row,
+.trip-leg-list,
+.trip-stat-grid,
+.trip-game-grid,
+.trip-filter-row,
+.trip-feed-list,
+.trip-log-tips,
+.trip-live-links,
+.trip-meta-line,
+.trip-marker-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.trip-pill,
+.trip-leg-chip,
+.trip-stat-chip,
+.trip-filter-chip,
+.trip-category-badge,
+.trip-avatar-badge,
+.trip-subject-pill,
+.trip-stop-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.trip-pill,
+.trip-leg-chip,
+.trip-filter-chip,
+.trip-stop-pill {
+  border: 1px solid #d7dfd6;
+  background: rgba(255, 252, 246, 0.9);
+  color: #635548;
+  font-size: 0.8rem;
+  padding: 0.32rem 0.72rem;
+}
+
+.trip-summary-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.05rem;
+}
+
+.trip-map-shell,
+.trip-feed-shell,
+.trip-log-shell,
+.trip-empty-card {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.trip-map-shell {
+  padding: 1rem;
+}
+
+.trip-map-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.trip-filter-row {
+  align-items: center;
+}
+
+.trip-filter-row label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #5d5247;
+}
+
+.trip-filter-row select,
+.trip-log-form select,
+.trip-log-form textarea {
+  width: 100%;
+  border: 1px solid #d7e1d6;
+  border-radius: 0.9rem;
+  background: rgba(255, 253, 248, 0.96);
+  padding: 0.78rem 0.88rem;
+  font: inherit;
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.trip-filter-row select {
+  min-width: 10rem;
+  width: auto;
+  padding: 0.62rem 0.78rem;
+}
+
+.trip-map-frame {
+  height: min(68vh, 36rem);
+  min-height: 24rem;
+  border-radius: 1.2rem;
+  border: 1px solid #c8ded8;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42), 0 16px 34px rgba(68, 94, 82, 0.14);
+}
+
+.trip-map-frame .leaflet-control-zoom a {
+  color: #4f4337;
+}
+
+.trip-map-frame .leaflet-popup-content-wrapper,
+.trip-map-frame .leaflet-popup-tip {
+  background: rgba(255, 253, 248, 0.98);
+  color: var(--text);
+}
+
+.trip-map-frame .leaflet-popup-content {
+  margin: 0.85rem 0.95rem;
+}
+
+.trip-map-marker {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 3px solid rgba(255, 255, 255, 0.98);
+  box-shadow: 0 10px 24px rgba(63, 69, 58, 0.28);
+  background: linear-gradient(145deg, #fffaf1, #e8f4f3);
+  position: relative;
+}
+
+.trip-map-marker.is-max {
+  background: linear-gradient(145deg, #f8d57c, #f3b664);
+}
+
+.trip-map-marker.is-ellie {
+  background: linear-gradient(145deg, #ffc8cb, #f28aa0);
+}
+
+.trip-map-marker.is-savannah {
+  background: linear-gradient(145deg, #f7debe, #d5a97d);
+}
+
+.trip-map-marker.is-andy {
+  background: linear-gradient(145deg, #b6edf5, #58b3c8);
+}
+
+.trip-map-avatar {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1rem;
+  color: #312a24;
+}
+
+.trip-map-badge {
+  position: absolute;
+  right: -0.25rem;
+  bottom: -0.1rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding-inline: 0.28rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.94);
+  background: #176f84;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.trip-map-note {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.trip-map-note strong {
+  font-size: 1rem;
+}
+
+.trip-map-note p {
+  color: #4e4337;
+}
+
+.trip-map-note .small-note {
+  margin-top: 0.1rem;
+}
+
+.trip-map-note .trip-meta-line {
+  gap: 0.42rem;
+}
+
+.trip-stat-grid {
+  gap: 0.7rem;
+}
+
+.trip-stat-chip {
+  border: 1px solid #d9e2d9;
+  background: rgba(255, 254, 250, 0.92);
+  padding: 0.7rem 0.85rem;
+  border-radius: 1rem;
+  min-width: 9rem;
+  display: grid;
+  gap: 0.18rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.trip-stat-chip strong {
+  font-size: 1.35rem;
+  font-family: "Fraunces", Georgia, serif;
+  line-height: 1;
+}
+
+.trip-section-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(18rem, 0.82fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.trip-feed-shell,
+.trip-log-shell,
+.trip-empty-card {
+  padding: 1rem;
+}
+
+.trip-feed-list {
+  flex-direction: column;
+  gap: 0.72rem;
+}
+
+.trip-feed-item {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.88rem 0.92rem;
+  border-radius: 1rem;
+  border: 1px solid #d9e1d7;
+  background: rgba(255, 253, 248, 0.94);
+}
+
+.trip-feed-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.trip-feed-topline strong {
+  font-size: 1rem;
+}
+
+.trip-feed-item p {
+  color: #54483c;
+}
+
+.trip-category-badge,
+.trip-avatar-badge,
+.trip-subject-pill {
+  font-size: 0.75rem;
+  padding: 0.26rem 0.58rem;
+}
+
+.trip-avatar-badge {
+  background: #edf7f8;
+  border: 1px solid #c6dfe0;
+  color: #235d69;
+}
+
+.trip-subject-pill {
+  background: #fff5e7;
+  border: 1px solid #e3cba9;
+  color: #734f28;
+}
+
+.trip-category-badge {
+  background: #e7f7f9;
+  border: 1px solid #b9dfe6;
+  color: #196b80;
+}
+
+.trip-category-badge.is-song {
+  background: #fff0f4;
+  border-color: #ebc2d0;
+  color: #9c4966;
+}
+
+.trip-category-badge.is-stop {
+  background: #edf7ef;
+  border-color: #c7e0cd;
+  color: #427050;
+}
+
+.trip-game-grid {
+  gap: 1rem;
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.trip-game-card {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.trip-game-card h3 {
+  margin-bottom: 0;
+}
+
+.trip-game-card .btn {
+  width: fit-content;
+}
+
+.trip-stop-pill {
+  background: rgba(255, 251, 244, 0.95);
+  border-color: #dfd6c8;
+}
+
+.trip-stop-pill strong {
+  color: #2f2923;
+}
+
+.trip-log-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.trip-log-field {
+  display: grid;
+  gap: 0.36rem;
+}
+
+.trip-log-field label,
+.trip-inline-note strong {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #584c40;
+}
+
+.trip-log-form textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.trip-inline-note {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.82rem 0.9rem;
+  border-radius: 0.95rem;
+  border: 1px solid #d7e1d8;
+  background: rgba(255, 253, 249, 0.88);
+}
+
+.trip-inline-note.is-warning {
+  border-color: #ead9bf;
+  background: #fff8ef;
+}
+
+.trip-log-tips {
+  gap: 0.45rem;
+}
+
+.trip-log-tips span {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #dbe3d9;
+  background: rgba(255, 252, 247, 0.92);
+  color: #625548;
+  font-size: 0.79rem;
+  font-weight: 700;
+  padding: 0.28rem 0.68rem;
+}
+
+.trip-empty-card {
+  text-align: center;
+  place-items: center;
+}
+
+.trip-empty-card p {
+  max-width: 34ch;
+}
+
+.trip-live-links .btn {
+  min-width: 11rem;
+}
+
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
@@ -1093,6 +1549,11 @@ select:focus-visible {
 @media (max-width: 1024px) {
   .container {
     width: min(var(--max-width), 93vw);
+  }
+
+  .trip-section-grid,
+  .trip-hero-grid {
+    grid-template-columns: 1fr;
   }
 
   .header-panel {
@@ -1134,6 +1595,17 @@ select:focus-visible {
 @media (max-width: 768px) {
   .section {
     padding: clamp(2rem, 5vw, 3.25rem) 0;
+  }
+
+  .trip-map-frame {
+    min-height: 21rem;
+    height: 55vh;
+  }
+
+  .trip-feed-topline,
+  .trip-map-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .hero-actions .btn {
@@ -1182,6 +1654,23 @@ select:focus-visible {
   .nav-wrap,
   .footer-wrap {
     align-items: flex-start;
+  }
+
+  .trip-filter-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .trip-filter-row select,
+  .trip-live-links .btn,
+  .trip-game-card .btn {
+    width: 100%;
+  }
+
+  .trip-stat-chip {
+    min-width: 0;
+    flex: 1 1 10rem;
   }
 
   .nav-wrap {
@@ -1308,6 +1797,10 @@ select:focus-visible {
 @media (max-width: 360px) {
   .container {
     width: min(var(--max-width), 94vw);
+  }
+
+  .trip-map-frame {
+    min-height: 18.5rem;
   }
 
   .tagline {

@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carlsons Insane Road Trip | SavemHQ</title>
+    <meta
+      name="description"
+      content="Live road-trip hub for the Carlson family with a shared route map, realtime memory pins, and quick links to phone-friendly road-trip games."
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+  </head>
+  <body data-page="road-trip-hub">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner trip-hero-grid">
+          <div class="home-hero-copy">
+            <p class="tagline">Minneapolis -> Nashville -> Asheville -> Wisconsin -> Home</p>
+            <h1>Carlsons Insane Road Trip</h1>
+            <p class="subheadline">
+              The live family hub for quotes, singing, snacks, stops, and every absurd little moment worth pinning on the map.
+            </p>
+            <div class="hero-surface">
+              <p class="intro">
+                Every log from your phones lands here in realtime. The route stays visible, the newest memories surface first, and the map fills in as the drive gets weirder.
+              </p>
+              <p class="wink">Version 1 tracks location when you submit an entry, not continuously.</p>
+            </div>
+            <div class="hero-actions trip-live-links">
+              <a class="btn btn-primary" href="#trip-map-section">Open Live Map</a>
+              <a class="btn btn-secondary" href="carlsons-kid-sayings.html">Log Kids Said</a>
+              <a class="btn btn-secondary" href="carlsons-sing-along.html">Log Singing</a>
+            </div>
+          </div>
+
+          <aside class="trip-highlight-card" aria-label="Trip route overview">
+            <p class="section-kicker">Route Snapshot</p>
+            <h2>The Loop</h2>
+            <div class="trip-leg-list">
+              <span class="trip-leg-chip"><strong>Leg 1</strong> Minneapolis to Nashville</span>
+              <span class="trip-leg-chip"><strong>Leg 2</strong> Nashville to Asheville</span>
+              <span class="trip-leg-chip"><strong>Leg 3</strong> Asheville to Minneapolis via Wisconsin</span>
+            </div>
+            <div class="trip-pill-row">
+              <span class="trip-pill">Realtime Firebase feed</span>
+              <span class="trip-pill">Tap-to-log from phones</span>
+              <span class="trip-pill">Map updates without refresh</span>
+            </div>
+            <p class="small-note">Public read is enabled for the hub. Logging still requires Andrew or Savannah to sign in.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="trip-map-section" class="section section-card">
+        <div class="container trip-section-grid">
+          <article class="project-card trip-map-shell">
+            <div class="trip-map-toolbar">
+              <div>
+                <p class="section-kicker">Live Map</p>
+                <h2>Road Memories Along The Route</h2>
+                <p id="trip-map-status" class="small-note" aria-live="polite">Loading route and live events...</p>
+              </div>
+
+              <div class="trip-filter-row">
+                <label for="trip-person-filter">Who</label>
+                <select id="trip-person-filter" name="person-filter">
+                  <option value="all">Everyone</option>
+                  <option value="max">Max</option>
+                  <option value="ellie">Ellie</option>
+                  <option value="andy">Andy</option>
+                  <option value="savannah">Savannah</option>
+                  <option value="family">Family</option>
+                </select>
+
+                <label for="trip-event-filter">Type</label>
+                <select id="trip-event-filter" name="event-filter">
+                  <option value="all">All moments</option>
+                  <option value="kid-said">Kids Said</option>
+                  <option value="song">Singing</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="trip-stat-grid" aria-live="polite">
+              <div class="trip-stat-chip">
+                <span class="small-note">Total logs</span>
+                <strong id="trip-total-events">0</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Pinned on map</span>
+                <strong id="trip-mapped-events">0</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Latest update</span>
+                <strong id="trip-latest-event">Waiting</strong>
+              </div>
+            </div>
+
+            <div id="trip-map" class="trip-map-frame" role="application" aria-label="Road trip map"></div>
+          </article>
+
+          <aside class="project-card trip-feed-shell">
+            <div>
+              <p class="section-kicker">Recent Activity</p>
+              <h2>What Just Happened</h2>
+              <p class="small-note">Newest entries stay at the top. Unmapped entries still appear here.</p>
+            </div>
+            <div id="trip-feed-list" class="trip-feed-list" aria-live="polite">
+              <article class="trip-empty-card">
+                <h3>Waiting for the first road-trip log</h3>
+                <p>Once a quote or singing moment is posted, it will appear here automatically.</p>
+              </article>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <p class="section-kicker">Game Deck</p>
+          <h2>Quick Links For The Phones</h2>
+          <p class="section-intro">Fast, thumb-friendly entry points so you can log moments in a few seconds and get back to the chaos.</p>
+
+          <div class="trip-game-grid">
+            <article class="project-card trip-game-card">
+              <span class="trip-category-badge">Q Kids Said</span>
+              <h3>Kids Said</h3>
+              <p>For the instant classics, bizarre observations, and repeatable catchphrases.</p>
+              <a class="btn btn-primary" href="carlsons-kid-sayings.html">Open Kids Said</a>
+            </article>
+
+            <article class="project-card trip-game-card">
+              <span class="trip-category-badge is-song">♪ Singing</span>
+              <h3>Sing-Along Tracker</h3>
+              <p>Log belting, humming, full-volume solos, and accidental concert mode.</p>
+              <a class="btn btn-primary" href="carlsons-sing-along.html">Open Singing Log</a>
+            </article>
+
+            <article class="project-card trip-game-card">
+              <span class="trip-stop-pill">Coming Soon</span>
+              <h3>Snack Radar</h3>
+              <p>Ready for gas-station rankings and questionable road-food wins once you want the next game page.</p>
+              <span class="small-note">Planned next: snack stops, game wins, and photo notes.</span>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Carlsons Insane Road Trip, live from the minivan.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#trip-map-section">Live Map</a></li>
+            <li><a href="carlsons-kid-sayings.html">Kids Said</a></li>
+            <li><a href="carlsons-sing-along.html">Singing</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script type="module">
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+      import {
+        ROAD_TRIP_EVENT_TYPES,
+        ROAD_TRIP_ROUTE_POINTS,
+        escapeHtml,
+        getEventTypeMeta,
+        getSubjectMeta,
+        subscribeToRoadTripEvents,
+      } from "./js/road-trip-shared.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Live Map", href: "carlsons-road-trip.html" },
+          { label: "Kids Said", href: "carlsons-kid-sayings.html" },
+          { label: "Singing", href: "carlsons-sing-along.html" },
+        ],
+      });
+
+      const mapStatus = document.getElementById("trip-map-status");
+      const tripFeedList = document.getElementById("trip-feed-list");
+      const personFilter = document.getElementById("trip-person-filter");
+      const eventFilter = document.getElementById("trip-event-filter");
+      const totalEvents = document.getElementById("trip-total-events");
+      const mappedEvents = document.getElementById("trip-mapped-events");
+      const latestEvent = document.getElementById("trip-latest-event");
+
+      let allEvents = [];
+      let map = null;
+      let eventLayer = null;
+
+      const createMarkerHtml = (event) => {
+        const subjectMeta = getSubjectMeta(event.subject, event.subjectLabel);
+        const eventTypeMeta = getEventTypeMeta(event.eventType);
+        return `
+          <div class="trip-map-marker ${subjectMeta.className}">
+            <span class="trip-map-avatar">${escapeHtml(subjectMeta.shortLabel)}</span>
+            <span class="trip-map-badge">${escapeHtml(eventTypeMeta.badge)}</span>
+          </div>
+        `;
+      };
+
+      const markerPopupHtml = (event) => {
+        const eventTypeMeta = getEventTypeMeta(event.eventType);
+        const subjectMeta = getSubjectMeta(event.subject, event.subjectLabel);
+        return `
+          <div class="trip-map-note">
+            <strong>${escapeHtml(subjectMeta.label)}</strong>
+            <div class="trip-meta-line">
+              <span class="trip-category-badge ${escapeHtml(eventTypeMeta.className)}">${escapeHtml(eventTypeMeta.label)}</span>
+              <span class="trip-avatar-badge">Logged by ${escapeHtml(event.personLabel || "Road Trip")}</span>
+            </div>
+            <p>${escapeHtml(event.content)}</p>
+            <p class="small-note">${escapeHtml(event.routeLeg || "Route in progress")} · ${escapeHtml(event.createdLabel)}</p>
+          </div>
+        `;
+      };
+
+      const initializeMap = () => {
+        if (!(window.L && typeof window.L.map === "function")) {
+          mapStatus.textContent = "Map library failed to load. The live feed is still active.";
+          return;
+        }
+
+        map = window.L.map("trip-map", { zoomControl: false, scrollWheelZoom: true });
+        window.L.control.zoom({ position: "bottomright" }).addTo(map);
+        window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 18,
+          attribution: "&copy; OpenStreetMap contributors",
+        }).addTo(map);
+
+        const routeLatLngs = ROAD_TRIP_ROUTE_POINTS.map((point) => [point.lat, point.lng]);
+        const routeLine = window.L.polyline(routeLatLngs, {
+          color: "#176f84",
+          weight: 5,
+          opacity: 0.86,
+          lineJoin: "round",
+        }).addTo(map);
+
+        ROAD_TRIP_ROUTE_POINTS.filter((point) => point.stop).forEach((point) => {
+          window.L.circleMarker([point.lat, point.lng], {
+            radius: 6,
+            color: "#9f7148",
+            weight: 2,
+            fillColor: "#fff6e7",
+            fillOpacity: 0.95,
+          })
+            .addTo(map)
+            .bindPopup(`<div class="trip-map-note"><strong>${escapeHtml(point.name)}</strong><p class="small-note">${escapeHtml(point.leg)}</p></div>`);
+        });
+
+        eventLayer = window.L.layerGroup().addTo(map);
+        map.fitBounds(routeLine.getBounds(), { padding: [24, 24] });
+      };
+
+      const filteredEvents = () => {
+        const personValue = String(personFilter.value || "all").toLowerCase();
+        const eventValue = String(eventFilter.value || "all").toLowerCase();
+
+        return allEvents.filter((event) => {
+          const matchesPerson = personValue === "all"
+            || event.subject === personValue
+            || event.person === personValue;
+          const matchesType = eventValue === "all" || event.eventType === eventValue;
+          return matchesPerson && matchesType;
+        });
+      };
+
+      const renderFeed = (events) => {
+        if (!events.length) {
+          tripFeedList.innerHTML = `
+            <article class="trip-empty-card">
+              <h3>No logs match this filter yet</h3>
+              <p>Try a different filter or post the first road-trip moment from one of the log pages.</p>
+            </article>
+          `;
+          return;
+        }
+
+        tripFeedList.innerHTML = events
+          .map((event) => {
+            const eventTypeMeta = getEventTypeMeta(event.eventType);
+            const subjectMeta = getSubjectMeta(event.subject, event.subjectLabel);
+
+            return `
+              <article class="trip-feed-item">
+                <div class="trip-feed-topline">
+                  <div>
+                    <strong>${escapeHtml(subjectMeta.label)}</strong>
+                    <div class="trip-meta-line">
+                      <span class="trip-category-badge ${escapeHtml(eventTypeMeta.className)}">${escapeHtml(eventTypeMeta.badge)} ${escapeHtml(eventTypeMeta.label)}</span>
+                      <span class="trip-avatar-badge">${escapeHtml(event.personLabel || "Road Trip")}</span>
+                      <span class="trip-subject-pill">${escapeHtml(event.routeLeg || "Location not pinned")}</span>
+                    </div>
+                  </div>
+                  <span class="small-note">${escapeHtml(event.createdLabel)}</span>
+                </div>
+                <p>${escapeHtml(event.content)}</p>
+              </article>
+            `;
+          })
+          .join("");
+
+        refreshRevealMotion({ scope: tripFeedList, selector: ".trip-feed-item" });
+      };
+
+      const renderMapMarkers = (events) => {
+        if (!eventLayer) {
+          return;
+        }
+
+        eventLayer.clearLayers();
+
+        events
+          .filter((event) => Number.isFinite(event.lat) && Number.isFinite(event.lng))
+          .forEach((event) => {
+            const icon = window.L.divIcon({
+              className: "trip-map-marker-wrap",
+              html: createMarkerHtml(event),
+              iconSize: [44, 44],
+              iconAnchor: [22, 22],
+              popupAnchor: [0, -18],
+            });
+
+            window.L.marker([event.lat, event.lng], { icon })
+              .addTo(eventLayer)
+              .bindPopup(markerPopupHtml(event));
+          });
+      };
+
+      const renderStats = (events) => {
+        totalEvents.textContent = String(events.length);
+        mappedEvents.textContent = String(events.filter((event) => Number.isFinite(event.lat) && Number.isFinite(event.lng)).length);
+        latestEvent.textContent = events[0]?.createdLabel || "Waiting";
+      };
+
+      const refreshFromFilters = () => {
+        const events = filteredEvents();
+        renderStats(events);
+        renderFeed(events);
+        renderMapMarkers(events);
+        mapStatus.textContent = events.length
+          ? `${events.length} matching memories loaded live from Firestore.`
+          : "No events match the current filters yet.";
+      };
+
+      initHeaderShell();
+      initHeaderAuth();
+      initRevealMotion();
+      initializeMap();
+
+      personFilter.addEventListener("change", refreshFromFilters);
+      eventFilter.addEventListener("change", refreshFromFilters);
+
+      subscribeToRoadTripEvents({
+        onData: (events) => {
+          allEvents = events;
+          refreshFromFilters();
+        },
+        onError: (error) => {
+          console.error("Could not subscribe to road trip events", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          mapStatus.textContent = `Could not load road-trip events (${details}).`;
+        },
+      });
+    </script>
+  </body>
+</html>

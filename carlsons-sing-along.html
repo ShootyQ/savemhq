@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sing-Along Tracker | Carlsons Insane Road Trip</title>
+    <meta
+      name="description"
+      content="Quick road-trip singing logger for the Carlson family. Save music moments with submit-time location into the live trip map."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="road-trip-log">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner trip-hero-grid">
+          <div class="home-hero-copy">
+            <p class="tagline">Quick Log</p>
+            <h1>Sing-Along Tracker</h1>
+            <p class="subheadline">For the full-volume choruses, weird made-up songs, and backseat concerts that need to be preserved.</p>
+            <div class="hero-surface">
+              <p class="intro">Save the singer and the moment. The hub will update live, and the map will pin it if location is available.</p>
+            </div>
+          </div>
+
+          <aside class="trip-summary-card project-card">
+            <p class="section-kicker">Best Use</p>
+            <h2>Capture the soundtrack in seconds.</h2>
+            <div class="trip-log-tips">
+              <span>Ellie belting</span>
+              <span>Max looping one line forever</span>
+              <span>Whole-car singalongs</span>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section section-card">
+        <div class="container trip-section-grid">
+          <article id="song-log-panel" class="project-card trip-log-shell hidden">
+            <div>
+              <p class="section-kicker">Submit A Song Moment</p>
+              <h2>Log the chaos</h2>
+              <p class="small-note">Fast enough to use mid-drive when a chorus takes over the car.</p>
+            </div>
+
+            <form id="song-log-form" class="trip-log-form">
+              <div class="trip-log-field">
+                <label for="song-subject">Who was singing?</label>
+                <select id="song-subject" name="subject" required>
+                  <option value="ellie">Ellie</option>
+                  <option value="max">Max</option>
+                  <option value="savannah">Savannah</option>
+                  <option value="andy">Andy</option>
+                  <option value="family">Everybody</option>
+                </select>
+              </div>
+
+              <div class="trip-log-field">
+                <label for="song-content">What was happening?</label>
+                <textarea id="song-content" name="content" maxlength="240" placeholder="Singing Let It Go at max volume with zero warning." required></textarea>
+              </div>
+
+              <div class="trip-inline-note is-warning">
+                <strong>Location behavior</strong>
+                <span class="small-note">Submit-time location only. If you skip or deny location, the moment still lands in the live feed.</span>
+              </div>
+
+              <div class="form-actions">
+                <button id="song-submit" class="btn btn-primary" type="submit">Save singing moment</button>
+                <a class="btn btn-secondary" href="carlsons-road-trip.html">Back to hub</a>
+              </div>
+            </form>
+
+            <p id="song-status" class="small-note" aria-live="polite">Sign in to start logging singing moments.</p>
+          </article>
+
+          <article id="song-log-locked" class="project-card trip-log-shell">
+            <p class="section-kicker">Access Required</p>
+            <h2>Google sign-in required</h2>
+            <p class="small-note">Andrew and Savannah can post to the live trip feed. Everyone else can still view the hub.</p>
+            <div class="trip-live-links">
+              <a class="btn btn-secondary" href="carlsons-road-trip.html">Open live hub</a>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Sing-along capture for the road-trip archive.</p>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+      import { submitRoadTripEvent } from "./js/road-trip-shared.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Hub", href: "carlsons-road-trip.html" },
+          { label: "Kids Said", href: "carlsons-kid-sayings.html" },
+          { label: "Singing", href: "carlsons-sing-along.html" },
+        ],
+      });
+
+      const logPanel = document.getElementById("song-log-panel");
+      const lockedPanel = document.getElementById("song-log-locked");
+      const form = document.getElementById("song-log-form");
+      const subjectSelect = document.getElementById("song-subject");
+      const contentInput = document.getElementById("song-content");
+      const statusText = document.getElementById("song-status");
+      const submitButton = document.getElementById("song-submit");
+
+      let currentUserEmail = "";
+      let approvalPerson = "";
+      let canSubmit = false;
+
+      initHeaderShell();
+      initRevealMotion();
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        if (!canSubmit) {
+          statusText.textContent = "Sign in with an approved account to post singing moments.";
+          return;
+        }
+
+        const content = String(contentInput.value || "").trim();
+        if (!content) {
+          statusText.textContent = "Describe the singing moment before saving.";
+          return;
+        }
+
+        submitButton.disabled = true;
+        statusText.textContent = "Saving moment and checking current location...";
+
+        try {
+          const location = await submitRoadTripEvent({
+            userEmail: currentUserEmail,
+            approvalPerson,
+            eventType: "song",
+            subject: subjectSelect.value,
+            subjectLabel: subjectSelect.options[subjectSelect.selectedIndex]?.textContent || subjectSelect.value,
+            content,
+            sourcePage: "sing-along",
+          });
+
+          form.reset();
+          subjectSelect.value = "ellie";
+          contentInput.focus();
+
+          statusText.textContent = Number.isFinite(location.lat) && Number.isFinite(location.lng)
+            ? "Singing moment saved and pinned on the map."
+            : "Singing moment saved. Location was unavailable, so it will show in the feed without a pin.";
+        } catch (error) {
+          console.error("Could not save singing moment", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          statusText.textContent = `Could not save singing moment (${details}).`;
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+
+      initHeaderAuth({
+        onStateChange: ({ user, isAdmin, approvalStatus, approvalPerson: stateApprovalPerson }) => {
+          if (!user) {
+            canSubmit = false;
+            currentUserEmail = "";
+            approvalPerson = "";
+            logPanel.classList.add("hidden");
+            lockedPanel.classList.remove("hidden");
+            statusText.textContent = "Sign in to start logging singing moments.";
+            return;
+          }
+
+          if (!(approvalStatus === "approved" || isAdmin)) {
+            canSubmit = false;
+            logPanel.classList.add("hidden");
+            lockedPanel.classList.remove("hidden");
+            statusText.textContent = approvalStatus === "denied"
+              ? "This account is denied for road-trip logging."
+              : "This account is not approved for road-trip logging yet.";
+            return;
+          }
+
+          canSubmit = true;
+          currentUserEmail = String(user.email || "").toLowerCase();
+          approvalPerson = String(stateApprovalPerson || "").toLowerCase();
+          logPanel.classList.remove("hidden");
+          lockedPanel.classList.add("hidden");
+          statusText.textContent = "Ready. Save the next sing-along when it happens.";
+          refreshRevealMotion({ scope: logPanel, selector: ".trip-log-shell, .trip-inline-note, .trip-log-field, .form-actions" });
+        },
+      });
+    </script>
+  </body>
+</html>

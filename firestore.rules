@@ -31,6 +31,45 @@ service cloud.firestore {
         );
     }
 
+    function requestPersonMatchesAuthedRoadTripLogger() {
+      return (
+        request.auth.token.email == "andrewpcarlson85@gmail.com"
+        && request.resource.data.person == "andy"
+      ) || (
+        request.auth.token.email == "savannahbcarlson@gmail.com"
+        && request.resource.data.person == "savannah"
+      );
+    }
+
+    function roadTripEventKeysAreAllowed() {
+      return request.resource.data.keys().hasAll([
+        "tripId",
+        "eventType",
+        "person",
+        "personLabel",
+        "subject",
+        "subjectLabel",
+        "content",
+        "locationSource",
+        "sourcePage",
+        "createdAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "tripId",
+        "eventType",
+        "person",
+        "personLabel",
+        "subject",
+        "subjectLabel",
+        "content",
+        "routeLeg",
+        "lat",
+        "lng",
+        "locationSource",
+        "sourcePage",
+        "createdAt"
+      ]);
+    }
+
     function monthWriteKeysAreAllowed() {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly([
         "month",
@@ -92,6 +131,21 @@ service cloud.firestore {
         && request.resource.data.reviewedBy == request.auth.token.email
       );
 
+      allow delete: if isAdmin();
+    }
+
+    match /roadTrips/{tripId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /roadTrips/{tripId}/events/{eventId} {
+      allow read: if true;
+      allow create: if isAutoApprovedUser()
+        && roadTripEventKeysAreAllowed()
+        && requestPersonMatchesAuthedRoadTripLogger()
+        && request.resource.data.tripId == tripId;
+      allow update: if false;
       allow delete: if isAdmin();
     }
   }
