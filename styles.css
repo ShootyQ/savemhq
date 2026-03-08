@@ -1569,6 +1569,19 @@ body[data-page="road-trip-bingo"] .site-header {
   gap: 0.55rem;
 }
 
+.trip-bingo-letter {
+  display: grid;
+  place-items: center;
+  min-height: 2.25rem;
+  border-radius: 999px;
+  background: linear-gradient(145deg, #17758b, #3aa5b2);
+  color: #fff;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
 .trip-bingo-cell {
   min-height: 6.8rem;
   border: 1px solid #d6dfd5;

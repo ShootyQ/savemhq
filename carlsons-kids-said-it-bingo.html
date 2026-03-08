@@ -115,6 +115,7 @@
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
       import { escapeHtml, formatEventTime } from "./js/road-trip-shared.js";
       import {
+        createKidsSaidItBingoPreviewState,
         ensureKidsSaidItBingoGame,
         KIDS_SAID_IT_BINGO_FREE_INDEX,
         KIDS_SAID_IT_BINGO_SIZE,
@@ -148,11 +149,16 @@
 
       let canManageBoards = false;
       let bingoState = null;
+      const previewState = createKidsSaidItBingoPreviewState();
+      const BINGO_LETTERS = ["B", "I", "N", "G", "O"];
 
       const renderBoard = ({ host, player, card = [], marks = [] }) => {
         const markSet = new Set(marks);
+        const safeCard = Array.isArray(card) && card.length === (KIDS_SAID_IT_BINGO_SIZE * KIDS_SAID_IT_BINGO_SIZE)
+          ? card
+          : Array.from({ length: KIDS_SAID_IT_BINGO_SIZE * KIDS_SAID_IT_BINGO_SIZE }, () => "Loading...");
 
-        host.innerHTML = card
+        host.innerHTML = `${BINGO_LETTERS.map((letter) => `<div class="trip-bingo-letter">${escapeHtml(letter)}</div>`).join("")}${safeCard
           .map((label, index) => {
             const isFree = index === KIDS_SAID_IT_BINGO_FREE_INDEX;
             const isMarked = markSet.has(index);
@@ -169,21 +175,23 @@
               </button>
             `;
           })
-          .join("");
+          .join("")}`;
       };
 
       const renderState = () => {
-        roundValue.textContent = bingoState ? String(bingoState.round) : "--";
-        andyWinsValue.textContent = String(bingoState?.andyWins || 0);
-        savannahWinsValue.textContent = String(bingoState?.savannahWins || 0);
-        andyMeta.textContent = `${Math.max((bingoState?.andyMarks?.length || 1) - 1, 0)} marked`;
-        savannahMeta.textContent = `${Math.max((bingoState?.savannahMarks?.length || 1) - 1, 0)} marked`;
+        const state = bingoState || previewState;
+
+        roundValue.textContent = bingoState ? String(state.round) : "Preview";
+        andyWinsValue.textContent = String(state.andyWins || 0);
+        savannahWinsValue.textContent = String(state.savannahWins || 0);
+        andyMeta.textContent = `${Math.max((state.andyMarks?.length || 1) - 1, 0)} marked`;
+        savannahMeta.textContent = `${Math.max((state.savannahMarks?.length || 1) - 1, 0)} marked`;
         lastWinnerValue.textContent = bingoState?.lastWinnerLabel
-          ? `${bingoState.lastWinnerLabel} won the last round on ${formatEventTime(bingoState.lastWonAt)}.`
+          ? `${state.lastWinnerLabel} won the last round on ${formatEventTime(state.lastWonAt)}.`
           : "Waiting for the first bingo.";
 
-        renderBoard({ host: andyBoard, player: "andy", card: bingoState?.andyCard || [], marks: bingoState?.andyMarks || [] });
-        renderBoard({ host: savannahBoard, player: "savannah", card: bingoState?.savannahCard || [], marks: bingoState?.savannahMarks || [] });
+        renderBoard({ host: andyBoard, player: "andy", card: state.andyCard || [], marks: state.andyMarks || [] });
+        renderBoard({ host: savannahBoard, player: "savannah", card: state.savannahCard || [], marks: state.savannahMarks || [] });
         nextRoundButton.disabled = !canManageBoards;
         refreshRevealMotion({ scope: document, selector: ".trip-bingo-cell, .trip-bingo-board-shell" });
       };
@@ -279,7 +287,7 @@
           } else if (state) {
             statusText.textContent = `Round ${state.round} is live. Watching in read-only mode.`;
           } else {
-            statusText.textContent = "Waiting for the first bingo round to initialize.";
+            statusText.textContent = "Showing a preview card until the first live round is initialized.";
           }
 
           renderState();

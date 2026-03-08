@@ -88,13 +88,12 @@ export const KIDS_SAID_IT_BINGO_PHRASES = [
   "I want to hold it.",
 ];
 
-export const KIDS_SAID_IT_BINGO_SIZE = BINGO_SIZE;
-export const KIDS_SAID_IT_BINGO_CELL_COUNT = BINGO_CELL_COUNT;
-export const KIDS_SAID_IT_BINGO_FREE_INDEX = BINGO_FREE_INDEX;
-
 const BINGO_SIZE = 5;
 const BINGO_CELL_COUNT = BINGO_SIZE * BINGO_SIZE;
 const BINGO_FREE_INDEX = Math.floor(BINGO_CELL_COUNT / 2);
+export const KIDS_SAID_IT_BINGO_SIZE = BINGO_SIZE;
+export const KIDS_SAID_IT_BINGO_CELL_COUNT = BINGO_CELL_COUNT;
+export const KIDS_SAID_IT_BINGO_FREE_INDEX = BINGO_FREE_INDEX;
 const tripGameDocument = (gameId) => doc(db, "roadTrips", ROAD_TRIP_ID, "games", gameId);
 const kidsSaidItBingoDocument = tripGameDocument(KIDS_SAID_IT_BINGO_GAME_ID);
 
@@ -186,6 +185,8 @@ const normalizeBingoState = (data) => ({
   lastWonAt: data?.lastWonAt?.toDate?.() || null,
   updatedAt: data?.updatedAt?.toDate?.() || null,
 });
+
+export const createKidsSaidItBingoPreviewState = () => normalizeBingoState(createBingoGameState());
 
 export const subscribeToKidsSaidItBingo = ({ onData, onError } = {}) =>
   onSnapshot(
