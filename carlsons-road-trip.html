@@ -230,12 +230,51 @@
       let isAdmin = false;
       let deletingEventId = "";
 
+      const createSubjectAvatarHtml = (subjectMeta, options = {}) => {
+        const {
+          className = "trip-subject-avatar",
+          imageClassName = "trip-subject-avatar-image",
+          decorative = false,
+        } = options;
+        const altText = decorative ? "" : escapeHtml(subjectMeta.label);
+
+        if (Array.isArray(subjectMeta.imageStack) && subjectMeta.imageStack.length) {
+          return `
+            <span class="${className} is-stack ${subjectMeta.className}" ${decorative ? 'aria-hidden="true"' : `role="img" aria-label="${altText}"`}>
+              ${subjectMeta.imageStack
+                .map(
+                  (imageSrc, index) => `<img class="${imageClassName}" src="${escapeHtml(imageSrc)}" alt="" data-stack-index="${index + 1}" />`
+                )
+                .join("")}
+            </span>
+          `;
+        }
+
+        if (subjectMeta.imageSrc) {
+          return `
+            <span class="${className} ${subjectMeta.className}">
+              <img class="${imageClassName}" src="${escapeHtml(subjectMeta.imageSrc)}" alt="${altText}" ${decorative ? 'aria-hidden="true"' : ""} />
+            </span>
+          `;
+        }
+
+        return `
+          <span class="${className} is-fallback ${subjectMeta.className}" ${decorative ? 'aria-hidden="true"' : `role="img" aria-label="${altText}"`}>
+            ${escapeHtml(subjectMeta.shortLabel)}
+          </span>
+        `;
+      };
+
       const createMarkerHtml = (event) => {
         const subjectMeta = getSubjectMeta(event.subject, event.subjectLabel);
         const eventTypeMeta = getEventTypeMeta(event.eventType);
         return `
           <div class="trip-map-marker ${subjectMeta.className}">
-            <span class="trip-map-avatar">${escapeHtml(subjectMeta.shortLabel)}</span>
+            ${createSubjectAvatarHtml(subjectMeta, {
+              className: "trip-map-avatar",
+              imageClassName: "trip-map-avatar-image",
+              decorative: true,
+            })}
             <span class="trip-map-badge">${escapeHtml(eventTypeMeta.badge)}</span>
           </div>
         `;
@@ -246,10 +285,18 @@
         const subjectMeta = getSubjectMeta(event.subject, event.subjectLabel);
         return `
           <div class="trip-map-note">
-            <strong>${escapeHtml(subjectMeta.label)}</strong>
-            <div class="trip-meta-line">
-              <span class="trip-category-badge ${escapeHtml(eventTypeMeta.className)}">${escapeHtml(eventTypeMeta.label)}</span>
-              <span class="trip-avatar-badge">Logged by ${escapeHtml(event.personLabel || "Road Trip")}</span>
+            <div class="trip-map-note-head">
+              ${createSubjectAvatarHtml(subjectMeta, {
+                className: "trip-subject-avatar trip-subject-avatar-sm",
+                imageClassName: "trip-subject-avatar-image",
+              })}
+              <div>
+                <strong>${escapeHtml(subjectMeta.label)}</strong>
+                <div class="trip-meta-line">
+                  <span class="trip-category-badge ${escapeHtml(eventTypeMeta.className)}">${escapeHtml(eventTypeMeta.label)}</span>
+                  <span class="trip-avatar-badge">Logged by ${escapeHtml(event.personLabel || "Road Trip")}</span>
+                </div>
+              </div>
             </div>
             <p>${escapeHtml(event.content)}</p>
             <p class="small-note">${escapeHtml(event.routeLeg || "Route in progress")} · ${escapeHtml(event.createdLabel)}</p>
@@ -321,12 +368,18 @@
             return `
               <article class="trip-feed-item">
                 <div class="trip-feed-topline">
-                  <div>
-                    <strong>${escapeHtml(subjectMeta.label)}</strong>
-                    <div class="trip-meta-line">
-                      <span class="trip-category-badge ${escapeHtml(eventTypeMeta.className)}">${escapeHtml(eventTypeMeta.badge)} ${escapeHtml(eventTypeMeta.label)}</span>
-                      <span class="trip-avatar-badge">${escapeHtml(event.personLabel || "Road Trip")}</span>
-                      <span class="trip-subject-pill">${escapeHtml(event.routeLeg || "Location not pinned")}</span>
+                  <div class="trip-feed-subject">
+                    ${createSubjectAvatarHtml(subjectMeta, {
+                      className: "trip-subject-avatar trip-subject-avatar-md",
+                      imageClassName: "trip-subject-avatar-image",
+                    })}
+                    <div>
+                      <strong>${escapeHtml(subjectMeta.label)}</strong>
+                      <div class="trip-meta-line">
+                        <span class="trip-category-badge ${escapeHtml(eventTypeMeta.className)}">${escapeHtml(eventTypeMeta.badge)} ${escapeHtml(eventTypeMeta.label)}</span>
+                        <span class="trip-avatar-badge">${escapeHtml(event.personLabel || "Road Trip")}</span>
+                        <span class="trip-subject-pill">${escapeHtml(event.routeLeg || "Location not pinned")}</span>
+                      </div>
                     </div>
                   </div>
                   <div class="trip-feed-actions">

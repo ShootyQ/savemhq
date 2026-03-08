@@ -36,12 +36,23 @@ export const ROAD_TRIP_EVENT_TYPES = {
 };
 
 export const ROAD_TRIP_SUBJECTS = {
-  max: { label: "Max", shortLabel: "M", className: "is-max" },
-  ellie: { label: "Ellie", shortLabel: "E", className: "is-ellie" },
-  violet: { label: "Violet", shortLabel: "V", className: "is-violet" },
-  savannah: { label: "Savannah", shortLabel: "S", className: "is-savannah" },
-  andy: { label: "Andy", shortLabel: "A", className: "is-andy" },
-  family: { label: "Family", shortLabel: "F", className: "is-family" },
+  max: { label: "Max", shortLabel: "M", className: "is-max", imageSrc: "images/family/max.png" },
+  ellie: { label: "Ellie", shortLabel: "E", className: "is-ellie", imageSrc: "images/family/ellie.png" },
+  violet: { label: "Violet", shortLabel: "V", className: "is-violet", imageSrc: "images/family/violet.png" },
+  savannah: { label: "Savannah", shortLabel: "S", className: "is-savannah", imageSrc: "images/family/savannah.png" },
+  andy: { label: "Andy", shortLabel: "A", className: "is-andy", imageSrc: "images/family/andy.png" },
+  family: {
+    label: "Family",
+    shortLabel: "F",
+    className: "is-family",
+    imageStack: [
+      "images/family/max.png",
+      "images/family/ellie.png",
+      "images/family/violet.png",
+      "images/family/savannah.png",
+      "images/family/andy.png",
+    ],
+  },
 };
 
 export const ROAD_TRIP_GAMES = [
@@ -101,6 +112,8 @@ export const getSubjectMeta = (subject, fallbackLabel = "") => {
     label: fallback,
     shortLabel: fallback.slice(0, 1).toUpperCase() || "R",
     className: "",
+    imageSrc: "",
+    imageStack: [],
   };
 };
 
