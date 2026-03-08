@@ -61,6 +61,7 @@
                 <select id="kid-said-subject" name="subject" required>
                   <option value="max">Max</option>
                   <option value="ellie">Ellie</option>
+                  <option value="violet">Violet</option>
                   <option value="savannah">Savannah</option>
                   <option value="andy">Andy</option>
                   <option value="family">Everybody</option>
@@ -70,6 +71,23 @@
               <div class="trip-log-field">
                 <label for="kid-said-content">What happened?</label>
                 <textarea id="kid-said-content" name="content" maxlength="240" placeholder="\"I'm thirsty.\" or singing Let It Go at max volume." required></textarea>
+              </div>
+
+              <div class="trip-inline-note trip-quick-pick-shell">
+                <strong>Complaint quick picks</strong>
+                <span class="small-note">Tap one to drop a classic road-trip complaint into the box, then tweak it if needed.</span>
+                <div class="trip-quick-pick-grid" role="group" aria-label="Common road trip complaints">
+                  <button class="trip-quick-pick-button" type="button" data-phrase="I'm bored.">I'm bored.</button>
+                  <button class="trip-quick-pick-button" type="button" data-phrase="I'm tired.">I'm tired.</button>
+                  <button class="trip-quick-pick-button" type="button" data-phrase="I'm hungry.">I'm hungry.</button>
+                  <button class="trip-quick-pick-button" type="button" data-phrase="I'm thirsty.">I'm thirsty.</button>
+                  <button class="trip-quick-pick-button" type="button" data-phrase="I have to potty.">I have to potty.</button>
+                  <button class="trip-quick-pick-button" type="button" data-phrase="Are we there yet?">Are we there yet?</button>
+                  <button class="trip-quick-pick-button" type="button" data-phrase="My seatbelt hurts.">My seatbelt hurts.</button>
+                  <button class="trip-quick-pick-button" type="button" data-phrase="He's touching me.">He's touching me.</button>
+                  <button class="trip-quick-pick-button" type="button" data-phrase="I dropped it.">I dropped it.</button>
+                  <button class="trip-quick-pick-button" type="button" data-phrase="Can we stop?">Can we stop?</button>
+                </div>
               </div>
 
               <div class="trip-inline-note">
@@ -117,6 +135,8 @@
           { label: "Hub", href: "carlsons-road-trip.html" },
           { label: "Games", href: "carlsons-road-trip-games.html" },
           { label: "Bingo", href: "carlsons-kids-said-it-bingo.html" },
+          { label: "Alphabet", href: "carlsons-alphabet-game.html" },
+          { label: "Scavenger", href: "carlsons-road-trip-scavenger-hunt.html" },
           { label: "Moments", href: "carlsons-kid-sayings.html" },
           { label: "What We're Doing", href: "carlsons-sing-along.html" },
         ],
@@ -130,6 +150,7 @@
       const contentInput = document.getElementById("kid-said-content");
       const statusText = document.getElementById("kid-said-status");
       const submitButton = document.getElementById("kid-said-submit");
+      const quickPickButtons = Array.from(document.querySelectorAll(".trip-quick-pick-button"));
 
       let currentUserEmail = "";
       let approvalPerson = "";
@@ -137,6 +158,16 @@
 
       initHeaderShell();
       initRevealMotion();
+
+      quickPickButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          contentInput.value = String(button.dataset.phrase || "").trim();
+          momentType.value = "kid-said";
+          contentInput.focus();
+          contentInput.setSelectionRange(contentInput.value.length, contentInput.value.length);
+          statusText.textContent = "Complaint loaded. Add detail if you want, then save it.";
+        });
+      });
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();

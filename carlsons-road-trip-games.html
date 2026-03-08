@@ -27,10 +27,12 @@
               <p class="intro">
                 Think of this as the game shelf for the trip. As we add more games, they will land here with a live score tile and a link to jump in.
               </p>
-              <p class="wink">Kid's Said It Bingo is first up, with live cards for Andy and Savannah.</p>
+              <p class="wink">Bingo, Alphabet, and the Scavenger Hunt are live now.</p>
             </div>
             <div class="hero-actions trip-live-links">
               <a class="btn btn-primary" href="carlsons-kids-said-it-bingo.html">Open Bingo</a>
+              <a class="btn btn-secondary" href="carlsons-alphabet-game.html">Open Alphabet Game</a>
+              <a class="btn btn-secondary" href="carlsons-road-trip-scavenger-hunt.html">Open Scavenger Hunt</a>
               <a class="btn btn-secondary" href="carlsons-road-trip.html">Back To Live Map</a>
             </div>
           </div>
@@ -82,6 +84,8 @@
             <li><a href="index.html">Home</a></li>
             <li><a href="carlsons-road-trip.html">Live Map</a></li>
             <li><a href="carlsons-kids-said-it-bingo.html">Bingo</a></li>
+            <li><a href="carlsons-alphabet-game.html">Alphabet</a></li>
+            <li><a href="carlsons-road-trip-scavenger-hunt.html">Scavenger</a></li>
           </ul>
         </nav>
       </div>
@@ -94,9 +98,13 @@
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
       import { escapeHtml, formatEventTime } from "./js/road-trip-shared.js";
       import {
+        ensureAlphabetGame,
         ensureKidsSaidItBingoGame,
+        ensureScavengerHuntGame,
         ROAD_TRIP_GAME_DECK,
+        subscribeToAlphabetGame,
         subscribeToKidsSaidItBingo,
+        subscribeToScavengerHunt,
       } from "./js/road-trip-games-shared.js";
 
       mountSiteHeader({
@@ -106,6 +114,8 @@
           { label: "Live Map", href: "carlsons-road-trip.html" },
           { label: "Games", href: "carlsons-road-trip-games.html" },
           { label: "Bingo", href: "carlsons-kids-said-it-bingo.html" },
+          { label: "Alphabet", href: "carlsons-alphabet-game.html" },
+          { label: "Scavenger", href: "carlsons-road-trip-scavenger-hunt.html" },
           { label: "Moments", href: "carlsons-kid-sayings.html" },
           { label: "What We're Doing", href: "carlsons-sing-along.html" },
         ],
@@ -119,6 +129,8 @@
       const lastWinValue = document.getElementById("trip-games-last-win");
 
       let bingoState = null;
+      let alphabetState = null;
+      let scavengerState = null;
 
       const renderSummary = () => {
         roundValue.textContent = bingoState ? String(bingoState.round) : "--";
@@ -134,6 +146,8 @@
         gamesGrid.innerHTML = ROAD_TRIP_GAME_DECK
           .map((game) => {
             const isBingo = game.id === "kids-said-it-bingo";
+            const isAlphabet = game.id === "alphabet-game";
+            const isScavenger = game.id === "road-trip-scavenger-hunt";
             const liveStats = isBingo && bingoState
               ? `
                 <div class="trip-game-tile-stats">
@@ -142,7 +156,30 @@
                   <span class="trip-pill">Savannah ${escapeHtml(bingoState.savannahWins)}</span>
                 </div>
               `
+              : isAlphabet && alphabetState
+                ? `
+                  <div class="trip-game-tile-stats">
+                    <span class="trip-pill">Andy ${escapeHtml(alphabetState.andyWins)}</span>
+                    <span class="trip-pill">Savannah ${escapeHtml(alphabetState.savannahWins)}</span>
+                  </div>
+                `
+                : isScavenger && scavengerState
+                  ? `
+                    <div class="trip-game-tile-stats">
+                      <span class="trip-pill">Items ${escapeHtml(scavengerState.items.length)}</span>
+                      <span class="trip-pill">Andy ${escapeHtml(scavengerState.andyFoundCount)}</span>
+                      <span class="trip-pill">Savannah ${escapeHtml(scavengerState.savannahFoundCount)}</span>
+                    </div>
+                  `
               : "";
+
+            const summaryLabel = isBingo && bingoState
+              ? `Last win: ${escapeHtml(bingoState.lastWinnerLabel || "Waiting for the first bingo")}`
+              : isAlphabet && alphabetState
+                ? `Last win: ${escapeHtml(alphabetState.lastWinnerLabel || "Waiting for the first alphabet win")}`
+                : isScavenger && scavengerState
+                  ? `${escapeHtml(scavengerState.items.length)} items on the board and counting.`
+                : escapeHtml(game.scoreboardLabel);
 
             return `
               <article class="project-card trip-game-card trip-game-tile ${game.isLive ? "is-live" : "is-soon"}">
@@ -150,7 +187,7 @@
                 <h3>${escapeHtml(game.title)}</h3>
                 <p>${escapeHtml(game.description)}</p>
                 ${liveStats}
-                <p class="small-note">${isBingo && bingoState ? `Last win: ${escapeHtml(bingoState.lastWinnerLabel || "Waiting for the first bingo")}` : escapeHtml(game.scoreboardLabel)}</p>
+                <p class="small-note">${summaryLabel}</p>
                 ${game.href ? `<a class="btn btn-primary" href="${escapeHtml(game.href)}">Open Game</a>` : `<span class="small-note">Tile reserved for the next game.</span>`}
               </article>
             `;
@@ -171,8 +208,10 @@
 
           try {
             await ensureKidsSaidItBingoGame();
+            await ensureAlphabetGame();
+            await ensureScavengerHuntGame();
           } catch (error) {
-            console.error("Could not initialize bingo game", error);
+            console.error("Could not initialize road trip games", error);
           }
         },
       });
@@ -191,6 +230,28 @@
           const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
           gamesStatus.textContent = `Could not load game scoreboard (${details}).`;
           renderSummary();
+          renderGames();
+        },
+      });
+
+      subscribeToAlphabetGame({
+        onData: (state) => {
+          alphabetState = state;
+          renderGames();
+        },
+        onError: (error) => {
+          console.error("Could not subscribe to alphabet game", error);
+          renderGames();
+        },
+      });
+
+      subscribeToScavengerHunt({
+        onData: (state) => {
+          scavengerState = state;
+          renderGames();
+        },
+        onError: (error) => {
+          console.error("Could not subscribe to scavenger hunt", error);
           renderGames();
         },
       });

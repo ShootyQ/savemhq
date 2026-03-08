@@ -9,6 +9,10 @@ import { ROAD_TRIP_ID } from "./road-trip-shared.js";
 
 export const KIDS_SAID_IT_BINGO_GAME_ID = "kids-said-it-bingo";
 export const KIDS_SAID_IT_BINGO_TITLE = "Kid's Said It Bingo";
+export const ALPHABET_GAME_ID = "alphabet-game";
+export const ALPHABET_GAME_TITLE = "Alphabet Game";
+export const SCAVENGER_HUNT_GAME_ID = "road-trip-scavenger-hunt";
+export const SCAVENGER_HUNT_GAME_TITLE = "Road Trip Scavenger Hunt";
 
 export const ROAD_TRIP_GAME_DECK = [
   {
@@ -21,23 +25,38 @@ export const ROAD_TRIP_GAME_DECK = [
     isLive: true,
   },
   {
-    id: "snack-score-showdown",
-    title: "Snack Score Showdown",
-    href: "",
-    badge: "Coming soon",
-    description: "Rate the gas-station snacks, settle the debate, and keep a running leaderboard.",
-    scoreboardLabel: "Waiting in the wings",
-    isLive: false,
+    id: ALPHABET_GAME_ID,
+    title: ALPHABET_GAME_TITLE,
+    href: "carlsons-alphabet-game.html",
+    badge: "Live now",
+    description: "Quick win tracker for the alphabet game when all you need is one tap for Andy or Savannah.",
+    scoreboardLabel: "Alphabet wins",
+    isLive: true,
   },
   {
-    id: "road-trip-scavenger-hunt",
-    title: "Road Trip Scavenger Hunt",
-    href: "",
-    badge: "Coming soon",
+    id: SCAVENGER_HUNT_GAME_ID,
+    title: SCAVENGER_HUNT_GAME_TITLE,
+    href: "carlsons-road-trip-scavenger-hunt.html",
+    badge: "Live now",
     description: "Spot the roadside oddities, mark them off fast, and see who clears the board first.",
-    scoreboardLabel: "Coming after bingo",
-    isLive: false,
+    scoreboardLabel: "Scavenger finds",
+    isLive: true,
   },
+];
+
+export const ROAD_TRIP_SCAVENGER_HUNT_ITEMS = [
+  "Water tower",
+  "Red barn",
+  "Horse trailer",
+  "Billboard for Jesus",
+  "State trooper",
+  "Semi with animals",
+  "Tiny roadside motel",
+  "Wind turbine",
+  "Something shaped like the state",
+  "Yellow car",
+  "Construction cone army",
+  "Giant flag",
 ];
 
 export const KIDS_SAID_IT_BINGO_PHRASES = [
@@ -96,8 +115,21 @@ export const KIDS_SAID_IT_BINGO_CELL_COUNT = BINGO_CELL_COUNT;
 export const KIDS_SAID_IT_BINGO_FREE_INDEX = BINGO_FREE_INDEX;
 const tripGameDocument = (gameId) => doc(db, "roadTrips", ROAD_TRIP_ID, "games", gameId);
 const kidsSaidItBingoDocument = tripGameDocument(KIDS_SAID_IT_BINGO_GAME_ID);
+const alphabetGameDocument = tripGameDocument(ALPHABET_GAME_ID);
+const scavengerHuntGameDocument = tripGameDocument(SCAVENGER_HUNT_GAME_ID);
 
 const playerFieldPrefix = (player) => (String(player || "").trim().toLowerCase() === "savannah" ? "savannah" : "andy");
+
+const createGameItemId = (label) => {
+  const base = String(label || "item")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    || "item";
+
+  return `${base}-${Math.random().toString(36).slice(2, 8)}`;
+};
 
 const shuffle = (items) => {
   const nextItems = [...items];
@@ -187,6 +219,200 @@ const normalizeBingoState = (data) => ({
 });
 
 export const createKidsSaidItBingoPreviewState = () => normalizeBingoState(createBingoGameState());
+
+const createAlphabetGameState = ({
+  andyWins = 0,
+  savannahWins = 0,
+  lastWinner = "",
+  lastWinnerLabel = "",
+  lastWonAt = null,
+} = {}) => ({
+  tripId: ROAD_TRIP_ID,
+  gameId: ALPHABET_GAME_ID,
+  title: ALPHABET_GAME_TITLE,
+  andyWins,
+  savannahWins,
+  lastWinner,
+  lastWinnerLabel,
+  lastWonAt,
+  updatedAt: serverTimestamp(),
+});
+
+const normalizeAlphabetGameState = (data) => ({
+  tripId: String(data?.tripId || ROAD_TRIP_ID),
+  gameId: String(data?.gameId || ALPHABET_GAME_ID),
+  title: String(data?.title || ALPHABET_GAME_TITLE),
+  andyWins: Number(data?.andyWins || 0),
+  savannahWins: Number(data?.savannahWins || 0),
+  lastWinner: String(data?.lastWinner || "").trim().toLowerCase(),
+  lastWinnerLabel: String(data?.lastWinnerLabel || "").trim(),
+  lastWonAt: data?.lastWonAt?.toDate?.() || null,
+  updatedAt: data?.updatedAt?.toDate?.() || null,
+});
+
+export const createAlphabetGamePreviewState = () => normalizeAlphabetGameState(createAlphabetGameState());
+
+const createScavengerHuntItem = (label, { id = createGameItemId(label), isCustom = false } = {}) => ({
+  id,
+  label: String(label || "").trim(),
+  andyFound: false,
+  savannahFound: false,
+  isCustom,
+});
+
+const createScavengerHuntState = ({ items = ROAD_TRIP_SCAVENGER_HUNT_ITEMS.map((label) => createScavengerHuntItem(label)) } = {}) => ({
+  tripId: ROAD_TRIP_ID,
+  gameId: SCAVENGER_HUNT_GAME_ID,
+  title: SCAVENGER_HUNT_GAME_TITLE,
+  items,
+  updatedAt: serverTimestamp(),
+});
+
+const normalizeScavengerHuntItems = (items) => Array.isArray(items)
+  ? items
+    .map((item) => ({
+      id: String(item?.id || createGameItemId(item?.label || "item")),
+      label: String(item?.label || "").trim(),
+      andyFound: Boolean(item?.andyFound),
+      savannahFound: Boolean(item?.savannahFound),
+      isCustom: Boolean(item?.isCustom),
+    }))
+    .filter((item) => item.label)
+  : ROAD_TRIP_SCAVENGER_HUNT_ITEMS.map((label) => createScavengerHuntItem(label));
+
+const normalizeScavengerHuntState = (data) => {
+  const items = normalizeScavengerHuntItems(data?.items);
+
+  return {
+    tripId: String(data?.tripId || ROAD_TRIP_ID),
+    gameId: String(data?.gameId || SCAVENGER_HUNT_GAME_ID),
+    title: String(data?.title || SCAVENGER_HUNT_GAME_TITLE),
+    items,
+    andyFoundCount: items.filter((item) => item.andyFound).length,
+    savannahFoundCount: items.filter((item) => item.savannahFound).length,
+    updatedAt: data?.updatedAt?.toDate?.() || null,
+  };
+};
+
+const scavengerHuntDocumentData = ({ items = [] } = {}) => ({
+  tripId: ROAD_TRIP_ID,
+  gameId: SCAVENGER_HUNT_GAME_ID,
+  title: SCAVENGER_HUNT_GAME_TITLE,
+  items,
+  updatedAt: serverTimestamp(),
+});
+
+export const createScavengerHuntPreviewState = () => normalizeScavengerHuntState(createScavengerHuntState());
+
+export const subscribeToScavengerHunt = ({ onData, onError } = {}) =>
+  onSnapshot(
+    scavengerHuntGameDocument,
+    (snapshot) => {
+      onData?.(snapshot.exists() ? normalizeScavengerHuntState(snapshot.data()) : null);
+    },
+    onError
+  );
+
+export const ensureScavengerHuntGame = async () => {
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(scavengerHuntGameDocument);
+
+    if (snapshot.exists()) {
+      return;
+    }
+
+    transaction.set(scavengerHuntGameDocument, createScavengerHuntState());
+  });
+};
+
+export const toggleScavengerHuntItem = async ({ player = "", itemId = "" } = {}) => {
+  const normalizedPlayer = playerFieldPrefix(player);
+  const playerKey = normalizedPlayer === "andy" ? "andyFound" : "savannahFound";
+  const normalizedItemId = String(itemId || "").trim();
+
+  if (!normalizedItemId) {
+    throw new Error("missing-scavenger-item-id");
+  }
+
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(scavengerHuntGameDocument);
+    const currentState = snapshot.exists()
+      ? normalizeScavengerHuntState(snapshot.data())
+      : normalizeScavengerHuntState(createScavengerHuntState());
+
+    const nextItems = currentState.items.map((item) => (
+      item.id === normalizedItemId
+        ? { ...item, [playerKey]: !item[playerKey] }
+        : item
+    ));
+
+    transaction.set(scavengerHuntGameDocument, scavengerHuntDocumentData({ items: nextItems }));
+  });
+};
+
+export const addScavengerHuntItem = async (label = "") => {
+  const trimmedLabel = String(label || "").trim();
+
+  if (!trimmedLabel) {
+    throw new Error("missing-scavenger-label");
+  }
+
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(scavengerHuntGameDocument);
+    const currentState = snapshot.exists()
+      ? normalizeScavengerHuntState(snapshot.data())
+      : normalizeScavengerHuntState(createScavengerHuntState());
+
+    if (currentState.items.some((item) => item.label.toLowerCase() === trimmedLabel.toLowerCase())) {
+      return;
+    }
+
+    transaction.set(
+      scavengerHuntGameDocument,
+      scavengerHuntDocumentData({
+        items: [...currentState.items, createScavengerHuntItem(trimmedLabel, { isCustom: true })],
+      })
+    );
+  });
+};
+
+export const subscribeToAlphabetGame = ({ onData, onError } = {}) =>
+  onSnapshot(
+    alphabetGameDocument,
+    (snapshot) => {
+      onData?.(snapshot.exists() ? normalizeAlphabetGameState(snapshot.data()) : null);
+    },
+    onError
+  );
+
+export const ensureAlphabetGame = async () => {
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(alphabetGameDocument);
+
+    if (snapshot.exists()) {
+      return;
+    }
+
+    transaction.set(alphabetGameDocument, createAlphabetGameState());
+  });
+};
+
+export const recordAlphabetGameWin = async (player = "") => {
+  const normalizedPlayer = playerFieldPrefix(player);
+
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(alphabetGameDocument);
+    const currentState = snapshot.exists() ? normalizeAlphabetGameState(snapshot.data()) : normalizeAlphabetGameState(createAlphabetGameState());
+
+    transaction.set(alphabetGameDocument, createAlphabetGameState({
+      andyWins: currentState.andyWins + (normalizedPlayer === "andy" ? 1 : 0),
+      savannahWins: currentState.savannahWins + (normalizedPlayer === "savannah" ? 1 : 0),
+      lastWinner: normalizedPlayer,
+      lastWinnerLabel: normalizedPlayer === "andy" ? "Andy" : "Savannah",
+      lastWonAt: serverTimestamp(),
+    }));
+  });
+};
 
 export const subscribeToKidsSaidItBingo = ({ onData, onError } = {}) =>
   onSnapshot(

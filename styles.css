@@ -1296,6 +1296,10 @@ body[data-page="road-trip-bingo"] .site-header {
   background: linear-gradient(145deg, #ffc8cb, #f28aa0);
 }
 
+.trip-map-marker.is-violet {
+  background: linear-gradient(145deg, #ddcef4, #b7a1eb);
+}
+
 .trip-map-marker.is-savannah {
   background: linear-gradient(145deg, #f7debe, #d5a97d);
 }
@@ -1547,6 +1551,92 @@ body[data-page="road-trip-bingo"] .site-header {
   padding: 1rem;
 }
 
+.trip-game-actions-card {
+  padding: 1rem;
+}
+
+.trip-game-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.trip-game-win-button {
+  min-height: 3.5rem;
+  justify-content: center;
+}
+
+.trip-scavenger-card {
+  padding: 1rem;
+}
+
+.trip-text-input {
+  width: 100%;
+  border: 1px solid #d7e1d6;
+  border-radius: 0.9rem;
+  background: rgba(255, 253, 248, 0.96);
+  padding: 0.78rem 0.88rem;
+  font: inherit;
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.trip-scavenger-list {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.trip-scavenger-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.9rem 0.95rem;
+  border-radius: 1rem;
+  border: 1px solid #d9e1d7;
+  background: rgba(255, 253, 248, 0.95);
+}
+
+.trip-scavenger-item.is-custom {
+  border-color: #c8ddd3;
+  background: linear-gradient(165deg, rgba(245, 252, 246, 0.98), rgba(238, 248, 242, 0.95));
+}
+
+.trip-scavenger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.trip-scavenger-toggle {
+  min-width: 6.2rem;
+  border: 1px solid #d3ddd3;
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.96);
+  color: #53483b;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 0.56rem 0.86rem;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.trip-scavenger-toggle:hover:not(:disabled),
+.trip-scavenger-toggle:focus-visible {
+  transform: translateY(-1px);
+  border-color: #b8d2c6;
+  box-shadow: 0 10px 18px rgba(71, 108, 91, 0.12);
+}
+
+.trip-scavenger-toggle.is-found {
+  border-color: #73b596;
+  background: linear-gradient(165deg, rgba(225, 247, 229, 0.98), rgba(202, 237, 213, 0.96));
+  color: #27523a;
+}
+
 .trip-bingo-summary-card {
   gap: 1rem;
 }
@@ -1688,6 +1778,37 @@ body[data-page="road-trip-bingo"] .site-header {
   background: #fff8ef;
 }
 
+.trip-quick-pick-shell {
+  gap: 0.6rem;
+}
+
+.trip-quick-pick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.trip-quick-pick-button {
+  border: 1px solid #d9ddd5;
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.96);
+  color: #54483c;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0.52rem 0.82rem;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.trip-quick-pick-button:hover,
+.trip-quick-pick-button:focus-visible {
+  transform: translateY(-1px);
+  border-color: #b8d2c6;
+  box-shadow: 0 10px 18px rgba(71, 108, 91, 0.12);
+}
+
 .trip-log-tips {
   gap: 0.45rem;
 }
@@ -1797,6 +1918,18 @@ select:focus-visible {
   .trip-bingo-board-grid {
     grid-template-columns: 1fr;
     gap: 0.85rem;
+  }
+
+  .trip-game-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-scavenger-item {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-scavenger-actions {
+    justify-content: flex-start;
   }
 
   .trip-bingo-board-header {

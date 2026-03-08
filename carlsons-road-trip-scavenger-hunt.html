@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Road Trip Scavenger Hunt | SavemHQ</title>
+    <meta
+      name="description"
+      content="Live scavenger hunt tracker for the Carlson road trip with shared roadside items and quick custom additions."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="road-trip-games">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner trip-hero-grid">
+          <div class="home-hero-copy">
+            <p class="tagline">Game Three</p>
+            <h1>Road Trip Scavenger Hunt</h1>
+            <p class="subheadline">
+              Spot the roadside oddities, mark them off fast, and see who clears the board first.
+            </p>
+            <div class="hero-surface">
+              <p class="intro">
+                The page starts with a general hunt list and lets us add custom roadside finds whenever a new obsession shows up.
+              </p>
+              <p class="wink">Family and friends can watch the progress live. Andy and Savannah can tap finds and add new hunt items.</p>
+            </div>
+            <div class="hero-actions trip-live-links">
+              <a class="btn btn-primary" href="#scavenger-board">Open Hunt</a>
+              <a class="btn btn-secondary" href="carlsons-road-trip-games.html">Back To Games Hub</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="scavenger-board" class="section section-card">
+        <div class="container trip-games-layout">
+          <article class="project-card trip-summary-card trip-games-summary-card">
+            <div>
+              <p class="section-kicker">Live Hunt</p>
+              <h2>Scavenger Scoreboard</h2>
+              <p id="scavenger-status" class="small-note">Loading scavenger hunt...</p>
+            </div>
+
+            <div class="trip-stat-grid" aria-live="polite">
+              <div class="trip-stat-chip">
+                <span class="small-note">Items on the board</span>
+                <strong id="scavenger-total-items">0</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Andy found</span>
+                <strong id="scavenger-andy-count">0</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Savannah found</span>
+                <strong id="scavenger-savannah-count">0</strong>
+              </div>
+            </div>
+
+            <form id="scavenger-add-form" class="trip-log-form">
+              <div class="trip-log-field">
+                <label for="scavenger-add-input">Add another item</label>
+                <input id="scavenger-add-input" class="trip-text-input" type="text" maxlength="80" placeholder="Pink tractor, giant boot, alpaca farm..." />
+              </div>
+              <div class="form-actions">
+                <button id="scavenger-add-button" class="btn btn-secondary" type="submit">Add Item</button>
+              </div>
+            </form>
+          </article>
+
+          <section class="project-card trip-summary-card trip-scavenger-card">
+            <div>
+              <p class="section-kicker">Hunt List</p>
+              <h2>Mark Finds Fast</h2>
+              <p class="small-note">Tap Andy or Savannah when one of the items shows up. Custom items join the same list automatically.</p>
+            </div>
+
+            <div id="scavenger-item-list" class="trip-scavenger-list" aria-live="polite"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Carlsons Insane Road Trip, now scanning the roadside.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="carlsons-road-trip.html">Live Map</a></li>
+            <li><a href="carlsons-road-trip-games.html">Games</a></li>
+            <li><a href="carlsons-kids-said-it-bingo.html">Bingo</a></li>
+            <li><a href="carlsons-alphabet-game.html">Alphabet</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+      import { escapeHtml } from "./js/road-trip-shared.js";
+      import {
+        addScavengerHuntItem,
+        createScavengerHuntPreviewState,
+        ensureScavengerHuntGame,
+        subscribeToScavengerHunt,
+        toggleScavengerHuntItem,
+      } from "./js/road-trip-games-shared.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Live Map", href: "carlsons-road-trip.html" },
+          { label: "Games", href: "carlsons-road-trip-games.html" },
+          { label: "Bingo", href: "carlsons-kids-said-it-bingo.html" },
+          { label: "Alphabet", href: "carlsons-alphabet-game.html" },
+          { label: "Scavenger", href: "carlsons-road-trip-scavenger-hunt.html" },
+          { label: "Moments", href: "carlsons-kid-sayings.html" },
+          { label: "What We're Doing", href: "carlsons-sing-along.html" },
+        ],
+      });
+
+      const statusText = document.getElementById("scavenger-status");
+      const totalItemsValue = document.getElementById("scavenger-total-items");
+      const andyCountValue = document.getElementById("scavenger-andy-count");
+      const savannahCountValue = document.getElementById("scavenger-savannah-count");
+      const itemList = document.getElementById("scavenger-item-list");
+      const addForm = document.getElementById("scavenger-add-form");
+      const addInput = document.getElementById("scavenger-add-input");
+      const addButton = document.getElementById("scavenger-add-button");
+
+      let canManageHunt = false;
+      let scavengerState = createScavengerHuntPreviewState();
+
+      const renderState = () => {
+        totalItemsValue.textContent = String(scavengerState.items.length);
+        andyCountValue.textContent = String(scavengerState.andyFoundCount || 0);
+        savannahCountValue.textContent = String(scavengerState.savannahFoundCount || 0);
+
+        itemList.innerHTML = scavengerState.items
+          .map((item) => `
+            <article class="trip-scavenger-item ${item.isCustom ? "is-custom" : ""}">
+              <div>
+                <strong>${escapeHtml(item.label)}</strong>
+                <p class="small-note">${item.isCustom ? "Custom add-on" : "General hunt item"}</p>
+              </div>
+              <div class="trip-scavenger-actions">
+                <button class="trip-scavenger-toggle ${item.andyFound ? "is-found" : ""}" type="button" data-player="andy" data-item-id="${escapeHtml(item.id)}" ${!canManageHunt ? "disabled" : ""}>Andy</button>
+                <button class="trip-scavenger-toggle ${item.savannahFound ? "is-found" : ""}" type="button" data-player="savannah" data-item-id="${escapeHtml(item.id)}" ${!canManageHunt ? "disabled" : ""}>Savannah</button>
+              </div>
+            </article>
+          `)
+          .join("");
+
+        addInput.disabled = !canManageHunt;
+        addButton.disabled = !canManageHunt;
+        refreshRevealMotion({ scope: itemList, selector: ".trip-scavenger-item" });
+      };
+
+      initHeaderShell();
+      initRevealMotion();
+
+      itemList.addEventListener("click", async (event) => {
+        const target = event.target instanceof Element ? event.target.closest(".trip-scavenger-toggle") : null;
+        if (!target || !canManageHunt) {
+          return;
+        }
+
+        const player = String(target.getAttribute("data-player") || "");
+        const itemId = String(target.getAttribute("data-item-id") || "");
+        statusText.textContent = "Updating scavenger list...";
+
+        try {
+          await toggleScavengerHuntItem({ player, itemId });
+        } catch (error) {
+          console.error("Could not update scavenger hunt item", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          statusText.textContent = `Could not update item (${details}).`;
+        }
+      });
+
+      addForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!canManageHunt) {
+          return;
+        }
+
+        const label = String(addInput.value || "").trim();
+        if (!label) {
+          statusText.textContent = "Enter an item before adding it to the hunt.";
+          return;
+        }
+
+        addButton.disabled = true;
+        statusText.textContent = "Adding item to the hunt...";
+
+        try {
+          await addScavengerHuntItem(label);
+          addInput.value = "";
+          addInput.focus();
+        } catch (error) {
+          console.error("Could not add scavenger hunt item", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          statusText.textContent = `Could not add item (${details}).`;
+        } finally {
+          addButton.disabled = !canManageHunt;
+        }
+      });
+
+      initHeaderAuth({
+        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson }) => {
+          canManageHunt = Boolean(user) && (isAdmin || ((approvalStatus === "approved") && ["andy", "savannah"].includes(String(approvalPerson || "").toLowerCase())));
+
+          if (!user) {
+            statusText.textContent = "Watching live in read-only mode. Sign in as Andy or Savannah to mark finds or add items.";
+          } else if (canManageHunt) {
+            statusText.textContent = "Ready. Tap finds and add more roadside oddities when they show up.";
+            try {
+              await ensureScavengerHuntGame();
+            } catch (error) {
+              console.error("Could not initialize scavenger hunt", error);
+            }
+          } else {
+            statusText.textContent = "Signed in, but this page is read-only unless you are Andy or Savannah.";
+          }
+
+          renderState();
+        },
+      });
+
+      subscribeToScavengerHunt({
+        onData: (state) => {
+          scavengerState = state || createScavengerHuntPreviewState();
+          statusText.textContent = state
+            ? (canManageHunt ? "Live hunt is ready. Mark finds or add a new item anytime." : "Scavenger hunt is live. Watching in read-only mode.")
+            : "Showing a preview list until the first live hunt is initialized.";
+          renderState();
+        },
+        onError: (error) => {
+          console.error("Could not subscribe to scavenger hunt", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          statusText.textContent = `Could not load scavenger hunt (${details}).`;
+          renderState();
+        },
+      });
+    </script>
+  </body>
+</html>

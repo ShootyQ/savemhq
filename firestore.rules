@@ -114,6 +114,46 @@ service cloud.firestore {
       ]);
     }
 
+    function alphabetGameKeysAreAllowed() {
+      return request.resource.data.keys().hasAll([
+        "tripId",
+        "gameId",
+        "title",
+        "andyWins",
+        "savannahWins",
+        "lastWinner",
+        "lastWinnerLabel",
+        "lastWonAt",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "tripId",
+        "gameId",
+        "title",
+        "andyWins",
+        "savannahWins",
+        "lastWinner",
+        "lastWinnerLabel",
+        "lastWonAt",
+        "updatedAt"
+      ]);
+    }
+
+    function scavengerHuntKeysAreAllowed() {
+      return request.resource.data.keys().hasAll([
+        "tripId",
+        "gameId",
+        "title",
+        "items",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "tripId",
+        "gameId",
+        "title",
+        "items",
+        "updatedAt"
+      ]);
+    }
+
     function monthWriteKeysAreAllowed() {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly([
         "month",
@@ -200,11 +240,23 @@ service cloud.firestore {
     match /roadTrips/{tripId}/games/{gameId} {
       allow read: if true;
       allow create, update: if isAutoApprovedUser()
-        && gameId == "kids-said-it-bingo"
         && request.resource.data.tripId == tripId
         && request.resource.data.gameId == gameId
-        && request.resource.data.title == "Kid's Said It Bingo"
-        && kidsSaidItBingoKeysAreAllowed();
+        && (
+          (
+            gameId == "kids-said-it-bingo"
+            && request.resource.data.title == "Kid's Said It Bingo"
+            && kidsSaidItBingoKeysAreAllowed()
+          ) || (
+            gameId == "alphabet-game"
+            && request.resource.data.title == "Alphabet Game"
+            && alphabetGameKeysAreAllowed()
+          ) || (
+            gameId == "road-trip-scavenger-hunt"
+            && request.resource.data.title == "Road Trip Scavenger Hunt"
+            && scavengerHuntKeysAreAllowed()
+          )
+        );
       allow delete: if isAdmin();
     }
   }

@@ -38,6 +38,7 @@ export const ROAD_TRIP_EVENT_TYPES = {
 export const ROAD_TRIP_SUBJECTS = {
   max: { label: "Max", shortLabel: "M", className: "is-max" },
   ellie: { label: "Ellie", shortLabel: "E", className: "is-ellie" },
+  violet: { label: "Violet", shortLabel: "V", className: "is-violet" },
   savannah: { label: "Savannah", shortLabel: "S", className: "is-savannah" },
   andy: { label: "Andy", shortLabel: "A", className: "is-andy" },
   family: { label: "Family", shortLabel: "F", className: "is-family" },

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alphabet Game | SavemHQ</title>
+    <meta
+      name="description"
+      content="Simple live alphabet game tracker for the Carlson road trip with one-tap wins for Andy or Savannah."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="road-trip-games">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner trip-hero-grid">
+          <div class="home-hero-copy">
+            <p class="tagline">Game Two</p>
+            <h1>Alphabet Game</h1>
+            <p class="subheadline">
+              A clean little win tracker for the game where we only care who finished first.
+            </p>
+            <div class="hero-surface">
+              <p class="intro">
+                No extra logging here. Just tap the winner, keep the score moving, and jump back into the game.
+              </p>
+              <p class="wink">Family and friends can watch live. Andy and Savannah can update the score.</p>
+            </div>
+            <div class="hero-actions trip-live-links">
+              <a class="btn btn-primary" href="#alphabet-scoreboard">Open Tracker</a>
+              <a class="btn btn-secondary" href="carlsons-road-trip-games.html">Back To Games Hub</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="alphabet-scoreboard" class="section section-card">
+        <div class="container trip-games-layout">
+          <article class="project-card trip-summary-card trip-games-summary-card">
+            <div>
+              <p class="section-kicker">Live Tracker</p>
+              <h2>Alphabet Game Score</h2>
+              <p id="alphabet-game-status" class="small-note">Loading alphabet game scores...</p>
+            </div>
+
+            <div class="trip-stat-grid" aria-live="polite">
+              <div class="trip-stat-chip">
+                <span class="small-note">Andy wins</span>
+                <strong id="alphabet-game-andy-wins">0</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Savannah wins</span>
+                <strong id="alphabet-game-savannah-wins">0</strong>
+              </div>
+            </div>
+
+            <p id="alphabet-game-last-win" class="small-note">No alphabet wins logged yet.</p>
+          </article>
+
+          <section class="project-card trip-summary-card trip-game-actions-card">
+            <div>
+              <p class="section-kicker">One Tap</p>
+              <h2>Record The Winner</h2>
+              <p class="small-note">Use the buttons below when a round ends. No extra details needed.</p>
+            </div>
+
+            <div class="trip-game-action-grid">
+              <button id="alphabet-game-andy-button" class="btn btn-primary trip-game-win-button" type="button">Add Andy Win</button>
+              <button id="alphabet-game-savannah-button" class="btn btn-secondary trip-game-win-button" type="button">Add Savannah Win</button>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Carlsons Insane Road Trip, alphabet edition.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="carlsons-road-trip.html">Live Map</a></li>
+            <li><a href="carlsons-road-trip-games.html">Games</a></li>
+            <li><a href="carlsons-kids-said-it-bingo.html">Bingo</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { initRevealMotion } from "./js/reveal-motion.js";
+      import { formatEventTime } from "./js/road-trip-shared.js";
+      import {
+        createAlphabetGamePreviewState,
+        ensureAlphabetGame,
+        recordAlphabetGameWin,
+        subscribeToAlphabetGame,
+      } from "./js/road-trip-games-shared.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Live Map", href: "carlsons-road-trip.html" },
+          { label: "Games", href: "carlsons-road-trip-games.html" },
+          { label: "Bingo", href: "carlsons-kids-said-it-bingo.html" },
+          { label: "Alphabet", href: "carlsons-alphabet-game.html" },
+          { label: "Moments", href: "carlsons-kid-sayings.html" },
+          { label: "What We're Doing", href: "carlsons-sing-along.html" },
+        ],
+      });
+
+      const statusText = document.getElementById("alphabet-game-status");
+      const andyWinsValue = document.getElementById("alphabet-game-andy-wins");
+      const savannahWinsValue = document.getElementById("alphabet-game-savannah-wins");
+      const lastWinValue = document.getElementById("alphabet-game-last-win");
+      const andyButton = document.getElementById("alphabet-game-andy-button");
+      const savannahButton = document.getElementById("alphabet-game-savannah-button");
+
+      let canManageScore = false;
+      let alphabetState = createAlphabetGamePreviewState();
+
+      const renderState = () => {
+        andyWinsValue.textContent = String(alphabetState?.andyWins || 0);
+        savannahWinsValue.textContent = String(alphabetState?.savannahWins || 0);
+        lastWinValue.textContent = alphabetState?.lastWinnerLabel
+          ? `${alphabetState.lastWinnerLabel} recorded the latest alphabet win on ${formatEventTime(alphabetState.lastWonAt)}.`
+          : "No alphabet wins logged yet.";
+
+        andyButton.disabled = !canManageScore;
+        savannahButton.disabled = !canManageScore;
+      };
+
+      const recordWin = async (player) => {
+        if (!canManageScore) {
+          return;
+        }
+
+        andyButton.disabled = true;
+        savannahButton.disabled = true;
+        statusText.textContent = `Saving ${player === "andy" ? "Andy" : "Savannah"}'s win...`;
+
+        try {
+          await recordAlphabetGameWin(player);
+        } catch (error) {
+          console.error("Could not record alphabet win", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          statusText.textContent = `Could not record win (${details}).`;
+          renderState();
+        }
+      };
+
+      initHeaderShell();
+      initRevealMotion();
+
+      andyButton.addEventListener("click", () => recordWin("andy"));
+      savannahButton.addEventListener("click", () => recordWin("savannah"));
+
+      initHeaderAuth({
+        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson }) => {
+          canManageScore = Boolean(user) && (isAdmin || ((approvalStatus === "approved") && ["andy", "savannah"].includes(String(approvalPerson || "").toLowerCase())));
+
+          if (!user) {
+            statusText.textContent = "Watching live in read-only mode. Sign in as Andy or Savannah to add wins.";
+          } else if (canManageScore) {
+            statusText.textContent = "Ready. Tap the winner when a round ends.";
+            try {
+              await ensureAlphabetGame();
+            } catch (error) {
+              console.error("Could not initialize alphabet game", error);
+            }
+          } else {
+            statusText.textContent = "Signed in, but this page is read-only unless you are Andy or Savannah.";
+          }
+
+          renderState();
+        },
+      });
+
+      subscribeToAlphabetGame({
+        onData: (state) => {
+          alphabetState = state || createAlphabetGamePreviewState();
+          statusText.textContent = state
+            ? (canManageScore ? "Live score is ready. Tap the winner when the round ends." : "Alphabet score is live. Watching in read-only mode.")
+            : "Showing a preview scoreboard until the first live score is initialized.";
+          renderState();
+        },
+        onError: (error) => {
+          console.error("Could not subscribe to alphabet game", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          statusText.textContent = `Could not load alphabet game (${details}).`;
+          renderState();
+        },
+      });
+    </script>
+  </body>
+</html>
