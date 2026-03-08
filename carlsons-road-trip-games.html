@@ -183,12 +183,18 @@
 
             return `
               <article class="project-card trip-game-card trip-game-tile ${game.isLive ? "is-live" : "is-soon"}">
-                <span class="trip-category-badge ${game.isLive ? "" : "is-stop"}">${escapeHtml(game.badge)}</span>
-                <h3>${escapeHtml(game.title)}</h3>
-                <p>${escapeHtml(game.description)}</p>
-                ${liveStats}
-                <p class="small-note">${summaryLabel}</p>
-                ${game.href ? `<a class="btn btn-primary" href="${escapeHtml(game.href)}">Open Game</a>` : `<span class="small-note">Tile reserved for the next game.</span>`}
+                <div class="trip-game-tile-copy">
+                  <span class="trip-category-badge ${game.isLive ? "" : "is-stop"}">${escapeHtml(game.badge)}</span>
+                  <h3>${escapeHtml(game.title)}</h3>
+                  <p>${escapeHtml(game.description)}</p>
+                </div>
+                <div class="trip-game-tile-meta">
+                  ${liveStats}
+                  <p class="small-note">${summaryLabel}</p>
+                </div>
+                <div class="trip-game-tile-action">
+                  ${game.href ? `<a class="btn btn-primary" href="${escapeHtml(game.href)}">Open Game</a>` : `<span class="small-note">Tile reserved for the next game.</span>`}
+                </div>
               </article>
             `;
           })

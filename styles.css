@@ -1515,6 +1515,8 @@ body[data-page="road-trip-bingo"] .site-header {
 
 .trip-games-hub-grid {
   margin-top: 0.9rem;
+  align-items: stretch;
+  grid-auto-rows: 1fr;
 }
 
 .trip-game-card {
@@ -1524,7 +1526,24 @@ body[data-page="road-trip-bingo"] .site-header {
 
 .trip-game-tile {
   min-height: 17rem;
+  height: 100%;
+  grid-template-rows: auto 1fr auto;
+  align-content: stretch;
+}
+
+.trip-game-tile-copy,
+.trip-game-tile-meta {
+  display: grid;
+  gap: 0.72rem;
   align-content: start;
+}
+
+.trip-game-tile-meta {
+  align-self: stretch;
+}
+
+.trip-game-tile-action {
+  align-self: end;
 }
 
 .trip-game-tile.is-live {
@@ -1731,6 +1750,7 @@ body[data-page="road-trip-bingo"] .site-header {
 
 .trip-game-card .btn {
   width: fit-content;
+  margin-top: 0;
 }
 
 .trip-stop-pill {
