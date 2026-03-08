@@ -80,6 +80,40 @@ service cloud.firestore {
       ]);
     }
 
+    function kidsSaidItBingoKeysAreAllowed() {
+      return request.resource.data.keys().hasAll([
+        "tripId",
+        "gameId",
+        "title",
+        "round",
+        "andyCard",
+        "savannahCard",
+        "andyMarks",
+        "savannahMarks",
+        "andyWins",
+        "savannahWins",
+        "lastWinner",
+        "lastWinnerLabel",
+        "lastWonAt",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "tripId",
+        "gameId",
+        "title",
+        "round",
+        "andyCard",
+        "savannahCard",
+        "andyMarks",
+        "savannahMarks",
+        "andyWins",
+        "savannahWins",
+        "lastWinner",
+        "lastWinnerLabel",
+        "lastWonAt",
+        "updatedAt"
+      ]);
+    }
+
     function monthWriteKeysAreAllowed() {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly([
         "month",
@@ -161,6 +195,17 @@ service cloud.firestore {
         && resource.data.tripId == tripId
         && resourcePersonMatchesAuthedRoadTripLogger()
       );
+    }
+
+    match /roadTrips/{tripId}/games/{gameId} {
+      allow read: if true;
+      allow create, update: if isAutoApprovedUser()
+        && gameId == "kids-said-it-bingo"
+        && request.resource.data.tripId == tripId
+        && request.resource.data.gameId == gameId
+        && request.resource.data.title == "Kid's Said It Bingo"
+        && kidsSaidItBingoKeysAreAllowed();
+      allow delete: if isAdmin();
     }
   }
 }

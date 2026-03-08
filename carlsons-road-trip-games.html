@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Road Trip Games | SavemHQ</title>
+    <meta
+      name="description"
+      content="Live scoreboard and game hub for the Carlson road trip, including Kid's Said It Bingo and future minivan games."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="road-trip-games">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner trip-hero-grid">
+          <div class="home-hero-copy">
+            <p class="tagline">Road Trip Arcade</p>
+            <h1>Road Trip Games</h1>
+            <p class="subheadline">
+              One place for family and friends to peek at the live scoreboard, open each game, and follow the latest van-sized nonsense.
+            </p>
+            <div class="hero-surface">
+              <p class="intro">
+                Think of this as the game shelf for the trip. As we add more games, they will land here with a live score tile and a link to jump in.
+              </p>
+              <p class="wink">Kid's Said It Bingo is first up, with live cards for Andy and Savannah.</p>
+            </div>
+            <div class="hero-actions trip-live-links">
+              <a class="btn btn-primary" href="carlsons-kids-said-it-bingo.html">Open Bingo</a>
+              <a class="btn btn-secondary" href="carlsons-road-trip.html">Back To Live Map</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-card">
+        <div class="container trip-games-layout">
+          <article class="project-card trip-summary-card trip-games-summary-card">
+            <div>
+              <p class="section-kicker">Live Scoreboard</p>
+              <h2>Kid's Said It Bingo</h2>
+              <p id="trip-games-status" class="small-note">Loading live game scoreboard...</p>
+            </div>
+
+            <div class="trip-stat-grid" aria-live="polite">
+              <div class="trip-stat-chip">
+                <span class="small-note">Current round</span>
+                <strong id="trip-games-round">--</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Andy wins</span>
+                <strong id="trip-games-andy-wins">0</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Savannah wins</span>
+                <strong id="trip-games-savannah-wins">0</strong>
+              </div>
+            </div>
+
+            <p id="trip-games-last-win" class="small-note">No bingo wins yet.</p>
+          </article>
+
+          <div>
+            <p class="section-kicker">Game Shelf</p>
+            <h2>Open A Game</h2>
+            <p class="section-intro">Each tile can become its own live tracker as the trip grows.</p>
+            <div id="trip-games-grid" class="trip-game-grid trip-games-hub-grid" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Carlsons Insane Road Trip, with a very competitive back seat.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="carlsons-road-trip.html">Live Map</a></li>
+            <li><a href="carlsons-kids-said-it-bingo.html">Bingo</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+      import { escapeHtml, formatEventTime } from "./js/road-trip-shared.js";
+      import {
+        ensureKidsSaidItBingoGame,
+        ROAD_TRIP_GAME_DECK,
+        subscribeToKidsSaidItBingo,
+      } from "./js/road-trip-games-shared.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Live Map", href: "carlsons-road-trip.html" },
+          { label: "Games", href: "carlsons-road-trip-games.html" },
+          { label: "Bingo", href: "carlsons-kids-said-it-bingo.html" },
+          { label: "Moments", href: "carlsons-kid-sayings.html" },
+          { label: "What We're Doing", href: "carlsons-sing-along.html" },
+        ],
+      });
+
+      const gamesGrid = document.getElementById("trip-games-grid");
+      const gamesStatus = document.getElementById("trip-games-status");
+      const roundValue = document.getElementById("trip-games-round");
+      const andyWinsValue = document.getElementById("trip-games-andy-wins");
+      const savannahWinsValue = document.getElementById("trip-games-savannah-wins");
+      const lastWinValue = document.getElementById("trip-games-last-win");
+
+      let bingoState = null;
+
+      const renderSummary = () => {
+        roundValue.textContent = bingoState ? String(bingoState.round) : "--";
+        andyWinsValue.textContent = String(bingoState?.andyWins || 0);
+        savannahWinsValue.textContent = String(bingoState?.savannahWins || 0);
+
+        lastWinValue.textContent = bingoState?.lastWinnerLabel
+          ? `${bingoState.lastWinnerLabel} won the last round on ${formatEventTime(bingoState.lastWonAt)}.`
+          : "No bingo wins yet.";
+      };
+
+      const renderGames = () => {
+        gamesGrid.innerHTML = ROAD_TRIP_GAME_DECK
+          .map((game) => {
+            const isBingo = game.id === "kids-said-it-bingo";
+            const liveStats = isBingo && bingoState
+              ? `
+                <div class="trip-game-tile-stats">
+                  <span class="trip-pill">Round ${escapeHtml(bingoState.round)}</span>
+                  <span class="trip-pill">Andy ${escapeHtml(bingoState.andyWins)}</span>
+                  <span class="trip-pill">Savannah ${escapeHtml(bingoState.savannahWins)}</span>
+                </div>
+              `
+              : "";
+
+            return `
+              <article class="project-card trip-game-card trip-game-tile ${game.isLive ? "is-live" : "is-soon"}">
+                <span class="trip-category-badge ${game.isLive ? "" : "is-stop"}">${escapeHtml(game.badge)}</span>
+                <h3>${escapeHtml(game.title)}</h3>
+                <p>${escapeHtml(game.description)}</p>
+                ${liveStats}
+                <p class="small-note">${isBingo && bingoState ? `Last win: ${escapeHtml(bingoState.lastWinnerLabel || "Waiting for the first bingo")}` : escapeHtml(game.scoreboardLabel)}</p>
+                ${game.href ? `<a class="btn btn-primary" href="${escapeHtml(game.href)}">Open Game</a>` : `<span class="small-note">Tile reserved for the next game.</span>`}
+              </article>
+            `;
+          })
+          .join("");
+
+        refreshRevealMotion({ scope: gamesGrid, selector: ".trip-game-tile" });
+      };
+
+      initHeaderShell();
+      initRevealMotion();
+
+      initHeaderAuth({
+        onStateChange: async ({ user, isAdmin, approvalStatus }) => {
+          if (!(user && (approvalStatus === "approved" || isAdmin))) {
+            return;
+          }
+
+          try {
+            await ensureKidsSaidItBingoGame();
+          } catch (error) {
+            console.error("Could not initialize bingo game", error);
+          }
+        },
+      });
+
+      subscribeToKidsSaidItBingo({
+        onData: (state) => {
+          bingoState = state;
+          gamesStatus.textContent = state
+            ? `Round ${state.round} is live. Score updates land here automatically.`
+            : "Waiting for the first bingo round to initialize.";
+          renderSummary();
+          renderGames();
+        },
+        onError: (error) => {
+          console.error("Could not subscribe to games hub", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          gamesStatus.textContent = `Could not load game scoreboard (${details}).`;
+          renderSummary();
+          renderGames();
+        },
+      });
+    </script>
+  </body>
+</html>

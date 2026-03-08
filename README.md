@@ -14,6 +14,8 @@ This is a static site.
 - Main content and sections: `index.html`
 - Visual style and layout: `styles.css`
 - Shared header/auth runtime: `js/auth-shared.js`, `js/header-shell.js`
+- Road trip hub and live map: `carlsons-road-trip.html`, `js/road-trip-shared.js`
+- Road trip games hub and bingo state: `carlsons-road-trip-games.html`, `carlsons-kids-said-it-bingo.html`, `js/road-trip-games-shared.js`
 
 ## 2026 Competition UX Notes
 

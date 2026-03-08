@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kid's Said It Bingo | SavemHQ</title>
+    <meta
+      name="description"
+      content="Live two-card bingo game for the Carlson road trip, with shared rounds and automatic scoreboard updates."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="road-trip-bingo">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner trip-hero-grid">
+          <div class="home-hero-copy">
+            <p class="tagline">Game One</p>
+            <h1>Kid's Said It Bingo</h1>
+            <p class="subheadline">
+              Two live bingo cards, one for Andy and one for Savannah, built from the phrases we are almost guaranteed to hear on the road.
+            </p>
+            <div class="hero-surface">
+              <p class="intro">
+                Family and friends can watch along in read-only mode. Andy and Savannah can tap squares as they happen, and a bingo will start the next round automatically.
+              </p>
+              <p class="wink">The center square is always free, because some rules should be in our favor.</p>
+            </div>
+            <div class="hero-actions trip-live-links">
+              <a class="btn btn-primary" href="#bingo-boards">Open Boards</a>
+              <a class="btn btn-secondary" href="carlsons-road-trip-games.html">Back To Games Hub</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="bingo-boards" class="section section-card">
+        <div class="container trip-bingo-layout">
+          <article class="project-card trip-summary-card trip-bingo-summary-card">
+            <div>
+              <p class="section-kicker">Live Match</p>
+              <h2>Current Round</h2>
+              <p id="trip-bingo-status" class="small-note">Loading the bingo cards...</p>
+            </div>
+
+            <div class="trip-stat-grid" aria-live="polite">
+              <div class="trip-stat-chip">
+                <span class="small-note">Round</span>
+                <strong id="trip-bingo-round">--</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Andy wins</span>
+                <strong id="trip-bingo-andy-wins">0</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Savannah wins</span>
+                <strong id="trip-bingo-savannah-wins">0</strong>
+              </div>
+            </div>
+
+            <p id="trip-bingo-last-winner" class="small-note">Waiting for the first bingo.</p>
+
+            <div class="form-actions">
+              <button id="trip-bingo-next-round" class="btn btn-secondary" type="button">Start Fresh Round</button>
+            </div>
+          </article>
+
+          <div class="trip-bingo-board-grid">
+            <section class="project-card trip-bingo-board-shell">
+              <div class="trip-bingo-board-header">
+                <div>
+                  <p class="section-kicker">Board One</p>
+                  <h2>Andy</h2>
+                </div>
+                <span id="trip-bingo-andy-meta" class="trip-pill">0 marked</span>
+              </div>
+              <div id="trip-bingo-andy-board" class="trip-bingo-board" aria-live="polite"></div>
+            </section>
+
+            <section class="project-card trip-bingo-board-shell">
+              <div class="trip-bingo-board-header">
+                <div>
+                  <p class="section-kicker">Board Two</p>
+                  <h2>Savannah</h2>
+                </div>
+                <span id="trip-bingo-savannah-meta" class="trip-pill">0 marked</span>
+              </div>
+              <div id="trip-bingo-savannah-board" class="trip-bingo-board" aria-live="polite"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Carlsons Insane Road Trip, now with bingo.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="carlsons-road-trip.html">Live Map</a></li>
+            <li><a href="carlsons-road-trip-games.html">Games</a></li>
+            <li><a href="carlsons-kid-sayings.html">Moments</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+      import { escapeHtml, formatEventTime } from "./js/road-trip-shared.js";
+      import {
+        ensureKidsSaidItBingoGame,
+        KIDS_SAID_IT_BINGO_FREE_INDEX,
+        KIDS_SAID_IT_BINGO_SIZE,
+        startNextKidsSaidItBingoRound,
+        subscribeToKidsSaidItBingo,
+        toggleKidsSaidItBingoMark,
+      } from "./js/road-trip-games-shared.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Live Map", href: "carlsons-road-trip.html" },
+          { label: "Games", href: "carlsons-road-trip-games.html" },
+          { label: "Bingo", href: "carlsons-kids-said-it-bingo.html" },
+          { label: "Moments", href: "carlsons-kid-sayings.html" },
+          { label: "What We're Doing", href: "carlsons-sing-along.html" },
+        ],
+      });
+
+      const statusText = document.getElementById("trip-bingo-status");
+      const roundValue = document.getElementById("trip-bingo-round");
+      const andyWinsValue = document.getElementById("trip-bingo-andy-wins");
+      const savannahWinsValue = document.getElementById("trip-bingo-savannah-wins");
+      const lastWinnerValue = document.getElementById("trip-bingo-last-winner");
+      const andyMeta = document.getElementById("trip-bingo-andy-meta");
+      const savannahMeta = document.getElementById("trip-bingo-savannah-meta");
+      const andyBoard = document.getElementById("trip-bingo-andy-board");
+      const savannahBoard = document.getElementById("trip-bingo-savannah-board");
+      const nextRoundButton = document.getElementById("trip-bingo-next-round");
+
+      let canManageBoards = false;
+      let bingoState = null;
+
+      const renderBoard = ({ host, player, card = [], marks = [] }) => {
+        const markSet = new Set(marks);
+
+        host.innerHTML = card
+          .map((label, index) => {
+            const isFree = index === KIDS_SAID_IT_BINGO_FREE_INDEX;
+            const isMarked = markSet.has(index);
+
+            return `
+              <button
+                class="trip-bingo-cell ${isMarked ? "is-marked" : ""} ${isFree ? "is-free" : ""}"
+                type="button"
+                data-player="${escapeHtml(player)}"
+                data-index="${escapeHtml(index)}"
+                ${isFree || !canManageBoards ? "disabled" : ""}
+              >
+                <span>${escapeHtml(label)}</span>
+              </button>
+            `;
+          })
+          .join("");
+      };
+
+      const renderState = () => {
+        roundValue.textContent = bingoState ? String(bingoState.round) : "--";
+        andyWinsValue.textContent = String(bingoState?.andyWins || 0);
+        savannahWinsValue.textContent = String(bingoState?.savannahWins || 0);
+        andyMeta.textContent = `${Math.max((bingoState?.andyMarks?.length || 1) - 1, 0)} marked`;
+        savannahMeta.textContent = `${Math.max((bingoState?.savannahMarks?.length || 1) - 1, 0)} marked`;
+        lastWinnerValue.textContent = bingoState?.lastWinnerLabel
+          ? `${bingoState.lastWinnerLabel} won the last round on ${formatEventTime(bingoState.lastWonAt)}.`
+          : "Waiting for the first bingo.";
+
+        renderBoard({ host: andyBoard, player: "andy", card: bingoState?.andyCard || [], marks: bingoState?.andyMarks || [] });
+        renderBoard({ host: savannahBoard, player: "savannah", card: bingoState?.savannahCard || [], marks: bingoState?.savannahMarks || [] });
+        nextRoundButton.disabled = !canManageBoards;
+        refreshRevealMotion({ scope: document, selector: ".trip-bingo-cell, .trip-bingo-board-shell" });
+      };
+
+      initHeaderShell();
+      initRevealMotion();
+
+      andyBoard.addEventListener("click", async (event) => {
+        const target = event.target instanceof Element ? event.target.closest(".trip-bingo-cell") : null;
+        if (!target || !canManageBoards) {
+          return;
+        }
+
+        const player = String(target.getAttribute("data-player") || "");
+        const index = Number(target.getAttribute("data-index"));
+        statusText.textContent = "Marking square...";
+
+        try {
+          await toggleKidsSaidItBingoMark({ player, index });
+        } catch (error) {
+          console.error("Could not update Andy board", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          statusText.textContent = `Could not update square (${details}).`;
+        }
+      });
+
+      savannahBoard.addEventListener("click", async (event) => {
+        const target = event.target instanceof Element ? event.target.closest(".trip-bingo-cell") : null;
+        if (!target || !canManageBoards) {
+          return;
+        }
+
+        const player = String(target.getAttribute("data-player") || "");
+        const index = Number(target.getAttribute("data-index"));
+        statusText.textContent = "Marking square...";
+
+        try {
+          await toggleKidsSaidItBingoMark({ player, index });
+        } catch (error) {
+          console.error("Could not update Savannah board", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          statusText.textContent = `Could not update square (${details}).`;
+        }
+      });
+
+      nextRoundButton.addEventListener("click", async () => {
+        if (!canManageBoards) {
+          return;
+        }
+
+        nextRoundButton.disabled = true;
+        statusText.textContent = "Starting a fresh round...";
+
+        try {
+          await startNextKidsSaidItBingoRound();
+        } catch (error) {
+          console.error("Could not start fresh round", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          statusText.textContent = `Could not start fresh round (${details}).`;
+        } finally {
+          nextRoundButton.disabled = !canManageBoards;
+        }
+      });
+
+      initHeaderAuth({
+        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson }) => {
+          canManageBoards = Boolean(user) && (isAdmin || ((approvalStatus === "approved") && ["andy", "savannah"].includes(String(approvalPerson || "").toLowerCase())));
+          nextRoundButton.disabled = !canManageBoards;
+
+          if (!user) {
+            statusText.textContent = "Watching live in read-only mode. Sign in as Andy or Savannah to mark squares.";
+          } else if (canManageBoards) {
+            statusText.textContent = "Live and ready. Tap a square when one of these classics happens.";
+            try {
+              await ensureKidsSaidItBingoGame();
+            } catch (error) {
+              console.error("Could not initialize bingo game", error);
+            }
+          } else {
+            statusText.textContent = "Signed in, but this page is read-only unless you are Andy or Savannah.";
+          }
+
+          renderState();
+        },
+      });
+
+      subscribeToKidsSaidItBingo({
+        onData: (state) => {
+          bingoState = state;
+
+          if (state && canManageBoards) {
+            statusText.textContent = `Round ${state.round} is live. A bingo will reset both cards automatically.`;
+          } else if (state) {
+            statusText.textContent = `Round ${state.round} is live. Watching in read-only mode.`;
+          } else {
+            statusText.textContent = "Waiting for the first bingo round to initialize.";
+          }
+
+          renderState();
+        },
+        onError: (error) => {
+          console.error("Could not subscribe to bingo game", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          statusText.textContent = `Could not load bingo game (${details}).`;
+        },
+      });
+    </script>
+  </body>
+</html>
