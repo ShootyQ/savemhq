@@ -28,9 +28,9 @@ export const ROAD_TRIP_ROUTE_POINTS = [
 ];
 
 export const ROAD_TRIP_EVENT_TYPES = {
-  "kid-said": { label: "Kid Said", badge: "Q", className: "is-quote" },
+  "kid-said": { label: "Talking", badge: "Q", className: "is-quote" },
   song: { label: "Singing", badge: "♪", className: "is-song" },
-  stop: { label: "Stop", badge: "S", className: "is-stop" },
+  doing: { label: "What We're Doing", badge: "D", className: "is-stop" },
 };
 
 export const ROAD_TRIP_SUBJECTS = {
@@ -43,16 +43,16 @@ export const ROAD_TRIP_SUBJECTS = {
 
 export const ROAD_TRIP_GAMES = [
   {
-    title: "Kids Said",
+    title: "Talking + Singing",
     href: "carlsons-kid-sayings.html",
-    description: "Log funny quotes and one-liners right when they happen.",
+    description: "Capture quotes, one-liners, and sing-along moments from one fast page.",
     eventType: "kid-said",
   },
   {
-    title: "Sing-Along Tracker",
+    title: "What We're Doing",
     href: "carlsons-sing-along.html",
-    description: "Capture chorus takeovers, full-volume belting, and soundtrack moments.",
-    eventType: "song",
+    description: "Log whatever the crew is doing right now and pin it on the map.",
+    eventType: "doing",
   },
 ];
 

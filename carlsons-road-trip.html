@@ -26,18 +26,18 @@
             <p class="tagline">Minneapolis -> Nashville -> Asheville -> Wisconsin -> Home</p>
             <h1>Carlsons Insane Road Trip</h1>
             <p class="subheadline">
-              The live family hub for quotes, singing, snacks, stops, and every absurd little moment worth pinning on the map.
+              The live family hub for talking, singing, activities, snacks, stops, and every absurd little moment worth pinning on the map.
             </p>
             <div class="hero-surface">
               <p class="intro">
-                Every log from your phones lands here in realtime. The route stays visible, the newest memories surface first, and the map fills in as the drive gets weirder.
+                Every log from your phones lands here in realtime. There is no route line now, so the memories themselves build the visual path of the trip.
               </p>
               <p class="wink">Version 1 tracks location when you submit an entry, not continuously.</p>
             </div>
             <div class="hero-actions trip-live-links">
               <a class="btn btn-primary" href="#trip-map-section">Open Live Map</a>
-              <a class="btn btn-secondary" href="carlsons-kid-sayings.html">Log Kids Said</a>
-              <a class="btn btn-secondary" href="carlsons-sing-along.html">Log Singing</a>
+              <a class="btn btn-secondary" href="carlsons-kid-sayings.html">Log Talking + Singing</a>
+              <a class="btn btn-secondary" href="carlsons-sing-along.html">Log What We're Doing</a>
             </div>
           </div>
 
@@ -65,8 +65,8 @@
             <div class="trip-map-toolbar">
               <div>
                 <p class="section-kicker">Live Map</p>
-                <h2>Road Memories Along The Route</h2>
-                <p id="trip-map-status" class="small-note" aria-live="polite">Loading route and live events...</p>
+                <h2>Road Memories Defining The Route</h2>
+                <p id="trip-map-status" class="small-note" aria-live="polite">Loading trip bounds and live events...</p>
               </div>
 
               <div class="trip-filter-row">
@@ -83,8 +83,9 @@
                 <label for="trip-event-filter">Type</label>
                 <select id="trip-event-filter" name="event-filter">
                   <option value="all">All moments</option>
-                  <option value="kid-said">Kids Said</option>
+                  <option value="kid-said">Talking</option>
                   <option value="song">Singing</option>
+                  <option value="doing">What We're Doing</option>
                 </select>
               </div>
             </div>
@@ -116,7 +117,7 @@
             <div id="trip-feed-list" class="trip-feed-list" aria-live="polite">
               <article class="trip-empty-card">
                 <h3>Waiting for the first road-trip log</h3>
-                <p>Once a quote or singing moment is posted, it will appear here automatically.</p>
+                <p>Once a talking, singing, or activity moment is posted, it will appear here automatically.</p>
               </article>
             </div>
           </aside>
@@ -131,17 +132,17 @@
 
           <div class="trip-game-grid">
             <article class="project-card trip-game-card">
-              <span class="trip-category-badge">Q Kids Said</span>
-              <h3>Kids Said</h3>
-              <p>For the instant classics, bizarre observations, and repeatable catchphrases.</p>
-              <a class="btn btn-primary" href="carlsons-kid-sayings.html">Open Kids Said</a>
+              <span class="trip-category-badge">Q + ♪ Talking + Singing</span>
+              <h3>Talking + Singing</h3>
+              <p>One quick page for quotes, one-liners, sing-alongs, and sudden backseat concerts.</p>
+              <a class="btn btn-primary" href="carlsons-kid-sayings.html">Open Moments Log</a>
             </article>
 
             <article class="project-card trip-game-card">
-              <span class="trip-category-badge is-song">♪ Singing</span>
-              <h3>Sing-Along Tracker</h3>
-              <p>Log belting, humming, full-volume solos, and accidental concert mode.</p>
-              <a class="btn btn-primary" href="carlsons-sing-along.html">Open Singing Log</a>
+              <span class="trip-category-badge is-stop">D What We're Doing</span>
+              <h3>What We're Doing</h3>
+              <p>Track stops, mini-adventures, car activities, or whatever the crew is up to in the moment.</p>
+              <a class="btn btn-primary" href="carlsons-sing-along.html">Open Activity Log</a>
             </article>
 
             <article class="project-card trip-game-card">
@@ -162,8 +163,8 @@
           <ul class="footer-nav">
             <li><a href="index.html">Home</a></li>
             <li><a href="#trip-map-section">Live Map</a></li>
-            <li><a href="carlsons-kid-sayings.html">Kids Said</a></li>
-            <li><a href="carlsons-sing-along.html">Singing</a></li>
+            <li><a href="carlsons-kid-sayings.html">Moments</a></li>
+            <li><a href="carlsons-sing-along.html">What We're Doing</a></li>
           </ul>
         </nav>
       </div>
@@ -189,8 +190,8 @@
         navLinks: [
           { label: "Home", href: "index.html" },
           { label: "Live Map", href: "carlsons-road-trip.html" },
-          { label: "Kids Said", href: "carlsons-kid-sayings.html" },
-          { label: "Singing", href: "carlsons-sing-along.html" },
+          { label: "Moments", href: "carlsons-kid-sayings.html" },
+          { label: "What We're Doing", href: "carlsons-sing-along.html" },
         ],
       });
 
@@ -246,28 +247,9 @@
           attribution: "&copy; OpenStreetMap contributors",
         }).addTo(map);
 
-        const routeLatLngs = ROAD_TRIP_ROUTE_POINTS.map((point) => [point.lat, point.lng]);
-        const routeLine = window.L.polyline(routeLatLngs, {
-          color: "#176f84",
-          weight: 5,
-          opacity: 0.86,
-          lineJoin: "round",
-        }).addTo(map);
-
-        ROAD_TRIP_ROUTE_POINTS.filter((point) => point.stop).forEach((point) => {
-          window.L.circleMarker([point.lat, point.lng], {
-            radius: 6,
-            color: "#9f7148",
-            weight: 2,
-            fillColor: "#fff6e7",
-            fillOpacity: 0.95,
-          })
-            .addTo(map)
-            .bindPopup(`<div class="trip-map-note"><strong>${escapeHtml(point.name)}</strong><p class="small-note">${escapeHtml(point.leg)}</p></div>`);
-        });
-
         eventLayer = window.L.layerGroup().addTo(map);
-        map.fitBounds(routeLine.getBounds(), { padding: [24, 24] });
+        const tripBounds = window.L.latLngBounds(ROAD_TRIP_ROUTE_POINTS.map((point) => [point.lat, point.lng]));
+        map.fitBounds(tripBounds, { padding: [24, 24] });
       };
 
       const filteredEvents = () => {
