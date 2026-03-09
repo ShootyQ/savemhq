@@ -56,6 +56,22 @@ Photo uploads for the road trip gallery also require Storage rules:
 firebase deploy --only firestore:rules,storage
 ```
 
+Photo uploads from the live site also require a bucket-level CORS configuration for the browser origin. This is separate from Firebase Storage rules and is not changed by `firebase deploy`.
+
+Use the checked-in `storage.cors.json` file and apply it to your storage bucket with Google Cloud CLI:
+
+```bash
+gcloud storage buckets update gs://savemhq.firebasestorage.app --cors-file=storage.cors.json
+```
+
+Then verify it:
+
+```bash
+gcloud storage buckets describe gs://savemhq.firebasestorage.app --format="default(cors_config)"
+```
+
+If your Firebase project still uses an older default bucket name, run the same commands with `gs://savemhq.appspot.com` instead.
+
 Rule reference:
 
 ```txt
