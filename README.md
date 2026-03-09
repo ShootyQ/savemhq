@@ -50,6 +50,12 @@ If you use Firebase CLI, deploy with:
 firebase deploy --only firestore:rules
 ```
 
+Photo uploads for the road trip gallery also require Storage rules:
+
+```bash
+firebase deploy --only firestore:rules,storage
+```
+
 Rule reference:
 
 ```txt

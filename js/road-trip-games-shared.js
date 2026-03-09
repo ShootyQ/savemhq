@@ -13,7 +13,7 @@ import {
   getDownloadURL,
   getStorage,
   ref,
-  uploadBytes,
+  uploadBytesResumable,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
 import { app, db } from "./auth-shared.js";
 import { ROAD_TRIP_ID, resolveRoadTripLogger } from "./road-trip-shared.js";
@@ -209,6 +209,9 @@ const createGameItemId = (label) => {
 };
 
 const PLAYER_IDENTITIES = new Set(["andy", "savannah"]);
+const COMPRESSIBLE_IMAGE_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+const PHOTO_PROOF_PREP_TIMEOUT_MS = 8000;
+const PHOTO_PROOF_UPLOAD_TIMEOUT_MS = 45000;
 
 export const isRoadTripPlayer = (person = "") => PLAYER_IDENTITIES.has(String(person || "").trim().toLowerCase());
 
@@ -230,13 +233,19 @@ const sanitizeStorageFileName = (value = "") => {
 const loadImageFromFile = (file) => new Promise((resolve, reject) => {
   const objectUrl = URL.createObjectURL(file);
   const image = new Image();
+  const timeoutId = window.setTimeout(() => {
+    URL.revokeObjectURL(objectUrl);
+    reject(new Error("image-load-timeout"));
+  }, PHOTO_PROOF_PREP_TIMEOUT_MS);
 
   image.onload = () => {
+    window.clearTimeout(timeoutId);
     URL.revokeObjectURL(objectUrl);
     resolve(image);
   };
 
   image.onerror = () => {
+    window.clearTimeout(timeoutId);
     URL.revokeObjectURL(objectUrl);
     reject(new Error("image-load-failed"));
   };
@@ -254,7 +263,17 @@ export const preparePhotoProofImage = async (file) => {
     throw new Error("invalid-photo-file-type");
   }
 
-  const image = await loadImageFromFile(file);
+  if (!COMPRESSIBLE_IMAGE_TYPES.has(mimeType)) {
+    return file;
+  }
+
+  let image;
+  try {
+    image = await loadImageFromFile(file);
+  } catch {
+    return file;
+  }
+
   const maxDimension = 1600;
   const longestSide = Math.max(image.naturalWidth || image.width || 0, image.naturalHeight || image.height || 0);
 
@@ -277,11 +296,51 @@ export const preparePhotoProofImage = async (file) => {
   context.drawImage(image, 0, 0, width, height);
 
   const compressed = await new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob || file), "image/jpeg", 0.82);
+    const timeoutId = window.setTimeout(() => resolve(file), PHOTO_PROOF_PREP_TIMEOUT_MS);
+
+    canvas.toBlob((blob) => {
+      window.clearTimeout(timeoutId);
+      resolve(blob || file);
+    }, "image/jpeg", 0.82);
   });
 
   return compressed;
 };
+
+const uploadPhotoProofBlob = ({ storageRef, file, onProgress } = {}) => new Promise((resolve, reject) => {
+  const uploadTask = uploadBytesResumable(storageRef, file, {
+    contentType: String(file?.type || "image/jpeg").toLowerCase() || "image/jpeg",
+    cacheControl: "public,max-age=3600",
+  });
+
+  const timeoutId = window.setTimeout(() => {
+    uploadTask.cancel();
+    reject(new Error("storage-upload-timeout"));
+  }, PHOTO_PROOF_UPLOAD_TIMEOUT_MS);
+
+  uploadTask.on(
+    "state_changed",
+    (snapshot) => {
+      if (Number.isFinite(snapshot.totalBytes) && snapshot.totalBytes > 0) {
+        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        onProgress?.(progress);
+      }
+    },
+    (error) => {
+      window.clearTimeout(timeoutId);
+      reject(error);
+    },
+    async () => {
+      window.clearTimeout(timeoutId);
+      try {
+        const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+        resolve(downloadUrl);
+      } catch (error) {
+        reject(error);
+      }
+    }
+  );
+});
 
 const normalizePhotoProofEntry = (entryId, data) => ({
   id: String(entryId || "").trim(),
@@ -585,6 +644,8 @@ export const submitPhotoProofEntry = async ({
   caption = "",
   file = null,
   sourcePage = "",
+  onStatus = null,
+  onProgress = null,
 } = {}) => {
   const logger = resolveRoadTripLogger({ userEmail, approvalPerson });
   const normalizedChallenge = getPhotoProofChallengeMeta(challengeId);
@@ -602,19 +663,21 @@ export const submitPhotoProofEntry = async ({
     throw new Error("missing-photo-file");
   }
 
+  onStatus?.("Preparing photo...");
   const preparedFile = await preparePhotoProofImage(file);
   const normalizedMimeType = String(preparedFile.type || file.type || "image/jpeg").toLowerCase();
   const fileExtension = normalizedMimeType.includes("png") ? "png" : "jpg";
   const storagePath = `roadTrips/${ROAD_TRIP_ID}/photo-proof/${normalizedChallenge.id}/${Date.now()}-${logger.person}-${sanitizeStorageFileName(file.name || normalizedChallenge.id)}.${fileExtension}`;
   const storageRef = ref(storage, storagePath);
 
-  await uploadBytes(storageRef, preparedFile, {
-    contentType: normalizedMimeType || "image/jpeg",
-    cacheControl: "public,max-age=3600",
+  onStatus?.("Uploading photo...");
+  const photoUrl = await uploadPhotoProofBlob({
+    storageRef,
+    file: preparedFile,
+    onProgress,
   });
 
-  const photoUrl = await getDownloadURL(storageRef);
-
+  onStatus?.("Saving entry...");
   await addDoc(photoProofEntriesCollection, {
     tripId: ROAD_TRIP_ID,
     challengeId: normalizedChallenge.id,

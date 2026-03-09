@@ -30,7 +30,7 @@
               <p class="wink">Each upload is worth 10 points. Every later vote adds one more point to that player.</p>
             </div>
             <div class="hero-actions trip-live-links">
-              <a class="btn btn-primary" href="#photo-proof-board">Open Challenge Board</a>
+              <a id="photo-proof-primary-link" class="btn btn-primary" href="#photo-proof-board">Open Challenge Board</a>
               <a class="btn btn-secondary" href="carlsons-road-trip-games.html">Back To Games Hub</a>
             </div>
           </div>
@@ -110,10 +110,10 @@
       </section>
 
       <section class="section">
-        <div class="container">
+        <div id="photo-proof-gallery-section" class="container">
           <p class="section-kicker">Gallery</p>
           <h2>Roadside Evidence</h2>
-          <p class="section-intro">Friends can browse by prompt and vote on the entries they think deserve extra points.</p>
+          <p id="photo-proof-gallery-intro" class="section-intro">Friends can browse by prompt and vote on the entries they think deserve extra points.</p>
           <div id="photo-proof-gallery" class="photo-proof-gallery" aria-live="polite"></div>
         </div>
       </section>
@@ -168,6 +168,10 @@
       const fileNote = document.getElementById("photo-proof-file-note");
       const submitButton = document.getElementById("photo-proof-submit");
       const form = document.getElementById("photo-proof-form");
+      const primaryLink = document.getElementById("photo-proof-primary-link");
+      const boardSection = document.getElementById("photo-proof-board");
+      const gallerySection = document.getElementById("photo-proof-gallery-section");
+      const galleryIntro = document.getElementById("photo-proof-gallery-intro");
       const totalEntriesValue = document.getElementById("photo-proof-total-entries");
       const andyPointsValue = document.getElementById("photo-proof-andy-points");
       const savannahPointsValue = document.getElementById("photo-proof-savannah-points");
@@ -194,6 +198,17 @@
 
       const votesForEntry = (entryId) => voteMap.get(entryId) || [];
       const didCurrentUserVote = (entryId) => votesForEntry(entryId).some((vote) => vote.uid === signedInUser?.uid);
+
+      const applyViewerMode = () => {
+        const isSignedOut = !signedInUser;
+
+        boardSection.classList.toggle("hidden", isSignedOut);
+        primaryLink.setAttribute("href", isSignedOut ? "#photo-proof-gallery-section" : "#photo-proof-board");
+        primaryLink.textContent = isSignedOut ? "Open Roadside Evidence" : "Open Challenge Board";
+        galleryIntro.textContent = isSignedOut
+          ? "Vote for the best roadside evidence to help us determine the winner!"
+          : "Friends can browse by prompt and vote on the entries they think deserve extra points.";
+      };
 
       const groupedChallenges = () => PHOTO_PROOF_CHALLENGES.map((challenge) => {
         const challengeEntries = entries.filter((entry) => entry.challengeId === challenge.id);
@@ -321,6 +336,7 @@
       };
 
       const renderAll = () => {
+        applyViewerMode();
         renderSummary();
         renderChallengeBoard();
         renderGallery();
@@ -441,6 +457,14 @@
             caption: captionInput.value,
             file: selectedFile,
             sourcePage: "carlsons-photo-proof-challenges",
+            onStatus: (message) => {
+              statusText.textContent = message;
+            },
+            onProgress: (progress) => {
+              statusText.textContent = progress > 0 && progress < 100
+                ? `Uploading photo... ${progress}%`
+                : "Uploading photo...";
+            },
           });
 
           form.reset();
@@ -449,7 +473,9 @@
         } catch (error) {
           console.error("Could not upload photo proof", error);
           const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
-          statusText.textContent = `Could not upload photo (${details}).`;
+          statusText.textContent = details === "storage-upload-timeout"
+            ? "Upload timed out. If Storage rules were changed, deploy storage rules too: firebase deploy --only storage."
+            : `Could not upload photo (${details}).`;
         } finally {
           submitButton.disabled = !canUpload;
         }
@@ -464,7 +490,7 @@
           canUpload = canVote && isRoadTripPlayer(approvalPerson);
 
           if (!user) {
-            statusText.textContent = "Watching live in read-only mode. Sign in to vote. Sign in as Andy or Savannah to upload proof.";
+            statusText.textContent = "Watching live in read-only mode.";
           } else if (canUpload) {
             statusText.textContent = "Ready. Upload weird finds fast, then check back for votes.";
           } else if (canVote) {
