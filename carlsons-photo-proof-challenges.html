@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Photo Proof Challenges | SavemHQ</title>
+    <meta
+      name="description"
+      content="Live photo scavenger challenges for the Carlson road trip with quick uploads, player points, and friend voting."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="photo-proof">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner trip-hero-grid">
+          <div class="home-hero-copy">
+            <p class="tagline">Game Four</p>
+            <h1>Photo Proof Challenges</h1>
+            <p class="subheadline">
+              Quick roadside photo prompts, live points for Andy and Savannah, and crowd votes once friends check the gallery later.
+            </p>
+            <div class="hero-surface">
+              <p class="intro">
+                Every prompt is a tiny scavenger mission: find the strangest thing, snap proof fast, and let the trip scoreboard handle the rest.
+              </p>
+              <p class="wink">Each upload is worth 10 points. Every later vote adds one more point to that player.</p>
+            </div>
+            <div class="hero-actions trip-live-links">
+              <a class="btn btn-primary" href="#photo-proof-board">Open Challenge Board</a>
+              <a class="btn btn-secondary" href="carlsons-road-trip-games.html">Back To Games Hub</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="photo-proof-board" class="section section-card">
+        <div class="container trip-games-layout photo-proof-layout">
+          <article class="project-card trip-summary-card photo-proof-summary-card">
+            <div>
+              <p class="section-kicker">Live Scoreboard</p>
+              <h2>Proof Points</h2>
+              <p id="photo-proof-status" class="small-note">Loading the challenge gallery...</p>
+            </div>
+
+            <div class="trip-stat-grid" aria-live="polite">
+              <div class="trip-stat-chip">
+                <span class="small-note">Total uploads</span>
+                <strong id="photo-proof-total-entries">0</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Andy points</span>
+                <strong id="photo-proof-andy-points">0</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Savannah points</span>
+                <strong id="photo-proof-savannah-points">0</strong>
+              </div>
+            </div>
+
+            <div class="photo-proof-score-row" aria-live="polite">
+              <div class="photo-proof-player-card is-andy">
+                <span class="small-note">Andy</span>
+                <strong id="photo-proof-andy-breakdown">0 uploads + 0 votes</strong>
+              </div>
+              <div class="photo-proof-player-card is-savannah">
+                <span class="small-note">Savannah</span>
+                <strong id="photo-proof-savannah-breakdown">0 uploads + 0 votes</strong>
+              </div>
+            </div>
+
+            <p id="photo-proof-vote-summary" class="small-note">No votes yet. Uploads are worth 10 points each.</p>
+
+            <form id="photo-proof-form" class="trip-log-form photo-proof-form">
+              <div class="trip-log-field">
+                <label for="photo-proof-challenge">Pick a prompt</label>
+                <select id="photo-proof-challenge" name="challenge"></select>
+              </div>
+
+              <div class="trip-log-field">
+                <label for="photo-proof-caption">Caption</label>
+                <textarea id="photo-proof-caption" maxlength="180" placeholder="Optional note: what made this one win-worthy?"></textarea>
+              </div>
+
+              <div class="trip-log-field">
+                <label for="photo-proof-file">Upload a photo</label>
+                <input id="photo-proof-file" class="trip-text-input" type="file" accept="image/*" />
+                <p id="photo-proof-file-note" class="small-note">Use a quick phone shot. Large images are compressed before upload.</p>
+              </div>
+
+              <div class="form-actions">
+                <button id="photo-proof-submit" class="btn btn-primary" type="submit">Upload Proof</button>
+              </div>
+            </form>
+          </article>
+
+          <section class="project-card trip-summary-card photo-proof-prompts-card">
+            <div>
+              <p class="section-kicker">Prompt Deck</p>
+              <h2>What Counts As Proof</h2>
+              <p class="small-note">Each card tracks the current upload count and the most-loved shot so far.</p>
+            </div>
+
+            <div id="photo-proof-challenge-list" class="photo-proof-challenge-list" aria-live="polite"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <p class="section-kicker">Gallery</p>
+          <h2>Roadside Evidence</h2>
+          <p class="section-intro">Friends can browse by prompt and vote on the entries they think deserve extra points.</p>
+          <div id="photo-proof-gallery" class="photo-proof-gallery" aria-live="polite"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Carlsons Insane Road Trip, now with photographic evidence.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="carlsons-road-trip.html">Live Map</a></li>
+            <li><a href="carlsons-road-trip-games.html">Games</a></li>
+            <li><a href="carlsons-road-trip-scavenger-hunt.html">Scavenger</a></li>
+            <li><a href="carlsons-photo-proof-challenges.html">Photos</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initHeaderAuth, getKnownUserProfile } from "./js/auth-shared.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+      import { escapeHtml, formatEventTime } from "./js/road-trip-shared.js";
+      import {
+        PHOTO_PROOF_CHALLENGES,
+        getPhotoProofChallengeMeta,
+        isRoadTripPlayer,
+        subscribeToPhotoProofEntries,
+        subscribeToPhotoProofVotes,
+        submitPhotoProofEntry,
+        togglePhotoProofVote,
+      } from "./js/road-trip-games-shared.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Hub", href: "carlsons-road-trip.html" },
+          { label: "Games", href: "carlsons-road-trip-games.html" },
+          { label: "Photos", href: "carlsons-photo-proof-challenges.html" },
+          { label: "Moments", href: "carlsons-kid-sayings.html" },
+        ],
+      });
+
+      const ENTRY_POINTS = 10;
+      const statusText = document.getElementById("photo-proof-status");
+      const challengeSelect = document.getElementById("photo-proof-challenge");
+      const captionInput = document.getElementById("photo-proof-caption");
+      const fileInput = document.getElementById("photo-proof-file");
+      const fileNote = document.getElementById("photo-proof-file-note");
+      const submitButton = document.getElementById("photo-proof-submit");
+      const form = document.getElementById("photo-proof-form");
+      const totalEntriesValue = document.getElementById("photo-proof-total-entries");
+      const andyPointsValue = document.getElementById("photo-proof-andy-points");
+      const savannahPointsValue = document.getElementById("photo-proof-savannah-points");
+      const andyBreakdownValue = document.getElementById("photo-proof-andy-breakdown");
+      const savannahBreakdownValue = document.getElementById("photo-proof-savannah-breakdown");
+      const voteSummaryValue = document.getElementById("photo-proof-vote-summary");
+      const challengeList = document.getElementById("photo-proof-challenge-list");
+      const gallery = document.getElementById("photo-proof-gallery");
+
+      let entries = [];
+      let voteMap = new Map();
+      let voteUnsubscribers = new Map();
+      let signedInUser = null;
+      let canVote = false;
+      let canUpload = false;
+      let approvalPerson = "";
+      let isAdmin = false;
+
+      const currentUserLabel = () => {
+        const email = String(signedInUser?.email || "").trim().toLowerCase();
+        const knownProfile = getKnownUserProfile(email);
+        return knownProfile?.displayName || String(signedInUser?.displayName || email || "Friend").trim();
+      };
+
+      const votesForEntry = (entryId) => voteMap.get(entryId) || [];
+      const didCurrentUserVote = (entryId) => votesForEntry(entryId).some((vote) => vote.uid === signedInUser?.uid);
+
+      const groupedChallenges = () => PHOTO_PROOF_CHALLENGES.map((challenge) => {
+        const challengeEntries = entries.filter((entry) => entry.challengeId === challenge.id);
+        const withVotes = challengeEntries.map((entry) => ({
+          ...entry,
+          voteCount: votesForEntry(entry.id).length,
+          points: ENTRY_POINTS + votesForEntry(entry.id).length,
+        }));
+        const topEntry = withVotes.reduce((best, entry) => {
+          if (!best) {
+            return entry;
+          }
+
+          if (entry.voteCount > best.voteCount) {
+            return entry;
+          }
+
+          return best;
+        }, null);
+
+        return {
+          ...challenge,
+          entries: withVotes,
+          topEntry,
+          totalVotes: withVotes.reduce((sum, entry) => sum + entry.voteCount, 0),
+        };
+      });
+
+      const buildTotals = () => entries.reduce((totals, entry) => {
+        const player = entry.uploaderPerson === "savannah" ? "savannah" : "andy";
+        const voteCount = votesForEntry(entry.id).length;
+        totals.totalEntries += 1;
+        totals.totalVotes += voteCount;
+        totals[player].entries += 1;
+        totals[player].votes += voteCount;
+        totals[player].points += ENTRY_POINTS + voteCount;
+        return totals;
+      }, {
+        totalEntries: 0,
+        totalVotes: 0,
+        andy: { entries: 0, votes: 0, points: 0 },
+        savannah: { entries: 0, votes: 0, points: 0 },
+      });
+
+      const renderSummary = () => {
+        const totals = buildTotals();
+        totalEntriesValue.textContent = String(totals.totalEntries);
+        andyPointsValue.textContent = String(totals.andy.points);
+        savannahPointsValue.textContent = String(totals.savannah.points);
+        andyBreakdownValue.textContent = `${totals.andy.entries} uploads + ${totals.andy.votes} votes`;
+        savannahBreakdownValue.textContent = `${totals.savannah.entries} uploads + ${totals.savannah.votes} votes`;
+        voteSummaryValue.textContent = totals.totalVotes
+          ? `${totals.totalVotes} crowd votes have been cast so far.`
+          : "No votes yet. Uploads are worth 10 points each.";
+      };
+
+      const renderChallengeBoard = () => {
+        const challengeStats = groupedChallenges();
+
+        challengeList.innerHTML = challengeStats
+          .map((challenge) => `
+            <article class="photo-proof-challenge-card reveal-item">
+              <div class="photo-proof-challenge-topline">
+                <span class="trip-category-badge">Prompt</span>
+                <span class="trip-pill">${escapeHtml(challenge.entries.length)} uploads</span>
+              </div>
+              <h3>${escapeHtml(challenge.label)}</h3>
+              <p>${escapeHtml(challenge.hint)}</p>
+              <p class="small-note">
+                ${challenge.topEntry
+                  ? `${escapeHtml(challenge.topEntry.uploaderLabel)} leads this prompt with ${escapeHtml(challenge.topEntry.voteCount)} vote${challenge.topEntry.voteCount === 1 ? "" : "s"}.`
+                  : "Waiting for the first proof shot."}
+              </p>
+            </article>
+          `)
+          .join("");
+
+        refreshRevealMotion({ scope: challengeList, selector: ".photo-proof-challenge-card" });
+      };
+
+      const renderGallery = () => {
+        const challengeStats = groupedChallenges();
+
+        gallery.innerHTML = challengeStats
+          .map((challenge) => `
+            <section class="photo-proof-group reveal-item">
+              <div class="photo-proof-group-header">
+                <div>
+                  <p class="section-kicker">${escapeHtml(challenge.label)}</p>
+                  <h3>${escapeHtml(challenge.entries.length ? `${challenge.entries.length} proof shot${challenge.entries.length === 1 ? "" : "s"}` : "No proof yet")}</h3>
+                </div>
+                <p class="small-note">${escapeHtml(challenge.totalVotes)} crowd vote${challenge.totalVotes === 1 ? "" : "s"}</p>
+              </div>
+              ${challenge.entries.length
+                ? `<div class="photo-proof-entry-grid">${challenge.entries
+                    .map((entry) => `
+                      <article class="project-card photo-proof-entry-card">
+                        <img class="photo-proof-image" src="${escapeHtml(entry.photoUrl)}" alt="${escapeHtml(`${challenge.label} by ${entry.uploaderLabel}`)}" loading="lazy" />
+                        <div class="photo-proof-entry-body">
+                          <div class="photo-proof-entry-topline">
+                            <span class="trip-pill">${escapeHtml(entry.uploaderLabel)}</span>
+                            <span class="trip-pill">${escapeHtml(formatEventTime(entry.createdAt))}</span>
+                          </div>
+                          <p>${escapeHtml(entry.caption || challenge.hint)}</p>
+                          <div class="trip-pill-row photo-proof-entry-meta">
+                            <span class="trip-pill">${escapeHtml(entry.points)} pts</span>
+                            <span class="trip-pill">${escapeHtml(entry.voteCount)} vote${entry.voteCount === 1 ? "" : "s"}</span>
+                          </div>
+                          <button
+                            class="btn ${didCurrentUserVote(entry.id) ? "btn-primary" : "btn-secondary"} photo-proof-vote-button"
+                            type="button"
+                            data-entry-id="${escapeHtml(entry.id)}"
+                            ${!canVote ? "disabled" : ""}
+                          >${didCurrentUserVote(entry.id) ? "Voted" : "Vote For This"}</button>
+                        </div>
+                      </article>
+                    `)
+                    .join("")}</div>`
+                : `<article class="trip-empty-card photo-proof-empty-card"><h3>Still hunting</h3><p>${escapeHtml(challenge.hint)}</p></article>`}
+            </section>
+          `)
+          .join("");
+
+        refreshRevealMotion({ scope: gallery, selector: ".photo-proof-group" });
+      };
+
+      const renderAll = () => {
+        renderSummary();
+        renderChallengeBoard();
+        renderGallery();
+        challengeSelect.disabled = !canUpload;
+        captionInput.disabled = !canUpload;
+        fileInput.disabled = !canUpload;
+        submitButton.disabled = !canUpload;
+      };
+
+      const syncVoteSubscriptions = () => {
+        const activeIds = new Set(entries.map((entry) => entry.id));
+
+        [...voteUnsubscribers.keys()].forEach((entryId) => {
+          if (activeIds.has(entryId)) {
+            return;
+          }
+
+          voteUnsubscribers.get(entryId)?.();
+          voteUnsubscribers.delete(entryId);
+          voteMap.delete(entryId);
+        });
+
+        entries.forEach((entry) => {
+          if (voteUnsubscribers.has(entry.id)) {
+            return;
+          }
+
+          const unsubscribe = subscribeToPhotoProofVotes(entry.id, {
+            onData: (votes) => {
+              voteMap.set(entry.id, votes);
+              renderAll();
+            },
+            onError: (error) => {
+              console.error("Could not subscribe to photo proof votes", error);
+            },
+          });
+
+          voteUnsubscribers.set(entry.id, unsubscribe);
+        });
+      };
+
+      challengeSelect.innerHTML = PHOTO_PROOF_CHALLENGES
+        .map((challenge) => `<option value="${escapeHtml(challenge.id)}">${escapeHtml(challenge.label)}</option>`)
+        .join("");
+
+      initHeaderShell();
+      initRevealMotion();
+
+      fileInput.addEventListener("change", () => {
+        const selectedFile = fileInput.files?.[0] || null;
+        fileNote.textContent = selectedFile
+          ? `${selectedFile.name} selected.`
+          : "Use a quick phone shot. Large images are compressed before upload.";
+      });
+
+      gallery.addEventListener("click", async (event) => {
+        const button = event.target instanceof Element ? event.target.closest(".photo-proof-vote-button") : null;
+        if (!button || !canVote || !signedInUser) {
+          return;
+        }
+
+        const entryId = String(button.getAttribute("data-entry-id") || "");
+        if (!entryId) {
+          return;
+        }
+
+        button.setAttribute("disabled", "disabled");
+        statusText.textContent = "Updating vote...";
+
+        try {
+          await togglePhotoProofVote({
+            entryId,
+            uid: signedInUser.uid,
+            voterLabel: currentUserLabel(),
+          });
+          statusText.textContent = "Vote saved.";
+        } catch (error) {
+          console.error("Could not update photo proof vote", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          statusText.textContent = `Could not save vote (${details}).`;
+        } finally {
+          button.removeAttribute("disabled");
+        }
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!canUpload || !signedInUser) {
+          return;
+        }
+
+        const selectedFile = fileInput.files?.[0] || null;
+        const challengeId = String(challengeSelect.value || "").trim();
+
+        if (!getPhotoProofChallengeMeta(challengeId)) {
+          statusText.textContent = "Pick a challenge before uploading a photo.";
+          return;
+        }
+
+        if (!selectedFile) {
+          statusText.textContent = "Choose a photo before uploading.";
+          return;
+        }
+
+        if (selectedFile.size > 12_000_000) {
+          statusText.textContent = "That file is too large. Try a smaller photo or a quick screenshot instead.";
+          return;
+        }
+
+        submitButton.disabled = true;
+        statusText.textContent = "Uploading proof...";
+
+        try {
+          await submitPhotoProofEntry({
+            userEmail: signedInUser.email || "",
+            approvalPerson,
+            challengeId,
+            caption: captionInput.value,
+            file: selectedFile,
+            sourcePage: "carlsons-photo-proof-challenges",
+          });
+
+          form.reset();
+          fileNote.textContent = "Use a quick phone shot. Large images are compressed before upload.";
+          statusText.textContent = "Photo proof uploaded.";
+        } catch (error) {
+          console.error("Could not upload photo proof", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          statusText.textContent = `Could not upload photo (${details}).`;
+        } finally {
+          submitButton.disabled = !canUpload;
+        }
+      });
+
+      initHeaderAuth({
+        onStateChange: ({ user, isAdmin: nextIsAdmin, approvalStatus, approvalPerson: nextApprovalPerson }) => {
+          signedInUser = user;
+          isAdmin = Boolean(nextIsAdmin);
+          approvalPerson = String(nextApprovalPerson || "").trim().toLowerCase();
+          canVote = Boolean(user) && (isAdmin || approvalStatus === "approved");
+          canUpload = canVote && isRoadTripPlayer(approvalPerson);
+
+          if (!user) {
+            statusText.textContent = "Watching live in read-only mode. Sign in to vote. Sign in as Andy or Savannah to upload proof.";
+          } else if (canUpload) {
+            statusText.textContent = "Ready. Upload weird finds fast, then check back for votes.";
+          } else if (canVote) {
+            statusText.textContent = "Signed in. You can vote on the gallery, but only Andy or Savannah can upload new proof shots.";
+          } else {
+            statusText.textContent = "Signed in, but this page stays read-only until access is approved.";
+          }
+
+          renderAll();
+        },
+      });
+
+      subscribeToPhotoProofEntries({
+        onData: (nextEntries) => {
+          entries = nextEntries || [];
+          syncVoteSubscriptions();
+          statusText.textContent = entries.length
+            ? (canUpload ? "Photo challenge gallery is live." : "Photo challenge gallery is live. Watching in read-only mode.")
+            : "Waiting for the first proof shot.";
+          renderAll();
+        },
+        onError: (error) => {
+          console.error("Could not subscribe to photo proof entries", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          statusText.textContent = `Could not load photo proof entries (${details}).`;
+          renderAll();
+        },
+      });
+    </script>
+  </body>
+</html>

@@ -1147,7 +1147,8 @@ body[data-page="road-trip-log"] {
 }
 
 body[data-page="road-trip-games"],
-body[data-page="road-trip-bingo"] {
+body[data-page="road-trip-bingo"],
+body[data-page="photo-proof"] {
   --max-width: 88rem;
   background:
     radial-gradient(54rem 30rem at 8% -4%, rgba(226, 244, 217, 0.78) 0%, transparent 70%),
@@ -1159,7 +1160,8 @@ body[data-page="road-trip-bingo"] {
 body[data-page="road-trip-hub"] .site-header,
 body[data-page="road-trip-log"] .site-header,
 body[data-page="road-trip-games"] .site-header,
-body[data-page="road-trip-bingo"] .site-header {
+body[data-page="road-trip-bingo"] .site-header,
+body[data-page="photo-proof"] .site-header {
   background: rgba(249, 252, 247, 0.92);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
@@ -1739,6 +1741,135 @@ body[data-page="road-trip-bingo"] .site-header {
   padding: 1rem;
 }
 
+.photo-proof-layout {
+  grid-template-columns: minmax(20rem, 0.8fr) minmax(0, 1.2fr);
+}
+
+.photo-proof-summary-card,
+.photo-proof-prompts-card,
+.photo-proof-group,
+.photo-proof-entry-card,
+.photo-proof-empty-card {
+  overflow: hidden;
+}
+
+.photo-proof-form {
+  margin-top: 0.2rem;
+}
+
+.photo-proof-score-row,
+.photo-proof-challenge-list,
+.photo-proof-gallery,
+.photo-proof-entry-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.photo-proof-score-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.photo-proof-player-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 1rem;
+  border: 1px solid #d7e1d8;
+  background: rgba(255, 253, 249, 0.94);
+}
+
+.photo-proof-player-card strong {
+  font-size: 1rem;
+  color: #44392f;
+}
+
+.photo-proof-player-card.is-andy {
+  background: linear-gradient(160deg, rgba(237, 248, 248, 0.94), rgba(255, 246, 233, 0.98));
+  border-color: #c7dfdd;
+}
+
+.photo-proof-player-card.is-savannah {
+  background: linear-gradient(160deg, rgba(246, 243, 255, 0.82), rgba(244, 250, 242, 0.96));
+  border-color: #d8d9eb;
+}
+
+.photo-proof-challenge-list {
+  margin-top: 0.25rem;
+}
+
+.photo-proof-challenge-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem;
+  border: 1px solid #d7e1d8;
+  border-radius: 1.05rem;
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(79, 166, 185, 0.14), transparent 38%),
+    linear-gradient(160deg, rgba(255, 251, 244, 0.98), rgba(237, 247, 243, 0.95));
+}
+
+.photo-proof-challenge-topline,
+.photo-proof-group-header,
+.photo-proof-entry-topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.photo-proof-gallery {
+  margin-top: 1rem;
+}
+
+.photo-proof-group {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid #d0ddd6;
+  border-radius: 1.2rem;
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(68, 174, 193, 0.16), transparent 38%),
+    linear-gradient(165deg, rgba(255, 252, 247, 0.98), rgba(239, 247, 244, 0.95));
+  box-shadow: var(--shadow-sm);
+}
+
+.photo-proof-entry-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.photo-proof-entry-card {
+  display: grid;
+  gap: 0;
+  padding: 0;
+}
+
+.photo-proof-image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  background: #e9efe9;
+}
+
+.photo-proof-entry-body {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+}
+
+.photo-proof-entry-meta {
+  margin-top: -0.1rem;
+}
+
+.photo-proof-vote-button {
+  width: 100%;
+}
+
+.photo-proof-empty-card {
+  padding: 1rem;
+}
+
 .trip-text-input {
   width: 100%;
   border: 1px solid #d7e1d6;
@@ -2107,6 +2238,10 @@ select:focus-visible {
     align-items: flex-start;
   }
 
+  .photo-proof-group-header {
+    align-items: flex-start;
+  }
+
   .trip-bingo-board {
     gap: 0.34rem;
   }
@@ -2251,6 +2386,12 @@ select:focus-visible {
   .split-grid,
   .entry-grid,
   .state-results {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-proof-layout,
+  .photo-proof-score-row,
+  .photo-proof-entry-grid {
     grid-template-columns: 1fr;
   }
 

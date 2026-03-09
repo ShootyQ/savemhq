@@ -154,6 +154,60 @@ service cloud.firestore {
       ]);
     }
 
+    function requestUploaderMatchesAuthedRoadTripLogger() {
+      return (
+        request.auth.token.email == "andrewpcarlson85@gmail.com"
+        && request.resource.data.uploaderPerson == "andy"
+      ) || (
+        request.auth.token.email == "savannahbcarlson@gmail.com"
+        && request.resource.data.uploaderPerson == "savannah"
+      );
+    }
+
+    function photoProofEntryKeysAreAllowed() {
+      return request.resource.data.keys().hasAll([
+        "tripId",
+        "challengeId",
+        "challengeLabel",
+        "caption",
+        "photoUrl",
+        "photoPath",
+        "uploaderPerson",
+        "uploaderLabel",
+        "sourcePage",
+        "createdAt",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "tripId",
+        "challengeId",
+        "challengeLabel",
+        "caption",
+        "photoUrl",
+        "photoPath",
+        "uploaderPerson",
+        "uploaderLabel",
+        "sourcePage",
+        "createdAt",
+        "updatedAt"
+      ]);
+    }
+
+    function photoProofVoteKeysAreAllowed(uid) {
+      return request.resource.data.keys().hasAll([
+        "tripId",
+        "entryId",
+        "uid",
+        "voterLabel",
+        "createdAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "tripId",
+        "entryId",
+        "uid",
+        "voterLabel",
+        "createdAt"
+      ]) && request.resource.data.uid == uid;
+    }
+
     function monthWriteKeysAreAllowed() {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly([
         "month",
@@ -234,6 +288,38 @@ service cloud.firestore {
         isAutoApprovedUser()
         && resource.data.tripId == tripId
         && resourcePersonMatchesAuthedRoadTripLogger()
+      );
+    }
+
+    match /roadTrips/{tripId}/photoProofEntries/{entryId} {
+      allow read: if true;
+      allow create: if isAutoApprovedUser()
+        && photoProofEntryKeysAreAllowed()
+        && request.resource.data.tripId == tripId
+        && [
+          "weirdest-gas-station-snack",
+          "funniest-sign",
+          "sketchiest-mascot",
+          "best-sunset",
+          "strangest-town-name"
+        ].hasAny([request.resource.data.challengeId])
+        && ["andy", "savannah"].hasAny([request.resource.data.uploaderPerson])
+        && requestUploaderMatchesAuthedRoadTripLogger();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /roadTrips/{tripId}/photoProofEntries/{entryId}/votes/{uid} {
+      allow read: if true;
+      allow create: if isApprovedUser()
+        && request.auth.uid == uid
+        && request.resource.data.tripId == tripId
+        && request.resource.data.entryId == entryId
+        && photoProofVoteKeysAreAllowed(uid);
+      allow update: if false;
+      allow delete: if isAdmin() || (
+        isApprovedUser()
+        && request.auth.uid == uid
       );
     }
 

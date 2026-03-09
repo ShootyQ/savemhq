@@ -1,11 +1,22 @@
 import {
+  addDoc,
+  collection,
   doc,
+  limit,
   onSnapshot,
+  query,
   runTransaction,
   serverTimestamp,
+  orderBy,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-import { db } from "./auth-shared.js";
-import { ROAD_TRIP_ID } from "./road-trip-shared.js";
+import {
+  getDownloadURL,
+  getStorage,
+  ref,
+  uploadBytes,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
+import { app, db } from "./auth-shared.js";
+import { ROAD_TRIP_ID, resolveRoadTripLogger } from "./road-trip-shared.js";
 
 export const KIDS_SAID_IT_BINGO_GAME_ID = "kids-said-it-bingo";
 export const KIDS_SAID_IT_BINGO_TITLE = "Kid's Said It Bingo";
@@ -13,6 +24,8 @@ export const ALPHABET_GAME_ID = "alphabet-game";
 export const ALPHABET_GAME_TITLE = "Alphabet Game";
 export const SCAVENGER_HUNT_GAME_ID = "road-trip-scavenger-hunt";
 export const SCAVENGER_HUNT_GAME_TITLE = "Road Trip Scavenger Hunt";
+export const PHOTO_PROOF_CHALLENGE_GAME_ID = "photo-proof-challenges";
+export const PHOTO_PROOF_CHALLENGE_GAME_TITLE = "Photo Proof Challenges";
 
 export const ROAD_TRIP_GAME_DECK = [
   {
@@ -41,6 +54,43 @@ export const ROAD_TRIP_GAME_DECK = [
     description: "Spot the roadside oddities, mark them off fast, and see who clears the board first.",
     scoreboardLabel: "Scavenger finds",
     isLive: true,
+  },
+  {
+    id: PHOTO_PROOF_CHALLENGE_GAME_ID,
+    title: PHOTO_PROOF_CHALLENGE_GAME_TITLE,
+    href: "carlsons-photo-proof-challenges.html",
+    badge: "Live now",
+    description: "Snap weird roadside proof, stack points for Andy and Savannah, and let approved friends vote on the best shots.",
+    scoreboardLabel: "Photo proof points",
+    isLive: true,
+  },
+];
+
+export const PHOTO_PROOF_CHALLENGES = [
+  {
+    id: "weirdest-gas-station-snack",
+    label: "Weirdest gas station snack",
+    hint: "Questionable chips, neon jerky, pickle pouches, or anything else that should not exist.",
+  },
+  {
+    id: "funniest-sign",
+    label: "Funniest sign",
+    hint: "Billboards, church signs, hand-painted warnings, or accidental comedy on the roadside.",
+  },
+  {
+    id: "sketchiest-mascot",
+    label: "Sketchiest mascot",
+    hint: "The kind of giant statue, costume, or roadside creature that makes the stop slightly unsettling.",
+  },
+  {
+    id: "best-sunset",
+    label: "Best sunset",
+    hint: "Golden-hour proof that the van route had cinematic moments too.",
+  },
+  {
+    id: "strangest-town-name",
+    label: "Strangest town name",
+    hint: "A road sign that sounds made up, suspicious, or impossible to explain without a picture.",
   },
 ];
 
@@ -135,10 +185,15 @@ const BINGO_FREE_INDEX = Math.floor(BINGO_CELL_COUNT / 2);
 export const KIDS_SAID_IT_BINGO_SIZE = BINGO_SIZE;
 export const KIDS_SAID_IT_BINGO_CELL_COUNT = BINGO_CELL_COUNT;
 export const KIDS_SAID_IT_BINGO_FREE_INDEX = BINGO_FREE_INDEX;
+const storage = getStorage(app);
 const tripGameDocument = (gameId) => doc(db, "roadTrips", ROAD_TRIP_ID, "games", gameId);
 const kidsSaidItBingoDocument = tripGameDocument(KIDS_SAID_IT_BINGO_GAME_ID);
 const alphabetGameDocument = tripGameDocument(ALPHABET_GAME_ID);
 const scavengerHuntGameDocument = tripGameDocument(SCAVENGER_HUNT_GAME_ID);
+const photoProofEntriesCollection = collection(db, "roadTrips", ROAD_TRIP_ID, "photoProofEntries");
+const photoProofEntryDocument = (entryId) => doc(photoProofEntriesCollection, String(entryId || "").trim());
+const photoProofVotesCollection = (entryId) => collection(photoProofEntryDocument(entryId), "votes");
+const photoProofVoteDocument = (entryId, uid) => doc(photoProofVotesCollection(entryId), String(uid || "").trim());
 
 const playerFieldPrefix = (player) => (String(player || "").trim().toLowerCase() === "savannah" ? "savannah" : "andy");
 
@@ -152,6 +207,105 @@ const createGameItemId = (label) => {
 
   return `${base}-${Math.random().toString(36).slice(2, 8)}`;
 };
+
+const PLAYER_IDENTITIES = new Set(["andy", "savannah"]);
+
+export const isRoadTripPlayer = (person = "") => PLAYER_IDENTITIES.has(String(person || "").trim().toLowerCase());
+
+export const getPhotoProofChallengeMeta = (challengeId = "") => PHOTO_PROOF_CHALLENGES.find(
+  (challenge) => challenge.id === String(challengeId || "").trim().toLowerCase()
+) || null;
+
+const sanitizeStorageFileName = (value = "") => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9.-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized || "photo-proof";
+};
+
+const loadImageFromFile = (file) => new Promise((resolve, reject) => {
+  const objectUrl = URL.createObjectURL(file);
+  const image = new Image();
+
+  image.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+    resolve(image);
+  };
+
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    reject(new Error("image-load-failed"));
+  };
+
+  image.src = objectUrl;
+});
+
+export const preparePhotoProofImage = async (file) => {
+  if (!(file instanceof Blob)) {
+    throw new Error("missing-photo-file");
+  }
+
+  const mimeType = String(file.type || "").toLowerCase();
+  if (!mimeType.startsWith("image/")) {
+    throw new Error("invalid-photo-file-type");
+  }
+
+  const image = await loadImageFromFile(file);
+  const maxDimension = 1600;
+  const longestSide = Math.max(image.naturalWidth || image.width || 0, image.naturalHeight || image.height || 0);
+
+  if (longestSide <= maxDimension && file.size <= 1_500_000 && ["image/jpeg", "image/webp"].includes(mimeType)) {
+    return file;
+  }
+
+  const scale = longestSide > maxDimension ? maxDimension / longestSide : 1;
+  const width = Math.max(1, Math.round((image.naturalWidth || image.width || 1) * scale));
+  const height = Math.max(1, Math.round((image.naturalHeight || image.height || 1) * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return file;
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+
+  const compressed = await new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob || file), "image/jpeg", 0.82);
+  });
+
+  return compressed;
+};
+
+const normalizePhotoProofEntry = (entryId, data) => ({
+  id: String(entryId || "").trim(),
+  tripId: String(data?.tripId || ROAD_TRIP_ID),
+  challengeId: String(data?.challengeId || "").trim().toLowerCase(),
+  challengeLabel: String(data?.challengeLabel || "").trim(),
+  caption: String(data?.caption || "").trim(),
+  photoUrl: String(data?.photoUrl || "").trim(),
+  photoPath: String(data?.photoPath || "").trim(),
+  uploaderPerson: String(data?.uploaderPerson || "").trim().toLowerCase(),
+  uploaderLabel: String(data?.uploaderLabel || "").trim(),
+  sourcePage: String(data?.sourcePage || "").trim(),
+  createdAt: data?.createdAt?.toDate?.() || null,
+  updatedAt: data?.updatedAt?.toDate?.() || null,
+});
+
+const normalizePhotoProofVote = (voteId, data) => ({
+  id: String(voteId || "").trim(),
+  uid: String(data?.uid || voteId || "").trim(),
+  voterLabel: String(data?.voterLabel || "").trim(),
+  entryId: String(data?.entryId || "").trim(),
+  tripId: String(data?.tripId || ROAD_TRIP_ID),
+  createdAt: data?.createdAt?.toDate?.() || null,
+});
 
 const shuffle = (items) => {
   const nextItems = [...items];
@@ -395,6 +549,111 @@ export const addScavengerHuntItem = async (label = "") => {
         items: [...currentState.items, createScavengerHuntItem(trimmedLabel, { isCustom: true })],
       })
     );
+  });
+};
+
+export const subscribeToPhotoProofEntries = ({ onData, onError } = {}) =>
+  onSnapshot(
+    query(photoProofEntriesCollection, orderBy("createdAt", "desc"), limit(120)),
+    (snapshot) => {
+      onData?.(snapshot.docs.map((entryDoc) => normalizePhotoProofEntry(entryDoc.id, entryDoc.data())));
+    },
+    onError
+  );
+
+export const subscribeToPhotoProofVotes = (entryId, { onData, onError } = {}) => {
+  const normalizedEntryId = String(entryId || "").trim();
+
+  if (!normalizedEntryId) {
+    onData?.([]);
+    return () => {};
+  }
+
+  return onSnapshot(
+    photoProofVotesCollection(normalizedEntryId),
+    (snapshot) => {
+      onData?.(snapshot.docs.map((voteDoc) => normalizePhotoProofVote(voteDoc.id, voteDoc.data())));
+    },
+    onError
+  );
+};
+
+export const submitPhotoProofEntry = async ({
+  userEmail = "",
+  approvalPerson = "",
+  challengeId = "",
+  caption = "",
+  file = null,
+  sourcePage = "",
+} = {}) => {
+  const logger = resolveRoadTripLogger({ userEmail, approvalPerson });
+  const normalizedChallenge = getPhotoProofChallengeMeta(challengeId);
+  const trimmedCaption = String(caption || "").trim().slice(0, 180);
+
+  if (!normalizedChallenge) {
+    throw new Error("invalid-photo-proof-challenge");
+  }
+
+  if (!isRoadTripPlayer(logger.person)) {
+    throw new Error("invalid-photo-proof-player");
+  }
+
+  if (!(file instanceof Blob)) {
+    throw new Error("missing-photo-file");
+  }
+
+  const preparedFile = await preparePhotoProofImage(file);
+  const normalizedMimeType = String(preparedFile.type || file.type || "image/jpeg").toLowerCase();
+  const fileExtension = normalizedMimeType.includes("png") ? "png" : "jpg";
+  const storagePath = `roadTrips/${ROAD_TRIP_ID}/photo-proof/${normalizedChallenge.id}/${Date.now()}-${logger.person}-${sanitizeStorageFileName(file.name || normalizedChallenge.id)}.${fileExtension}`;
+  const storageRef = ref(storage, storagePath);
+
+  await uploadBytes(storageRef, preparedFile, {
+    contentType: normalizedMimeType || "image/jpeg",
+    cacheControl: "public,max-age=3600",
+  });
+
+  const photoUrl = await getDownloadURL(storageRef);
+
+  await addDoc(photoProofEntriesCollection, {
+    tripId: ROAD_TRIP_ID,
+    challengeId: normalizedChallenge.id,
+    challengeLabel: normalizedChallenge.label,
+    caption: trimmedCaption,
+    photoUrl,
+    photoPath: storagePath,
+    uploaderPerson: logger.person,
+    uploaderLabel: logger.personLabel,
+    sourcePage: String(sourcePage || "").trim(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+};
+
+export const togglePhotoProofVote = async ({ entryId = "", uid = "", voterLabel = "" } = {}) => {
+  const normalizedEntryId = String(entryId || "").trim();
+  const normalizedUid = String(uid || "").trim();
+
+  if (!normalizedEntryId || !normalizedUid) {
+    throw new Error("missing-photo-proof-vote-fields");
+  }
+
+  await runTransaction(db, async (transaction) => {
+    const voteRef = photoProofVoteDocument(normalizedEntryId, normalizedUid);
+    const voteSnapshot = await transaction.get(voteRef);
+
+    if (voteSnapshot.exists()) {
+      transaction.delete(voteRef);
+      return;
+    }
+
+    transaction.set(voteRef, {
+      tripId: ROAD_TRIP_ID,
+      entryId: normalizedEntryId,
+      uid: normalizedUid,
+      voterLabel: String(voterLabel || "").trim(),
+      createdAt: serverTimestamp(),
+    });
   });
 };
 
