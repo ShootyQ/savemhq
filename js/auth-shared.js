@@ -64,8 +64,8 @@ const signedInLabelForUser = (user) => {
   const email = String(user?.email || "").trim();
   const knownProfile = getKnownUserProfile(email);
 
-  if (knownProfile?.displayName && email) {
-    return `${knownProfile.displayName} (${email})`;
+  if (knownProfile?.displayName) {
+    return knownProfile.displayName;
   }
 
   return String(user?.displayName || email || "your account").trim();

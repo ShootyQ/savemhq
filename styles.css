@@ -299,6 +299,7 @@ a:hover {
   background: linear-gradient(155deg, #fbfcf7, #eef6f2);
   padding: 0.24rem;
   box-shadow: 0 8px 16px rgba(71, 108, 100, 0.08);
+  min-width: 0;
 }
 
 .header-auth {
@@ -321,6 +322,55 @@ a:hover {
   margin-right: 0.2rem;
   max-width: 22rem;
   overflow-wrap: anywhere;
+}
+
+body[data-page="road-trip-hub"] .header-panel,
+body[data-page="road-trip-log"] .header-panel,
+body[data-page="road-trip-games"] .header-panel,
+body[data-page="road-trip-bingo"] .header-panel {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.55rem;
+}
+
+body[data-page="road-trip-hub"] .header-nav,
+body[data-page="road-trip-log"] .header-nav,
+body[data-page="road-trip-games"] .header-nav,
+body[data-page="road-trip-bingo"] .header-nav {
+  justify-self: stretch;
+}
+
+body[data-page="road-trip-hub"] .nav-list,
+body[data-page="road-trip-log"] .nav-list,
+body[data-page="road-trip-games"] .nav-list,
+body[data-page="road-trip-bingo"] .nav-list {
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+body[data-page="road-trip-hub"] .header-auth-shell,
+body[data-page="road-trip-log"] .header-auth-shell,
+body[data-page="road-trip-games"] .header-auth-shell,
+body[data-page="road-trip-bingo"] .header-auth-shell {
+  justify-self: end;
+  width: fit-content;
+  max-width: 100%;
+}
+
+body[data-page="road-trip-hub"] .header-auth,
+body[data-page="road-trip-log"] .header-auth,
+body[data-page="road-trip-games"] .header-auth,
+body[data-page="road-trip-bingo"] .header-auth {
+  justify-content: flex-end;
+}
+
+body[data-page="road-trip-hub"] #header-auth-status,
+body[data-page="road-trip-log"] #header-auth-status,
+body[data-page="road-trip-games"] #header-auth-status,
+body[data-page="road-trip-bingo"] #header-auth-status {
+  max-width: 14rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .hidden {
