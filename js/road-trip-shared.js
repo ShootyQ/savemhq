@@ -9,7 +9,14 @@ import {
   query,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-import { db, getKnownUserProfile, getPersonFromEmail } from "./auth-shared.js";
+import {
+  deleteObject,
+  getDownloadURL,
+  getStorage,
+  ref,
+  uploadBytesResumable,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
+import { app, db, getKnownUserProfile, getPersonFromEmail } from "./auth-shared.js";
 
 export const ROAD_TRIP_ID = "carlsons-insane-road-trip-2026";
 export const ROAD_TRIP_TITLE = "Carlsons Insane Road Trip";
@@ -73,6 +80,133 @@ export const ROAD_TRIP_GAMES = [
 const tripEventsCollection = collection(db, "roadTrips", ROAD_TRIP_ID, "events");
 
 const tripEventDocument = (eventId) => doc(tripEventsCollection, String(eventId || "").trim());
+const storage = getStorage(app);
+const COMPRESSIBLE_EVENT_IMAGE_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+const ROAD_TRIP_EVENT_PREP_TIMEOUT_MS = 8000;
+const ROAD_TRIP_EVENT_UPLOAD_TIMEOUT_MS = 45000;
+
+const sanitizeStorageFileName = (value = "") => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9.-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized || "road-trip-photo";
+};
+
+const loadImageFromFile = (file) => new Promise((resolve, reject) => {
+  const objectUrl = URL.createObjectURL(file);
+  const image = new Image();
+  const timeoutId = window.setTimeout(() => {
+    URL.revokeObjectURL(objectUrl);
+    reject(new Error("image-load-timeout"));
+  }, ROAD_TRIP_EVENT_PREP_TIMEOUT_MS);
+
+  image.onload = () => {
+    window.clearTimeout(timeoutId);
+    URL.revokeObjectURL(objectUrl);
+    resolve(image);
+  };
+
+  image.onerror = () => {
+    window.clearTimeout(timeoutId);
+    URL.revokeObjectURL(objectUrl);
+    reject(new Error("image-load-failed"));
+  };
+
+  image.src = objectUrl;
+});
+
+const prepareRoadTripEventImage = async (file) => {
+  if (!(file instanceof Blob)) {
+    throw new Error("missing-road-trip-photo-file");
+  }
+
+  const mimeType = String(file.type || "").toLowerCase();
+  if (!mimeType.startsWith("image/")) {
+    throw new Error("invalid-road-trip-photo-file-type");
+  }
+
+  if (!COMPRESSIBLE_EVENT_IMAGE_TYPES.has(mimeType)) {
+    return file;
+  }
+
+  let image;
+  try {
+    image = await loadImageFromFile(file);
+  } catch {
+    return file;
+  }
+
+  const maxDimension = 1600;
+  const longestSide = Math.max(image.naturalWidth || image.width || 0, image.naturalHeight || image.height || 0);
+
+  if (longestSide <= maxDimension && file.size <= 1_500_000 && ["image/jpeg", "image/webp"].includes(mimeType)) {
+    return file;
+  }
+
+  const scale = longestSide > maxDimension ? maxDimension / longestSide : 1;
+  const width = Math.max(1, Math.round((image.naturalWidth || image.width || 1) * scale));
+  const height = Math.max(1, Math.round((image.naturalHeight || image.height || 1) * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return file;
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+
+  const compressed = await new Promise((resolve) => {
+    const timeoutId = window.setTimeout(() => resolve(file), ROAD_TRIP_EVENT_PREP_TIMEOUT_MS);
+
+    canvas.toBlob((blob) => {
+      window.clearTimeout(timeoutId);
+      resolve(blob || file);
+    }, "image/jpeg", 0.82);
+  });
+
+  return compressed;
+};
+
+const uploadRoadTripEventPhoto = ({ storageRef, file, onProgress } = {}) => new Promise((resolve, reject) => {
+  const uploadTask = uploadBytesResumable(storageRef, file, {
+    contentType: String(file?.type || "image/jpeg").toLowerCase() || "image/jpeg",
+    cacheControl: "public,max-age=3600",
+  });
+
+  const timeoutId = window.setTimeout(() => {
+    uploadTask.cancel();
+    reject(new Error("storage-upload-timeout"));
+  }, ROAD_TRIP_EVENT_UPLOAD_TIMEOUT_MS);
+
+  uploadTask.on(
+    "state_changed",
+    (snapshot) => {
+      if (Number.isFinite(snapshot.totalBytes) && snapshot.totalBytes > 0) {
+        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        onProgress?.(progress);
+      }
+    },
+    (error) => {
+      window.clearTimeout(timeoutId);
+      reject(error);
+    },
+    async () => {
+      window.clearTimeout(timeoutId);
+      try {
+        const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+        resolve(downloadUrl);
+      } catch (error) {
+        reject(error);
+      }
+    }
+  );
+});
 
 export const escapeHtml = (value) =>
   String(value ?? "")
@@ -216,7 +350,10 @@ export const submitRoadTripEvent = async ({
   subject = "",
   subjectLabel = "",
   content = "",
+  photoFile = null,
   sourcePage = "",
+  onStatus = null,
+  onProgress = null,
 } = {}) => {
   const logger = resolveRoadTripLogger({ userEmail, approvalPerson });
   const trimmedContent = String(content || "").trim();
@@ -226,9 +363,31 @@ export const submitRoadTripEvent = async ({
     throw new Error("missing-road-trip-fields");
   }
 
-  const location = await captureSubmitLocation();
+  onStatus?.("Checking location...");
+  const locationPromise = captureSubmitLocation();
+  let photoUrl = "";
+  let photoPath = "";
+
+  if (photoFile instanceof Blob) {
+    onStatus?.("Preparing photo...");
+    const preparedFile = await prepareRoadTripEventImage(photoFile);
+    const normalizedMimeType = String(preparedFile.type || photoFile.type || "image/jpeg").toLowerCase();
+    const fileExtension = normalizedMimeType.includes("png") ? "png" : "jpg";
+    photoPath = `roadTrips/${ROAD_TRIP_ID}/events/${String(eventType || "moment").trim().toLowerCase()}/${Date.now()}-${logger.person}-${sanitizeStorageFileName(photoFile.name || subjectMeta.label)}.${fileExtension}`;
+    const storageRef = ref(storage, photoPath);
+
+    onStatus?.("Uploading photo...");
+    photoUrl = await uploadRoadTripEventPhoto({
+      storageRef,
+      file: preparedFile,
+      onProgress,
+    });
+  }
+
+  const location = await locationPromise;
   const routeLeg = inferRouteLeg(location);
 
+  onStatus?.("Saving moment...");
   await addDoc(tripEventsCollection, {
     tripId: ROAD_TRIP_ID,
     eventType: String(eventType).trim().toLowerCase(),
@@ -237,6 +396,7 @@ export const submitRoadTripEvent = async ({
     subject: String(subject || "").trim().toLowerCase(),
     subjectLabel: subjectMeta.label,
     content: trimmedContent,
+    ...(photoUrl ? { photoUrl, photoPath } : {}),
     routeLeg,
     lat: Number.isFinite(location.lat) ? location.lat : null,
     lng: Number.isFinite(location.lng) ? location.lng : null,
@@ -248,11 +408,23 @@ export const submitRoadTripEvent = async ({
   return location;
 };
 
-export const deleteRoadTripEvent = async (eventId) => {
+export const deleteRoadTripEvent = async ({ eventId = "", photoPath = "" } = {}) => {
   const normalizedEventId = String(eventId || "").trim();
+  const normalizedPhotoPath = String(photoPath || "").trim();
 
   if (!normalizedEventId) {
     throw new Error("missing-road-trip-event-id");
+  }
+
+  if (normalizedPhotoPath) {
+    try {
+      await deleteObject(ref(storage, normalizedPhotoPath));
+    } catch (error) {
+      const errorCode = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+      if (errorCode !== "storage/object-not-found") {
+        throw error;
+      }
+    }
   }
 
   await deleteDoc(tripEventDocument(normalizedEventId));
@@ -276,6 +448,8 @@ export const subscribeToRoadTripEvents = ({ onData, onError } = {}) => {
           subject: String(data.subject || "").trim().toLowerCase(),
           subjectLabel: String(data.subjectLabel || "").trim(),
           content: String(data.content || "").trim(),
+          photoUrl: String(data.photoUrl || "").trim(),
+          photoPath: String(data.photoPath || "").trim(),
           routeLeg: String(data.routeLeg || "").trim(),
           lat: Number.isFinite(Number(data.lat)) ? Number(data.lat) : null,
           lng: Number.isFinite(Number(data.lng)) ? Number(data.lng) : null,

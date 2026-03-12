@@ -73,6 +73,12 @@
                 <textarea id="kid-said-content" name="content" maxlength="240" placeholder="\"I'm thirsty.\" or singing Let It Go at max volume." required></textarea>
               </div>
 
+              <div class="trip-log-field">
+                <label for="kid-said-photo">Attach a picture</label>
+                <input id="kid-said-photo" class="trip-text-input" type="file" accept="image/*" />
+                <p id="kid-said-photo-note" class="small-note">Optional. Photos show in the live feed, not on the map pins.</p>
+              </div>
+
               <div class="trip-inline-note trip-quick-pick-shell">
                 <strong>Complaint quick picks</strong>
                 <span class="small-note">Tap one to drop a classic road-trip complaint into the box, then tweak it if needed.</span>
@@ -145,6 +151,8 @@
       const momentType = document.getElementById("moment-type");
       const subjectSelect = document.getElementById("kid-said-subject");
       const contentInput = document.getElementById("kid-said-content");
+      const photoInput = document.getElementById("kid-said-photo");
+      const photoNote = document.getElementById("kid-said-photo-note");
       const statusText = document.getElementById("kid-said-status");
       const submitButton = document.getElementById("kid-said-submit");
       const quickPickButtons = Array.from(document.querySelectorAll(".trip-quick-pick-button"));
@@ -175,12 +183,21 @@
         }
 
         const content = String(contentInput.value || "").trim();
+        const photoFile = photoInput.files?.[0] || null;
         if (!content) {
           statusText.textContent = "Enter the moment before saving.";
           return;
         }
 
+        if (photoFile && photoFile.size > 20_000_000) {
+          statusText.textContent = "That photo is too large. Try a smaller photo or screenshot instead.";
+          return;
+        }
+
         submitButton.disabled = true;
+        photoNote.textContent = photoFile
+          ? `Selected: ${photoFile.name}`
+          : "Optional. Photos show in the live feed, not on the map pins.";
         statusText.textContent = "Saving moment and checking current location...";
 
         try {
@@ -192,17 +209,27 @@
             subject: subjectSelect.value,
             subjectLabel: subjectSelect.options[subjectSelect.selectedIndex]?.textContent || subjectSelect.value,
             content,
+            photoFile,
             sourcePage: "moments",
+            onStatus: (message) => {
+              statusText.textContent = message;
+            },
+            onProgress: (progress) => {
+              statusText.textContent = Number.isFinite(progress)
+                ? `Uploading photo... ${progress}%`
+                : "Uploading photo...";
+            },
           });
 
           form.reset();
           momentType.value = "kid-said";
           subjectSelect.value = "max";
+          photoNote.textContent = "Optional. Photos show in the live feed, not on the map pins.";
           contentInput.focus();
 
           statusText.textContent = Number.isFinite(location.lat) && Number.isFinite(location.lng)
-            ? "Moment saved and pinned on the map."
-            : "Moment saved. Location was unavailable, so it will appear in the feed without a pin.";
+            ? (photoFile ? "Moment saved, photo attached, and pinned on the map." : "Moment saved and pinned on the map.")
+            : (photoFile ? "Moment saved with a photo. Location was unavailable, so it will appear in the feed without a pin." : "Moment saved. Location was unavailable, so it will appear in the feed without a pin.");
         } catch (error) {
           console.error("Could not save moment", error);
           const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";

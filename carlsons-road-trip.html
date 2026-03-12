@@ -153,14 +153,14 @@
             <article class="project-card trip-game-card">
               <span class="trip-category-badge">Shared board</span>
               <h3>Shared States Game</h3>
-              <p>Use one common states list for the trip and see immediately whether Andy, Savannah, or both already claimed each state.</p>
+              <p>Use one common family states list for the trip and watch the board fill in as either of you claims a new state.</p>
               <a class="btn btn-primary" href="carlsons-road-trip-states.html">Open Shared States</a>
             </article>
 
             <article class="project-card trip-game-card">
               <span class="trip-category-badge">Photo proof</span>
               <h3>Photo Proof Challenges</h3>
-              <p>Snap proof of the weirdest snacks, funniest signs, sketchiest mascots, best sunsets, and strangest town names for live points.</p>
+              <p>Snap proof of the weirdest snacks, funniest signs, sketchiest mascots, best moments, and strangest town names for live points.</p>
               <a class="btn btn-primary" href="carlsons-photo-proof-challenges.html">Open Photo Challenges</a>
             </article>
 
@@ -416,10 +416,11 @@
                   </div>
                   <div class="trip-feed-actions">
                     <span class="small-note">${escapeHtml(event.createdLabel)}</span>
-                    ${showDelete ? `<button class="trip-delete-button" type="button" data-event-id="${escapeHtml(event.id)}" ${isDeleting ? "disabled" : ""}>${isDeleting ? "Deleting..." : "Delete"}</button>` : ""}
+                    ${showDelete ? `<button class="trip-delete-button" type="button" data-event-id="${escapeHtml(event.id)}" data-photo-path="${escapeHtml(event.photoPath || "")}" ${isDeleting ? "disabled" : ""}>${isDeleting ? "Deleting..." : "Delete"}</button>` : ""}
                   </div>
                 </div>
                 <p>${escapeHtml(event.content)}</p>
+                ${event.photoUrl ? `<img class="trip-feed-photo" src="${escapeHtml(event.photoUrl)}" alt="${escapeHtml(`Attached photo for ${event.content}`)}" loading="lazy" />` : ""}
               </article>
             `;
           })
@@ -484,6 +485,7 @@
         }
 
         const eventId = String(deleteButton.getAttribute("data-event-id") || "").trim();
+        const photoPath = String(deleteButton.getAttribute("data-photo-path") || "").trim();
         const eventRecord = allEvents.find((item) => item.id === eventId);
 
         if (!eventId || !eventRecord || !canDeleteEvent(eventRecord)) {
@@ -502,7 +504,7 @@
         updateFeedStatus("Deleting log...");
 
         try {
-          await deleteRoadTripEvent(eventId);
+          await deleteRoadTripEvent({ eventId, photoPath });
           updateFeedStatus("Log deleted.");
         } catch (error) {
           console.error("Could not delete road trip event", error);

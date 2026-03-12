@@ -65,6 +65,12 @@
                 <textarea id="song-content" name="content" maxlength="240" placeholder="Stopped for lunch and the kids are sprinting circles around the table." required></textarea>
               </div>
 
+              <div class="trip-log-field">
+                <label for="song-photo">Attach a picture</label>
+                <input id="song-photo" class="trip-text-input" type="file" accept="image/*" />
+                <p id="song-photo-note" class="small-note">Optional. Photos show in the live feed, not on the map pins.</p>
+              </div>
+
               <div class="trip-inline-note is-warning">
                 <strong>Location behavior</strong>
                 <span class="small-note">Submit-time location only. If you skip or deny location, the moment still lands in the live feed.</span>
@@ -119,6 +125,8 @@
       const form = document.getElementById("song-log-form");
       const subjectSelect = document.getElementById("song-subject");
       const contentInput = document.getElementById("song-content");
+      const photoInput = document.getElementById("song-photo");
+      const photoNote = document.getElementById("song-photo-note");
       const statusText = document.getElementById("song-status");
       const submitButton = document.getElementById("song-submit");
 
@@ -138,12 +146,21 @@
         }
 
         const content = String(contentInput.value || "").trim();
+        const photoFile = photoInput.files?.[0] || null;
         if (!content) {
           statusText.textContent = "Describe what you're doing before saving.";
           return;
         }
 
+        if (photoFile && photoFile.size > 20_000_000) {
+          statusText.textContent = "That photo is too large. Try a smaller photo or screenshot instead.";
+          return;
+        }
+
         submitButton.disabled = true;
+        photoNote.textContent = photoFile
+          ? `Selected: ${photoFile.name}`
+          : "Optional. Photos show in the live feed, not on the map pins.";
         statusText.textContent = "Saving activity and checking current location...";
 
         try {
@@ -154,16 +171,26 @@
             subject: subjectSelect.value,
             subjectLabel: subjectSelect.options[subjectSelect.selectedIndex]?.textContent || subjectSelect.value,
             content,
+            photoFile,
             sourcePage: "what-were-doing",
+            onStatus: (message) => {
+              statusText.textContent = message;
+            },
+            onProgress: (progress) => {
+              statusText.textContent = Number.isFinite(progress)
+                ? `Uploading photo... ${progress}%`
+                : "Uploading photo...";
+            },
           });
 
           form.reset();
           subjectSelect.value = "family";
+          photoNote.textContent = "Optional. Photos show in the live feed, not on the map pins.";
           contentInput.focus();
 
           statusText.textContent = Number.isFinite(location.lat) && Number.isFinite(location.lng)
-            ? "Activity saved and pinned on the map."
-            : "Activity saved. Location was unavailable, so it will show in the feed without a pin.";
+            ? (photoFile ? "Activity saved, photo attached, and pinned on the map." : "Activity saved and pinned on the map.")
+            : (photoFile ? "Activity saved with a photo. Location was unavailable, so it will show in the feed without a pin." : "Activity saved. Location was unavailable, so it will show in the feed without a pin.");
         } catch (error) {
           console.error("Could not save activity", error);
           const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";

@@ -106,6 +106,7 @@
         ensureKidsSaidItBingoGame,
         ensureScavengerHuntGame,
         ensureSharedStatesGame,
+        ROAD_TRIP_SHARED_STATES,
         ROAD_TRIP_GAME_DECK,
         subscribeToAlphabetGame,
         subscribeToKidsSaidItBingo,
@@ -182,8 +183,8 @@
                     ? `
                       <div class="trip-game-tile-stats">
                         <span class="trip-pill">Unique ${escapeHtml(sharedStatesState.uniqueStateCount)}</span>
-                        <span class="trip-pill">Andy ${escapeHtml(sharedStatesState.andyStates.length)}</span>
-                        <span class="trip-pill">Savannah ${escapeHtml(sharedStatesState.savannahStates.length)}</span>
+                        <span class="trip-pill">Left ${escapeHtml(Math.max(0, ROAD_TRIP_SHARED_STATES.length - sharedStatesState.uniqueStateCount))}</span>
+                        <span class="trip-pill">Board live</span>
                       </div>
                     `
               : "";
@@ -195,7 +196,7 @@
                 : isScavenger && scavengerState
                   ? `${escapeHtml(scavengerState.items.length)} items on the board and counting.`
                   : isSharedStates && sharedStatesState
-                    ? `${escapeHtml(sharedStatesState.uniqueStateCount)} shared states claimed so far.`
+                    ? `${escapeHtml(sharedStatesState.uniqueStateCount)} family-board states claimed so far.`
                 : escapeHtml(game.scoreboardLabel);
 
             return `

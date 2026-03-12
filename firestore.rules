@@ -71,6 +71,8 @@ service cloud.firestore {
         "subject",
         "subjectLabel",
         "content",
+        "photoUrl",
+        "photoPath",
         "routeLeg",
         "lat",
         "lng",
@@ -237,15 +239,13 @@ service cloud.firestore {
         "tripId",
         "gameId",
         "title",
-        "andyStates",
-        "savannahStates",
+        "claimedStates",
         "updatedAt"
       ]) && request.resource.data.keys().hasOnly([
         "tripId",
         "gameId",
         "title",
-        "andyStates",
-        "savannahStates",
+        "claimedStates",
         "updatedAt"
       ]);
     }
@@ -343,6 +343,7 @@ service cloud.firestore {
           "funniest-sign",
           "sketchiest-mascot",
           "best-sunset",
+          "best-moments",
           "strangest-town-name"
         ].hasAny([request.resource.data.challengeId])
         && ["andy", "savannah"].hasAny([request.resource.data.uploaderPerson])

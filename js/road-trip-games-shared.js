@@ -65,7 +65,7 @@ export const ROAD_TRIP_GAME_DECK = [
     title: SHARED_STATES_GAME_TITLE,
     href: "carlsons-road-trip-states.html",
     badge: "Live now",
-    description: "One shared US map list for Andy and Savannah to claim states on the same board during the trip.",
+    description: "One shared family board where every state goes into the same road-trip list the second either of you claims it.",
     scoreboardLabel: "Shared states",
     isLive: true,
   },
@@ -97,9 +97,9 @@ export const PHOTO_PROOF_CHALLENGES = [
     hint: "The kind of giant statue, costume, or roadside creature that makes the stop slightly unsettling.",
   },
   {
-    id: "best-sunset",
-    label: "Best sunset",
-    hint: "Golden-hour proof that the van route had cinematic moments too.",
+    id: "best-moments",
+    label: "Best Moments",
+    hint: "Favorite trip snapshots that capture the funniest, sweetest, or most unforgettable parts of the drive.",
   },
   {
     id: "strangest-town-name",
@@ -237,11 +237,19 @@ const COMPRESSIBLE_IMAGE_TYPES = new Set(["image/jpeg", "image/jpg", "image/png"
 const PHOTO_PROOF_PREP_TIMEOUT_MS = 8000;
 const PHOTO_PROOF_UPLOAD_TIMEOUT_MS = 45000;
 const SHARED_STATES_LOOKUP = new Map(ROAD_TRIP_SHARED_STATES.map((stateName) => [stateName.toLowerCase(), stateName]));
+const PHOTO_PROOF_CHALLENGE_ALIASES = new Map([
+  ["best-sunset", "best-moments"],
+]);
 
 export const isRoadTripPlayer = (person = "") => PLAYER_IDENTITIES.has(String(person || "").trim().toLowerCase());
 
+const normalizePhotoProofChallengeId = (challengeId = "") => {
+  const normalized = String(challengeId || "").trim().toLowerCase();
+  return PHOTO_PROOF_CHALLENGE_ALIASES.get(normalized) || normalized;
+};
+
 export const getPhotoProofChallengeMeta = (challengeId = "") => PHOTO_PROOF_CHALLENGES.find(
-  (challenge) => challenge.id === String(challengeId || "").trim().toLowerCase()
+  (challenge) => challenge.id === normalizePhotoProofChallengeId(challengeId)
 ) || null;
 
 export const normalizeRoadTripStateName = (stateName = "") => SHARED_STATES_LOOKUP.get(String(stateName || "").trim().toLowerCase()) || "";
@@ -372,8 +380,8 @@ const uploadPhotoProofBlob = ({ storageRef, file, onProgress } = {}) => new Prom
 const normalizePhotoProofEntry = (entryId, data) => ({
   id: String(entryId || "").trim(),
   tripId: String(data?.tripId || ROAD_TRIP_ID),
-  challengeId: String(data?.challengeId || "").trim().toLowerCase(),
-  challengeLabel: String(data?.challengeLabel || "").trim(),
+  challengeId: normalizePhotoProofChallengeId(data?.challengeId),
+  challengeLabel: getPhotoProofChallengeMeta(data?.challengeId)?.label || String(data?.challengeLabel || "").trim(),
   caption: String(data?.caption || "").trim(),
   photoUrl: String(data?.photoUrl || "").trim(),
   photoPath: String(data?.photoPath || "").trim(),
@@ -564,41 +572,38 @@ const scavengerHuntDocumentData = ({ items = [] } = {}) => ({
   updatedAt: serverTimestamp(),
 });
 
-const createSharedStatesGameState = ({ andyStates = [], savannahStates = [] } = {}) => ({
+const createSharedStatesGameState = ({ claimedStates = [] } = {}) => ({
   tripId: ROAD_TRIP_ID,
   gameId: SHARED_STATES_GAME_ID,
   title: SHARED_STATES_GAME_TITLE,
-  andyStates: andyStates.filter(Boolean),
-  savannahStates: savannahStates.filter(Boolean),
+  claimedStates: claimedStates.filter(Boolean),
   updatedAt: serverTimestamp(),
 });
 
 const normalizeSharedStatesGameState = (data) => {
-  const andyStates = Array.isArray(data?.andyStates)
-    ? data.andyStates.map((stateName) => normalizeRoadTripStateName(stateName)).filter(Boolean)
-    : [];
-  const savannahStates = Array.isArray(data?.savannahStates)
-    ? data.savannahStates.map((stateName) => normalizeRoadTripStateName(stateName)).filter(Boolean)
-    : [];
-  const uniqueStates = new Set([...andyStates, ...savannahStates]);
+  const claimedStates = Array.isArray(data?.claimedStates)
+    ? data.claimedStates.map((stateName) => normalizeRoadTripStateName(stateName)).filter(Boolean)
+    : [
+      ...(Array.isArray(data?.andyStates) ? data.andyStates : []),
+      ...(Array.isArray(data?.savannahStates) ? data.savannahStates : []),
+    ].map((stateName) => normalizeRoadTripStateName(stateName)).filter(Boolean);
+  const uniqueStates = [...new Set(claimedStates)].sort((left, right) => left.localeCompare(right));
 
   return {
     tripId: String(data?.tripId || ROAD_TRIP_ID),
     gameId: String(data?.gameId || SHARED_STATES_GAME_ID),
     title: String(data?.title || SHARED_STATES_GAME_TITLE),
-    andyStates: [...new Set(andyStates)].sort((left, right) => left.localeCompare(right)),
-    savannahStates: [...new Set(savannahStates)].sort((left, right) => left.localeCompare(right)),
-    uniqueStateCount: uniqueStates.size,
+    claimedStates: uniqueStates,
+    uniqueStateCount: uniqueStates.length,
     updatedAt: data?.updatedAt?.toDate?.() || null,
   };
 };
 
-const sharedStatesGameDocumentData = ({ andyStates = [], savannahStates = [] } = {}) => ({
+const sharedStatesGameDocumentData = ({ claimedStates = [] } = {}) => ({
   tripId: ROAD_TRIP_ID,
   gameId: SHARED_STATES_GAME_ID,
   title: SHARED_STATES_GAME_TITLE,
-  andyStates,
-  savannahStates,
+  claimedStates,
   updatedAt: serverTimestamp(),
 });
 
@@ -691,6 +696,13 @@ export const ensureSharedStatesGame = async () => {
     const snapshot = await transaction.get(sharedStatesGameDocument);
 
     if (snapshot.exists()) {
+      const normalizedState = normalizeSharedStatesGameState(snapshot.data());
+
+      if (Array.isArray(snapshot.data()?.claimedStates)) {
+        return;
+      }
+
+      transaction.set(sharedStatesGameDocument, sharedStatesGameDocumentData({ claimedStates: normalizedState.claimedStates }));
       return;
     }
 
@@ -698,10 +710,8 @@ export const ensureSharedStatesGame = async () => {
   });
 };
 
-export const toggleSharedStatesGameState = async ({ player = "", stateName = "" } = {}) => {
-  const normalizedPlayer = playerFieldPrefix(player);
+export const toggleSharedStatesGameState = async ({ stateName = "" } = {}) => {
   const normalizedStateName = normalizeRoadTripStateName(stateName);
-  const fieldName = normalizedPlayer === "savannah" ? "savannahStates" : "andyStates";
 
   if (!normalizedStateName) {
     throw new Error("invalid-road-trip-state");
@@ -713,17 +723,14 @@ export const toggleSharedStatesGameState = async ({ player = "", stateName = "" 
       ? normalizeSharedStatesGameState(snapshot.data())
       : normalizeSharedStatesGameState(createSharedStatesGameState());
 
-    const currentStates = Array.isArray(currentState[fieldName]) ? currentState[fieldName] : [];
+    const currentStates = Array.isArray(currentState.claimedStates) ? currentState.claimedStates : [];
     const nextStates = currentStates.includes(normalizedStateName)
       ? currentStates.filter((entry) => entry !== normalizedStateName)
       : [...currentStates, normalizedStateName].sort((left, right) => left.localeCompare(right));
 
     transaction.set(
       sharedStatesGameDocument,
-      sharedStatesGameDocumentData({
-        andyStates: fieldName === "andyStates" ? nextStates : currentState.andyStates,
-        savannahStates: fieldName === "savannahStates" ? nextStates : currentState.savannahStates,
-      })
+      sharedStatesGameDocumentData({ claimedStates: nextStates })
     );
   });
 };

@@ -1288,6 +1288,7 @@ body[data-page="photo-proof"] .site-header {
 
 .trip-filter-row select,
 .trip-log-form select,
+.trip-log-form input,
 .trip-log-form textarea {
   width: 100%;
   border: 1px solid #d7e1d6;
@@ -1594,6 +1595,16 @@ body[data-page="photo-proof"] .site-header {
 
 .trip-feed-item p {
   color: #54483c;
+}
+
+.trip-feed-photo {
+  width: 100%;
+  max-height: 22rem;
+  object-fit: cover;
+  display: block;
+  border-radius: 0.95rem;
+  border: 1px solid #d8e0d7;
+  background: #e8efea;
 }
 
 .trip-delete-button {

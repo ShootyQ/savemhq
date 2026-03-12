@@ -20,5 +20,14 @@ service firebase.storage {
           || request.resource.contentType.matches("image/.*")
         );
     }
+
+    match /roadTrips/{tripId}/events/{eventType}/{fileName} {
+      allow read: if true;
+      allow write: if isRoadTripPhotoUploader()
+        && (
+          request.resource == null
+          || request.resource.contentType.matches("image/.*")
+        );
+    }
   }
 }
