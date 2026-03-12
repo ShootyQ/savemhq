@@ -27,12 +27,13 @@
               <p class="intro">
                 Think of this as the game shelf for the trip. As we add more games, they will land here with a live score tile and a link to jump in.
               </p>
-              <p class="wink">Bingo, Alphabet, and the Scavenger Hunt are live now.</p>
+              <p class="wink">Bingo, Alphabet, Scavenger Hunt, Shared States, and Photo Proof are live now.</p>
             </div>
             <div class="hero-actions trip-live-links">
               <a class="btn btn-primary" href="carlsons-kids-said-it-bingo.html">Open Bingo</a>
               <a class="btn btn-secondary" href="carlsons-alphabet-game.html">Open Alphabet Game</a>
               <a class="btn btn-secondary" href="carlsons-road-trip-scavenger-hunt.html">Open Scavenger Hunt</a>
+              <a class="btn btn-secondary" href="carlsons-road-trip-states.html">Open Shared States</a>
               <a class="btn btn-secondary" href="carlsons-photo-proof-challenges.html">Open Photo Challenges</a>
               <a class="btn btn-secondary" href="carlsons-road-trip.html">Back To Live Map</a>
             </div>
@@ -87,6 +88,7 @@
             <li><a href="carlsons-kids-said-it-bingo.html">Bingo</a></li>
             <li><a href="carlsons-alphabet-game.html">Alphabet</a></li>
             <li><a href="carlsons-road-trip-scavenger-hunt.html">Scavenger</a></li>
+            <li><a href="carlsons-road-trip-states.html">States</a></li>
             <li><a href="carlsons-photo-proof-challenges.html">Photos</a></li>
           </ul>
         </nav>
@@ -103,10 +105,12 @@
         ensureAlphabetGame,
         ensureKidsSaidItBingoGame,
         ensureScavengerHuntGame,
+        ensureSharedStatesGame,
         ROAD_TRIP_GAME_DECK,
         subscribeToAlphabetGame,
         subscribeToKidsSaidItBingo,
         subscribeToScavengerHunt,
+        subscribeToSharedStatesGame,
       } from "./js/road-trip-games-shared.js";
 
       mountSiteHeader({
@@ -115,6 +119,7 @@
           { label: "Home", href: "index.html" },
           { label: "Hub", href: "carlsons-road-trip.html" },
           { label: "Games", href: "carlsons-road-trip-games.html" },
+          { label: "States", href: "carlsons-road-trip-states.html" },
           { label: "Photos", href: "carlsons-photo-proof-challenges.html" },
           { label: "Moments", href: "carlsons-kid-sayings.html" },
           { label: "Doing", href: "carlsons-sing-along.html" },
@@ -131,6 +136,7 @@
       let bingoState = null;
       let alphabetState = null;
       let scavengerState = null;
+      let sharedStatesState = null;
 
       const renderSummary = () => {
         roundValue.textContent = bingoState ? String(bingoState.round) : "--";
@@ -148,6 +154,7 @@
             const isBingo = game.id === "kids-said-it-bingo";
             const isAlphabet = game.id === "alphabet-game";
             const isScavenger = game.id === "road-trip-scavenger-hunt";
+            const isSharedStates = game.id === "shared-states-game";
             const liveStats = isBingo && bingoState
               ? `
                 <div class="trip-game-tile-stats">
@@ -171,6 +178,14 @@
                       <span class="trip-pill">Savannah ${escapeHtml(scavengerState.savannahFoundCount)}</span>
                     </div>
                   `
+                  : isSharedStates && sharedStatesState
+                    ? `
+                      <div class="trip-game-tile-stats">
+                        <span class="trip-pill">Unique ${escapeHtml(sharedStatesState.uniqueStateCount)}</span>
+                        <span class="trip-pill">Andy ${escapeHtml(sharedStatesState.andyStates.length)}</span>
+                        <span class="trip-pill">Savannah ${escapeHtml(sharedStatesState.savannahStates.length)}</span>
+                      </div>
+                    `
               : "";
 
             const summaryLabel = isBingo && bingoState
@@ -179,6 +194,8 @@
                 ? `Last win: ${escapeHtml(alphabetState.lastWinnerLabel || "Waiting for the first alphabet win")}`
                 : isScavenger && scavengerState
                   ? `${escapeHtml(scavengerState.items.length)} items on the board and counting.`
+                  : isSharedStates && sharedStatesState
+                    ? `${escapeHtml(sharedStatesState.uniqueStateCount)} shared states claimed so far.`
                 : escapeHtml(game.scoreboardLabel);
 
             return `
@@ -216,6 +233,7 @@
             await ensureKidsSaidItBingoGame();
             await ensureAlphabetGame();
             await ensureScavengerHuntGame();
+            await ensureSharedStatesGame();
           } catch (error) {
             console.error("Could not initialize road trip games", error);
           }
@@ -258,6 +276,17 @@
         },
         onError: (error) => {
           console.error("Could not subscribe to scavenger hunt", error);
+          renderGames();
+        },
+      });
+
+      subscribeToSharedStatesGame({
+        onData: (state) => {
+          sharedStatesState = state;
+          renderGames();
+        },
+        onError: (error) => {
+          console.error("Could not subscribe to shared states game", error);
           renderGames();
         },
       });

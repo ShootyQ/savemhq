@@ -164,6 +164,16 @@ service cloud.firestore {
       );
     }
 
+    function resourceUploaderMatchesAuthedRoadTripLogger() {
+      return (
+        request.auth.token.email == "andrewpcarlson85@gmail.com"
+        && resource.data.uploaderPerson == "andy"
+      ) || (
+        request.auth.token.email == "savannahbcarlson@gmail.com"
+        && resource.data.uploaderPerson == "savannah"
+      );
+    }
+
     function photoProofEntryKeysAreAllowed() {
       return request.resource.data.keys().hasAll([
         "tripId",
@@ -206,6 +216,38 @@ service cloud.firestore {
         "voterLabel",
         "createdAt"
       ]) && request.resource.data.uid == uid;
+    }
+
+    function photoProofEntryOwnerCanManageVotes(tripId, entryId) {
+      return isAutoApprovedUser()
+        && exists(/databases/$(database)/documents/roadTrips/$(tripId)/photoProofEntries/$(entryId))
+        && (
+          (
+            request.auth.token.email == "andrewpcarlson85@gmail.com"
+            && get(/databases/$(database)/documents/roadTrips/$(tripId)/photoProofEntries/$(entryId)).data.uploaderPerson == "andy"
+          ) || (
+            request.auth.token.email == "savannahbcarlson@gmail.com"
+            && get(/databases/$(database)/documents/roadTrips/$(tripId)/photoProofEntries/$(entryId)).data.uploaderPerson == "savannah"
+          )
+        );
+    }
+
+    function sharedStatesGameKeysAreAllowed() {
+      return request.resource.data.keys().hasAll([
+        "tripId",
+        "gameId",
+        "title",
+        "andyStates",
+        "savannahStates",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "tripId",
+        "gameId",
+        "title",
+        "andyStates",
+        "savannahStates",
+        "updatedAt"
+      ]);
     }
 
     function monthWriteKeysAreAllowed() {
@@ -306,7 +348,11 @@ service cloud.firestore {
         && ["andy", "savannah"].hasAny([request.resource.data.uploaderPerson])
         && requestUploaderMatchesAuthedRoadTripLogger();
       allow update: if false;
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (
+        isAutoApprovedUser()
+        && resource.data.tripId == tripId
+        && resourceUploaderMatchesAuthedRoadTripLogger()
+      );
     }
 
     match /roadTrips/{tripId}/photoProofEntries/{entryId}/votes/{uid} {
@@ -320,7 +366,7 @@ service cloud.firestore {
       allow delete: if isAdmin() || (
         isApprovedUser()
         && request.auth.uid == uid
-      );
+      ) || photoProofEntryOwnerCanManageVotes(tripId, entryId);
     }
 
     match /roadTrips/{tripId}/games/{gameId} {
@@ -341,6 +387,10 @@ service cloud.firestore {
             gameId == "road-trip-scavenger-hunt"
             && request.resource.data.title == "Road Trip Scavenger Hunt"
             && scavengerHuntKeysAreAllowed()
+          ) || (
+            gameId == "shared-states-game"
+            && request.resource.data.title == "Shared States Game"
+            && sharedStatesGameKeysAreAllowed()
           )
         );
       allow delete: if isAdmin();

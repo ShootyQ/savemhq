@@ -1858,6 +1858,11 @@ body[data-page="photo-proof"] .site-header {
   padding: 0.9rem;
 }
 
+.photo-proof-entry-actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
 .photo-proof-entry-meta {
   margin-top: -0.1rem;
 }
@@ -1868,6 +1873,98 @@ body[data-page="photo-proof"] .site-header {
 
 .photo-proof-empty-card {
   padding: 1rem;
+}
+
+.road-trip-states-layout {
+  grid-template-columns: minmax(19rem, 0.82fr) minmax(0, 1.18fr);
+}
+
+.road-trip-states-summary-card,
+.road-trip-states-board-card {
+  padding: 1rem;
+}
+
+.road-trip-state-columns,
+.road-trip-state-pill-list,
+.road-trip-states-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.road-trip-state-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.road-trip-state-pill-list {
+  grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+}
+
+.road-trip-states-grid {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  margin-top: 0.3rem;
+}
+
+.road-trip-state-option {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+  min-height: 5.8rem;
+  border: 1px solid #d7dfd7;
+  border-radius: 1rem;
+  background: linear-gradient(160deg, rgba(255, 252, 246, 0.98), rgba(239, 247, 244, 0.95));
+  color: #493f34;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  padding: 0.85rem 0.9rem;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.road-trip-state-option:hover:not(:disabled),
+.road-trip-state-option:focus-visible {
+  transform: translateY(-1px);
+  border-color: #9fcfd0;
+  box-shadow: 0 10px 18px rgba(62, 111, 114, 0.12);
+  outline: none;
+}
+
+.road-trip-state-option.is-selected {
+  border-color: #c89f75;
+  background: linear-gradient(155deg, rgba(252, 240, 224, 0.98), rgba(237, 247, 244, 0.96));
+  box-shadow: 0 0 0 2px rgba(188, 141, 95, 0.18);
+}
+
+.road-trip-state-option.is-shared {
+  border-color: #8fc0bf;
+  background: linear-gradient(155deg, rgba(236, 248, 248, 0.98), rgba(248, 240, 229, 0.96));
+}
+
+.road-trip-state-option:disabled {
+  opacity: 1;
+}
+
+.road-trip-state-option-name {
+  display: block;
+  color: #352d26;
+}
+
+.road-trip-state-option-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.trip-pill.is-andy {
+  background: #e8f5f5;
+  border-color: #c1dddd;
+  color: #255d6a;
+}
+
+.trip-pill.is-savannah {
+  background: #f5eef8;
+  border-color: #ddcee8;
+  color: #72508b;
 }
 
 .trip-text-input {
@@ -2242,6 +2339,10 @@ select:focus-visible {
     align-items: flex-start;
   }
 
+  .road-trip-state-columns {
+    grid-template-columns: 1fr;
+  }
+
   .trip-bingo-board {
     gap: 0.34rem;
   }
@@ -2391,7 +2492,8 @@ select:focus-visible {
 
   .photo-proof-layout,
   .photo-proof-score-row,
-  .photo-proof-entry-grid {
+  .photo-proof-entry-grid,
+  .road-trip-states-layout {
     grid-template-columns: 1fr;
   }
 

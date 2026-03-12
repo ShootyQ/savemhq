@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shared States Game | SavemHQ</title>
+    <meta
+      name="description"
+      content="Shared road trip states game for Andy and Savannah with one common board showing which states are already claimed."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="road-trip-games">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner trip-hero-grid">
+          <div class="home-hero-copy">
+            <p class="tagline">Game Five</p>
+            <h1>Shared States Game</h1>
+            <p class="subheadline">
+              One shared states list for the road trip, with both of you working off the same board and instantly seeing what is already claimed.
+            </p>
+            <div class="hero-surface">
+              <p class="intro">
+                This is separate from the main competition board. It is just a live road-trip game where Andy and Savannah can tap states from one common list.
+              </p>
+              <p class="wink">If a state is already picked, the board shows exactly who has it.</p>
+            </div>
+            <div class="hero-actions trip-live-links">
+              <a class="btn btn-primary" href="#shared-states-board">Open States Board</a>
+              <a class="btn btn-secondary" href="carlsons-road-trip-games.html">Back To Games Hub</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="shared-states-board" class="section section-card">
+        <div class="container trip-games-layout road-trip-states-layout">
+          <article class="project-card trip-summary-card road-trip-states-summary-card">
+            <div>
+              <p class="section-kicker">Live Board</p>
+              <h2>Shared State Totals</h2>
+              <p id="road-trip-states-status" class="small-note">Loading shared states board...</p>
+            </div>
+
+            <div class="trip-stat-grid" aria-live="polite">
+              <div class="trip-stat-chip">
+                <span class="small-note">Unique states claimed</span>
+                <strong id="road-trip-states-unique-count">0</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Andy picked</span>
+                <strong id="road-trip-states-andy-count">0</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Savannah picked</span>
+                <strong id="road-trip-states-savannah-count">0</strong>
+              </div>
+            </div>
+
+            <div class="entry-row">
+              <p class="entry-label">Recent taps</p>
+              <div id="road-trip-states-recent" class="quick-chip-wrap" aria-live="polite"></div>
+            </div>
+
+            <div class="road-trip-state-columns">
+              <div class="trip-inline-note">
+                <strong>Andy's list</strong>
+                <div id="road-trip-states-andy-list" class="road-trip-state-pill-list"></div>
+              </div>
+              <div class="trip-inline-note">
+                <strong>Savannah's list</strong>
+                <div id="road-trip-states-savannah-list" class="road-trip-state-pill-list"></div>
+              </div>
+            </div>
+          </article>
+
+          <section class="project-card trip-summary-card road-trip-states-board-card">
+            <div>
+              <p class="section-kicker">Common Board</p>
+              <h2>Tap States From One List</h2>
+              <p class="small-note">Signed in as Andy or Savannah: tap a state to add or remove your own pick. Everyone else can watch the board live.</p>
+            </div>
+
+            <div id="road-trip-states-grid" class="road-trip-states-grid" aria-live="polite"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Carlsons Insane Road Trip, now collecting states together.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="carlsons-road-trip.html">Live Map</a></li>
+            <li><a href="carlsons-road-trip-games.html">Games</a></li>
+            <li><a href="carlsons-road-trip-states.html">States</a></li>
+            <li><a href="states-competition.html">Competition</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+      import { escapeHtml } from "./js/road-trip-shared.js";
+      import {
+        createSharedStatesGamePreviewState,
+        ensureSharedStatesGame,
+        isRoadTripPlayer,
+        ROAD_TRIP_SHARED_STATES,
+        subscribeToSharedStatesGame,
+        toggleSharedStatesGameState,
+      } from "./js/road-trip-games-shared.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Hub", href: "carlsons-road-trip.html" },
+          { label: "Games", href: "carlsons-road-trip-games.html" },
+          { label: "States", href: "carlsons-road-trip-states.html" },
+          { label: "Photos", href: "carlsons-photo-proof-challenges.html" },
+        ],
+      });
+
+      const RECENT_STATES_STORAGE_KEY = "savemhq-road-trip-shared-states-recent";
+      const statusText = document.getElementById("road-trip-states-status");
+      const uniqueCountValue = document.getElementById("road-trip-states-unique-count");
+      const andyCountValue = document.getElementById("road-trip-states-andy-count");
+      const savannahCountValue = document.getElementById("road-trip-states-savannah-count");
+      const recentStates = document.getElementById("road-trip-states-recent");
+      const andyList = document.getElementById("road-trip-states-andy-list");
+      const savannahList = document.getElementById("road-trip-states-savannah-list");
+      const statesGrid = document.getElementById("road-trip-states-grid");
+
+      let canManageBoard = false;
+      let approvalPerson = "";
+      let sharedStatesState = createSharedStatesGamePreviewState();
+
+      const getRecentStates = () => {
+        try {
+          const raw = localStorage.getItem(RECENT_STATES_STORAGE_KEY);
+          const parsed = JSON.parse(raw || "[]");
+          return Array.isArray(parsed)
+            ? parsed.filter((stateName) => ROAD_TRIP_SHARED_STATES.includes(stateName))
+            : [];
+        } catch {
+          return [];
+        }
+      };
+
+      const saveRecentState = (stateName) => {
+        const normalized = ROAD_TRIP_SHARED_STATES.find((entry) => entry === stateName);
+        if (!normalized) {
+          return;
+        }
+
+        const next = [normalized, ...getRecentStates().filter((entry) => entry !== normalized)].slice(0, 8);
+        localStorage.setItem(RECENT_STATES_STORAGE_KEY, JSON.stringify(next));
+      };
+
+      const renderStatePills = (host, states = []) => {
+        host.innerHTML = states.length
+          ? states.map((stateName) => `<span class="state-pill seen">${escapeHtml(stateName)}</span>`).join("")
+          : '<p class="small-note">No states yet.</p>';
+      };
+
+      const renderRecentStates = () => {
+        const items = getRecentStates();
+        if (!items.length) {
+          recentStates.innerHTML = '<p class="small-note">No recent taps yet.</p>';
+          return;
+        }
+
+        recentStates.innerHTML = items
+          .map((stateName) => `<button class="quick-chip" type="button" data-state="${escapeHtml(stateName)}" ${!canManageBoard ? "disabled" : ""}>${escapeHtml(stateName)}</button>`)
+          .join("");
+      };
+
+      const renderGrid = () => {
+        const andySet = new Set(sharedStatesState.andyStates || []);
+        const savannahSet = new Set(sharedStatesState.savannahStates || []);
+        const currentPlayerSet = approvalPerson === "savannah" ? savannahSet : andySet;
+
+        statesGrid.innerHTML = ROAD_TRIP_SHARED_STATES
+          .map((stateName) => {
+            const andyPicked = andySet.has(stateName);
+            const savannahPicked = savannahSet.has(stateName);
+            const currentPicked = currentPlayerSet.has(stateName);
+            const statusLabel = andyPicked && savannahPicked
+              ? "Andy + Savannah"
+              : andyPicked
+                ? "Andy"
+                : savannahPicked
+                  ? "Savannah"
+                  : "Open";
+
+            return `
+              <button
+                class="road-trip-state-option ${currentPicked ? "is-selected" : ""} ${andyPicked && savannahPicked ? "is-shared" : ""}"
+                type="button"
+                data-state="${escapeHtml(stateName)}"
+                ${!canManageBoard ? "disabled" : ""}
+              >
+                <span class="road-trip-state-option-name">${escapeHtml(stateName)}</span>
+                <span class="road-trip-state-option-meta">
+                  ${andyPicked ? '<span class="trip-pill is-andy">Andy</span>' : ""}
+                  ${savannahPicked ? '<span class="trip-pill is-savannah">Savannah</span>' : ""}
+                  ${!andyPicked && !savannahPicked ? `<span class="small-note">${statusLabel}</span>` : ""}
+                </span>
+              </button>
+            `;
+          })
+          .join("");
+
+        refreshRevealMotion({ scope: statesGrid, selector: ".road-trip-state-option" });
+      };
+
+      const renderState = () => {
+        uniqueCountValue.textContent = String(sharedStatesState.uniqueStateCount || 0);
+        andyCountValue.textContent = String(sharedStatesState.andyStates?.length || 0);
+        savannahCountValue.textContent = String(sharedStatesState.savannahStates?.length || 0);
+        renderRecentStates();
+        renderStatePills(andyList, sharedStatesState.andyStates || []);
+        renderStatePills(savannahList, sharedStatesState.savannahStates || []);
+        renderGrid();
+      };
+
+      const toggleState = async (stateName) => {
+        if (!canManageBoard || !approvalPerson) {
+          return;
+        }
+
+        statusText.textContent = "Updating shared states board...";
+
+        try {
+          await toggleSharedStatesGameState({
+            player: approvalPerson,
+            stateName,
+          });
+          saveRecentState(stateName);
+        } catch (error) {
+          console.error("Could not update shared states game", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          statusText.textContent = `Could not update state (${details}).`;
+        }
+      };
+
+      initHeaderShell();
+      initRevealMotion();
+
+      statesGrid.addEventListener("click", (event) => {
+        const target = event.target instanceof Element ? event.target.closest(".road-trip-state-option") : null;
+        if (!target) {
+          return;
+        }
+
+        toggleState(String(target.getAttribute("data-state") || ""));
+      });
+
+      recentStates.addEventListener("click", (event) => {
+        const target = event.target instanceof Element ? event.target.closest(".quick-chip") : null;
+        if (!target) {
+          return;
+        }
+
+        toggleState(String(target.getAttribute("data-state") || ""));
+      });
+
+      initHeaderAuth({
+        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson: nextApprovalPerson }) => {
+          approvalPerson = String(nextApprovalPerson || "").trim().toLowerCase();
+          canManageBoard = Boolean(user) && (isAdmin || ((approvalStatus === "approved") && isRoadTripPlayer(approvalPerson)));
+
+          if (!user) {
+            statusText.textContent = "Watching the shared states board in read-only mode.";
+          } else if (canManageBoard) {
+            statusText.textContent = "Shared board is live. Tap a state to add or remove your own pick.";
+            try {
+              await ensureSharedStatesGame();
+            } catch (error) {
+              console.error("Could not initialize shared states game", error);
+            }
+          } else {
+            statusText.textContent = "Signed in, but this page is read-only unless you are Andy or Savannah.";
+          }
+
+          renderState();
+        },
+      });
+
+      subscribeToSharedStatesGame({
+        onData: (state) => {
+          sharedStatesState = state || createSharedStatesGamePreviewState();
+          statusText.textContent = canManageBoard
+            ? "Shared states board is live. Tap any state from the common list."
+            : "Shared states board is live. Watching in read-only mode.";
+          renderState();
+        },
+        onError: (error) => {
+          console.error("Could not subscribe to shared states game", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          statusText.textContent = `Could not load shared states board (${details}).`;
+          renderState();
+        },
+      });
+    </script>
+  </body>
+</html>

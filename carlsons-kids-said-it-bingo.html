@@ -65,6 +65,7 @@
 
             <div class="form-actions">
               <button id="trip-bingo-next-round" class="btn btn-secondary" type="button">Start Fresh Round</button>
+              <button id="trip-bingo-reset" class="btn btn-secondary" type="button">Reset Bingo To Zero</button>
             </div>
           </article>
 
@@ -119,6 +120,7 @@
         ensureKidsSaidItBingoGame,
         KIDS_SAID_IT_BINGO_FREE_INDEX,
         KIDS_SAID_IT_BINGO_SIZE,
+        resetKidsSaidItBingoGame,
         startNextKidsSaidItBingoRound,
         subscribeToKidsSaidItBingo,
         toggleKidsSaidItBingoMark,
@@ -145,6 +147,7 @@
       const andyBoard = document.getElementById("trip-bingo-andy-board");
       const savannahBoard = document.getElementById("trip-bingo-savannah-board");
       const nextRoundButton = document.getElementById("trip-bingo-next-round");
+      const resetBingoButton = document.getElementById("trip-bingo-reset");
 
       let canManageBoards = false;
       let bingoState = null;
@@ -192,6 +195,7 @@
         renderBoard({ host: andyBoard, player: "andy", card: state.andyCard || [], marks: state.andyMarks || [] });
         renderBoard({ host: savannahBoard, player: "savannah", card: state.savannahCard || [], marks: state.savannahMarks || [] });
         nextRoundButton.disabled = !canManageBoards;
+        resetBingoButton.disabled = !canManageBoards;
         refreshRevealMotion({ scope: document, selector: ".trip-bingo-cell, .trip-bingo-board-shell" });
       };
 
@@ -255,10 +259,33 @@
         }
       });
 
+      resetBingoButton.addEventListener("click", async () => {
+        if (!canManageBoards) {
+          return;
+        }
+
+        nextRoundButton.disabled = true;
+        resetBingoButton.disabled = true;
+        statusText.textContent = "Resetting bingo back to zero...";
+
+        try {
+          await resetKidsSaidItBingoGame();
+          statusText.textContent = "Bingo reset to round 1 with zero wins.";
+        } catch (error) {
+          console.error("Could not reset bingo game", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          statusText.textContent = `Could not reset bingo (${details}).`;
+        } finally {
+          nextRoundButton.disabled = !canManageBoards;
+          resetBingoButton.disabled = !canManageBoards;
+        }
+      });
+
       initHeaderAuth({
         onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson }) => {
           canManageBoards = Boolean(user) && (isAdmin || ((approvalStatus === "approved") && ["andy", "savannah"].includes(String(approvalPerson || "").toLowerCase())));
           nextRoundButton.disabled = !canManageBoards;
+          resetBingoButton.disabled = !canManageBoards;
 
           if (!user) {
             statusText.textContent = "Watching live in read-only mode. Sign in as Andy or Savannah to mark squares.";

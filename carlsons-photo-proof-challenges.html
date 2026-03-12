@@ -140,6 +140,7 @@
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
       import { escapeHtml, formatEventTime } from "./js/road-trip-shared.js";
       import {
+        deletePhotoProofEntry,
         PHOTO_PROOF_CHALLENGES,
         getPhotoProofChallengeMeta,
         isRoadTripPlayer,
@@ -187,6 +188,7 @@
       let signedInUser = null;
       let canVote = false;
       let canUpload = false;
+      let canManageEntries = false;
       let approvalPerson = "";
       let isAdmin = false;
 
@@ -198,6 +200,7 @@
 
       const votesForEntry = (entryId) => voteMap.get(entryId) || [];
       const didCurrentUserVote = (entryId) => votesForEntry(entryId).some((vote) => vote.uid === signedInUser?.uid);
+      const canDeleteEntry = (entry) => canManageEntries && (isAdmin || entry.uploaderPerson === approvalPerson);
 
       const applyViewerMode = () => {
         const isSignedOut = !signedInUser;
@@ -317,12 +320,17 @@
                             <span class="trip-pill">${escapeHtml(entry.points)} pts</span>
                             <span class="trip-pill">${escapeHtml(entry.voteCount)} vote${entry.voteCount === 1 ? "" : "s"}</span>
                           </div>
-                          <button
-                            class="btn ${didCurrentUserVote(entry.id) ? "btn-primary" : "btn-secondary"} photo-proof-vote-button"
-                            type="button"
-                            data-entry-id="${escapeHtml(entry.id)}"
-                            ${!canVote ? "disabled" : ""}
-                          >${didCurrentUserVote(entry.id) ? "Voted" : "Vote For This"}</button>
+                          <div class="photo-proof-entry-actions">
+                            <button
+                              class="btn ${didCurrentUserVote(entry.id) ? "btn-primary" : "btn-secondary"} photo-proof-vote-button"
+                              type="button"
+                              data-entry-id="${escapeHtml(entry.id)}"
+                              ${!canVote ? "disabled" : ""}
+                            >${didCurrentUserVote(entry.id) ? "Voted" : "Vote For This"}</button>
+                            ${canDeleteEntry(entry)
+                              ? `<button class="trip-delete-button photo-proof-delete-button" type="button" data-entry-id="${escapeHtml(entry.id)}" data-photo-path="${escapeHtml(entry.photoPath)}">Delete Photo</button>`
+                              : ""}
+                          </div>
                         </div>
                       </article>
                     `)
@@ -393,6 +401,35 @@
       });
 
       gallery.addEventListener("click", async (event) => {
+        const deleteButton = event.target instanceof Element ? event.target.closest(".photo-proof-delete-button") : null;
+        if (deleteButton) {
+          if (!canManageEntries) {
+            return;
+          }
+
+          const entryId = String(deleteButton.getAttribute("data-entry-id") || "");
+          const photoPath = String(deleteButton.getAttribute("data-photo-path") || "");
+          if (!entryId) {
+            return;
+          }
+
+          deleteButton.setAttribute("disabled", "disabled");
+          statusText.textContent = "Deleting photo...";
+
+          try {
+            await deletePhotoProofEntry({ entryId, photoPath });
+            statusText.textContent = "Photo deleted.";
+          } catch (error) {
+            console.error("Could not delete photo proof entry", error);
+            const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+            statusText.textContent = `Could not delete photo (${details}).`;
+          } finally {
+            deleteButton.removeAttribute("disabled");
+          }
+
+          return;
+        }
+
         const button = event.target instanceof Element ? event.target.closest(".photo-proof-vote-button") : null;
         if (!button || !canVote || !signedInUser) {
           return;
@@ -488,6 +525,7 @@
           approvalPerson = String(nextApprovalPerson || "").trim().toLowerCase();
           canVote = Boolean(user) && (isAdmin || approvalStatus === "approved");
           canUpload = canVote && isRoadTripPlayer(approvalPerson);
+          canManageEntries = Boolean(user) && (isAdmin || isRoadTripPlayer(approvalPerson));
 
           if (!user) {
             statusText.textContent = "Watching live in read-only mode.";
