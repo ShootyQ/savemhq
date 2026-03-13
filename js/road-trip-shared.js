@@ -3,10 +3,12 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
+  setDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import {
@@ -80,10 +82,17 @@ export const ROAD_TRIP_GAMES = [
 const tripEventsCollection = collection(db, "roadTrips", ROAD_TRIP_ID, "events");
 
 const tripEventDocument = (eventId) => doc(tripEventsCollection, String(eventId || "").trim());
+const tripEventReactionsCollection = (eventId) => collection(tripEventDocument(eventId), "reactions");
+const tripEventReactionDocument = (eventId, uid) => doc(tripEventReactionsCollection(eventId), String(uid || "").trim());
 const storage = getStorage(app);
 const COMPRESSIBLE_EVENT_IMAGE_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 const ROAD_TRIP_EVENT_PREP_TIMEOUT_MS = 8000;
 const ROAD_TRIP_EVENT_UPLOAD_TIMEOUT_MS = 45000;
+export const ROAD_TRIP_REACTION_OPTIONS = [
+  { id: "heart", label: "Heart", emoji: "❤️" },
+  { id: "lol", label: "LOL", emoji: "😂" },
+  { id: "shocked", label: "Shocked", emoji: "😮" },
+];
 
 const sanitizeStorageFileName = (value = "") => {
   const normalized = String(value || "")
@@ -427,6 +436,9 @@ export const deleteRoadTripEvent = async ({ eventId = "", photoPath = "" } = {})
     }
   }
 
+  const reactionSnapshot = await getDocs(tripEventReactionsCollection(normalizedEventId));
+  await Promise.all(reactionSnapshot.docs.map((reactionDoc) => deleteDoc(reactionDoc.ref)));
+
   await deleteDoc(tripEventDocument(normalizedEventId));
 };
 
@@ -464,4 +476,55 @@ export const subscribeToRoadTripEvents = ({ onData, onError } = {}) => {
     },
     onError
   );
+};
+
+export const subscribeToRoadTripEventReactions = (eventId, { onData, onError } = {}) => {
+  const normalizedEventId = String(eventId || "").trim();
+
+  if (!normalizedEventId) {
+    onData?.([]);
+    return () => {};
+  }
+
+  return onSnapshot(
+    tripEventReactionsCollection(normalizedEventId),
+    (snapshot) => {
+      onData?.(snapshot.docs.map((reactionDoc) => {
+        const data = reactionDoc.data();
+        return {
+          id: reactionDoc.id,
+          uid: String(data?.uid || reactionDoc.id || "").trim(),
+          tripId: String(data?.tripId || ROAD_TRIP_ID).trim(),
+          eventId: String(data?.eventId || normalizedEventId).trim(),
+          reaction: String(data?.reaction || "").trim().toLowerCase(),
+          createdAt: data?.createdAt?.toDate?.() || null,
+          updatedAt: data?.updatedAt?.toDate?.() || null,
+        };
+      }));
+    },
+    onError
+  );
+};
+
+export const setRoadTripEventReaction = async ({ eventId = "", uid = "", reaction = "" } = {}) => {
+  const normalizedEventId = String(eventId || "").trim();
+  const normalizedUid = String(uid || "").trim();
+  const normalizedReaction = String(reaction || "").trim().toLowerCase();
+
+  if (!normalizedEventId || !normalizedUid || !normalizedReaction) {
+    throw new Error("missing-road-trip-reaction-fields");
+  }
+
+  if (!ROAD_TRIP_REACTION_OPTIONS.some((entry) => entry.id === normalizedReaction)) {
+    throw new Error("invalid-road-trip-reaction");
+  }
+
+  await setDoc(tripEventReactionDocument(normalizedEventId, normalizedUid), {
+    tripId: ROAD_TRIP_ID,
+    eventId: normalizedEventId,
+    uid: normalizedUid,
+    reaction: normalizedReaction,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
 };

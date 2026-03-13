@@ -82,6 +82,27 @@ service cloud.firestore {
       ]);
     }
 
+    function roadTripReactionKeysAreAllowed(uid, eventId) {
+      return request.resource.data.keys().hasAll([
+        "tripId",
+        "eventId",
+        "uid",
+        "reaction",
+        "createdAt",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "tripId",
+        "eventId",
+        "uid",
+        "reaction",
+        "createdAt",
+        "updatedAt"
+      ])
+        && request.resource.data.uid == uid
+        && request.resource.data.eventId == eventId
+        && ["heart", "lol", "shocked"].hasAny([request.resource.data.reaction]);
+    }
+
     function kidsSaidItBingoKeysAreAllowed() {
       return request.resource.data.keys().hasAll([
         "tripId",
@@ -234,6 +255,20 @@ service cloud.firestore {
         );
     }
 
+    function roadTripEventOwnerCanManageReactions(tripId, eventId) {
+      return isAutoApprovedUser()
+        && exists(/databases/$(database)/documents/roadTrips/$(tripId)/events/$(eventId))
+        && (
+          (
+            request.auth.token.email == "andrewpcarlson85@gmail.com"
+            && get(/databases/$(database)/documents/roadTrips/$(tripId)/events/$(eventId)).data.person == "andy"
+          ) || (
+            request.auth.token.email == "savannahbcarlson@gmail.com"
+            && get(/databases/$(database)/documents/roadTrips/$(tripId)/events/$(eventId)).data.person == "savannah"
+          )
+        );
+    }
+
     function sharedStatesGameKeysAreAllowed() {
       return request.resource.data.keys().hasAll([
         "tripId",
@@ -331,6 +366,13 @@ service cloud.firestore {
         && resource.data.tripId == tripId
         && resourcePersonMatchesAuthedRoadTripLogger()
       );
+    }
+
+    match /roadTrips/{tripId}/events/{eventId}/reactions/{uid} {
+      allow read: if true;
+      allow create, update: if request.resource.data.tripId == tripId
+        && roadTripReactionKeysAreAllowed(uid, eventId);
+      allow delete: if isAdmin() || roadTripEventOwnerCanManageReactions(tripId, eventId);
     }
 
     match /roadTrips/{tripId}/photoProofEntries/{entryId} {

@@ -214,10 +214,13 @@
       import {
         deleteRoadTripEvent,
         ROAD_TRIP_EVENT_TYPES,
+        ROAD_TRIP_REACTION_OPTIONS,
         ROAD_TRIP_ROUTE_POINTS,
         escapeHtml,
         getEventTypeMeta,
         getSubjectMeta,
+        setRoadTripEventReaction,
+        subscribeToRoadTripEventReactions,
         subscribeToRoadTripEvents,
       } from "./js/road-trip-shared.js";
 
@@ -236,6 +239,7 @@
 
       const INITIAL_FEED_COUNT = 5;
       const FEED_BATCH_COUNT = 5;
+      const ROAD_TRIP_REACTION_VOTER_KEY = "savemhq-road-trip-reaction-device-id";
       const mapStatus = document.getElementById("trip-map-status");
       const tripFeedList = document.getElementById("trip-feed-list");
       const tripFeedStatus = document.getElementById("trip-feed-status");
@@ -250,12 +254,84 @@
       let allEvents = [];
       let map = null;
       let eventLayer = null;
+      let reactionMap = new Map();
+      let reactionUnsubscribers = new Map();
       let approvalPerson = "";
       let canDeleteOwnEvents = false;
       let isAdmin = false;
       let deletingEventId = "";
       let mapRefreshTimeoutId = 0;
       let visibleFeedCount = INITIAL_FEED_COUNT;
+      let fallbackReactionDeviceId = "";
+
+      const createReactionDeviceId = () => {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+          return `device-${window.crypto.randomUUID()}`;
+        }
+
+        return `device-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+      };
+
+      const getReactionDeviceId = () => {
+        try {
+          const existing = String(localStorage.getItem(ROAD_TRIP_REACTION_VOTER_KEY) || "").trim();
+          if (existing) {
+            return existing;
+          }
+
+          const nextId = createReactionDeviceId();
+          localStorage.setItem(ROAD_TRIP_REACTION_VOTER_KEY, nextId);
+          return nextId;
+        } catch {
+          if (!fallbackReactionDeviceId) {
+            fallbackReactionDeviceId = createReactionDeviceId();
+          }
+
+          return fallbackReactionDeviceId;
+        }
+      };
+
+      const reactionsForEvent = (eventId) => reactionMap.get(eventId) || [];
+      const reactionSummaryForEvent = (eventId) => reactionsForEvent(eventId).reduce((summary, reactionRecord) => {
+        if (!summary[reactionRecord.reaction]) {
+          summary[reactionRecord.reaction] = 0;
+        }
+
+        summary[reactionRecord.reaction] += 1;
+        return summary;
+      }, {});
+      const currentReactionForEvent = (eventId) => {
+        const deviceId = getReactionDeviceId();
+        return reactionsForEvent(eventId).find((reactionRecord) => reactionRecord.uid === deviceId)?.reaction || "";
+      };
+
+      const renderReactionButtons = (eventId) => {
+        const currentReaction = currentReactionForEvent(eventId);
+        const summary = reactionSummaryForEvent(eventId);
+
+        return `
+          <div class="trip-reaction-row" aria-label="Reactions">
+            ${ROAD_TRIP_REACTION_OPTIONS.map((reactionOption) => {
+              const count = Number(summary[reactionOption.id] || 0);
+              const isSelected = currentReaction === reactionOption.id;
+
+              return `
+                <button
+                  class="trip-reaction-chip ${isSelected ? "is-selected" : ""}"
+                  type="button"
+                  data-reaction-event-id="${escapeHtml(eventId)}"
+                  data-reaction-id="${escapeHtml(reactionOption.id)}"
+                  aria-pressed="${isSelected ? "true" : "false"}"
+                >
+                  <span aria-hidden="true">${escapeHtml(reactionOption.emoji)}</span>
+                  <span class="trip-reaction-label">${escapeHtml(reactionOption.label)}</span>
+                  <span class="trip-reaction-count">${escapeHtml(String(count))}</span>
+                </button>
+              `;
+            }).join("")}
+          </div>
+        `;
+      };
 
       const createSubjectAvatarHtml = (subjectMeta, options = {}) => {
         const {
@@ -485,6 +561,7 @@
                 </div>
                 <p>${escapeHtml(event.content)}</p>
                 ${event.photoUrl ? `<img class="trip-feed-photo" src="${escapeHtml(event.photoUrl)}" alt="${escapeHtml(`Attached photo for ${event.content}`)}" loading="lazy" />` : ""}
+                ${renderReactionButtons(event.id)}
               </article>
             `;
           })
@@ -524,6 +601,38 @@
         latestEvent.textContent = events[0]?.createdLabel || "Waiting";
       };
 
+      const syncReactionSubscriptions = () => {
+        const activeIds = new Set(allEvents.map((event) => event.id));
+
+        [...reactionUnsubscribers.keys()].forEach((eventId) => {
+          if (activeIds.has(eventId)) {
+            return;
+          }
+
+          reactionUnsubscribers.get(eventId)?.();
+          reactionUnsubscribers.delete(eventId);
+          reactionMap.delete(eventId);
+        });
+
+        allEvents.forEach((event) => {
+          if (reactionUnsubscribers.has(event.id)) {
+            return;
+          }
+
+          const unsubscribe = subscribeToRoadTripEventReactions(event.id, {
+            onData: (reactions) => {
+              reactionMap.set(event.id, reactions);
+              renderFeed(filteredEvents());
+            },
+            onError: (error) => {
+              console.error("Could not subscribe to road trip reactions", error);
+            },
+          });
+
+          reactionUnsubscribers.set(event.id, unsubscribe);
+        });
+      };
+
       const refreshFromFilters = ({ resetFeed = false } = {}) => {
         if (resetFeed) {
           resetFeedPagination();
@@ -546,6 +655,34 @@
       tripFeedList.addEventListener("click", async (event) => {
         const target = event.target;
         if (!(target instanceof Element)) {
+          return;
+        }
+
+        const reactionButton = target.closest(".trip-reaction-chip");
+        if (reactionButton) {
+          const eventId = String(reactionButton.getAttribute("data-reaction-event-id") || "").trim();
+          const reactionId = String(reactionButton.getAttribute("data-reaction-id") || "").trim();
+
+          if (!eventId || !reactionId) {
+            return;
+          }
+
+          reactionButton.setAttribute("disabled", "disabled");
+
+          try {
+            await setRoadTripEventReaction({
+              eventId,
+              uid: getReactionDeviceId(),
+              reaction: reactionId,
+            });
+          } catch (error) {
+            console.error("Could not save road trip reaction", error);
+            const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+            updateFeedStatus(`Could not save reaction (${details}).`);
+          } finally {
+            reactionButton.removeAttribute("disabled");
+          }
+
           return;
         }
 
@@ -644,6 +781,7 @@
       subscribeToRoadTripEvents({
         onData: (events) => {
           allEvents = events;
+          syncReactionSubscriptions();
           refreshFromFilters();
         },
         onError: (error) => {
