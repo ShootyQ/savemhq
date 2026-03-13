@@ -33,9 +33,18 @@ export const initHeaderShell = () => {
   });
 
   const mediaQuery = window.matchMedia("(min-width: 701px)");
-  mediaQuery.addEventListener("change", (event) => {
+  const handleViewportChange = (event) => {
     if (event.matches) {
       setOpen(false);
     }
-  });
+  };
+
+  if (typeof mediaQuery.addEventListener === "function") {
+    mediaQuery.addEventListener("change", handleViewportChange);
+    return;
+  }
+
+  if (typeof mediaQuery.addListener === "function") {
+    mediaQuery.addListener(handleViewportChange);
+  }
 };
