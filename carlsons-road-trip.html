@@ -246,6 +246,7 @@
       let canDeleteOwnEvents = false;
       let isAdmin = false;
       let deletingEventId = "";
+      let mapRefreshTimeoutId = 0;
 
       const createSubjectAvatarHtml = (subjectMeta, options = {}) => {
         const {
@@ -338,6 +339,34 @@
         eventLayer = window.L.layerGroup().addTo(map);
         const tripBounds = window.L.latLngBounds(ROAD_TRIP_ROUTE_POINTS.map((point) => [point.lat, point.lng]));
         map.fitBounds(tripBounds, { padding: [24, 24] });
+        scheduleMapRefresh();
+      };
+
+      const refreshMapLayout = () => {
+        if (!map) {
+          return;
+        }
+
+        map.invalidateSize(false);
+      };
+
+      const scheduleMapRefresh = () => {
+        if (!map) {
+          return;
+        }
+
+        window.requestAnimationFrame(() => {
+          refreshMapLayout();
+
+          if (mapRefreshTimeoutId) {
+            window.clearTimeout(mapRefreshTimeoutId);
+          }
+
+          mapRefreshTimeoutId = window.setTimeout(() => {
+            refreshMapLayout();
+            mapRefreshTimeoutId = 0;
+          }, 220);
+        });
       };
 
       const filteredEvents = () => {
@@ -449,6 +478,7 @@
         renderStats(events);
         renderFeed(events);
         renderMapMarkers(events);
+        scheduleMapRefresh();
         mapStatus.textContent = events.length
           ? `${events.length} matching memories loaded live from Firestore.`
           : "No events match the current filters yet.";
@@ -503,6 +533,14 @@
 
       personFilter.addEventListener("change", refreshFromFilters);
       eventFilter.addEventListener("change", refreshFromFilters);
+      window.addEventListener("resize", scheduleMapRefresh);
+      window.addEventListener("orientationchange", scheduleMapRefresh);
+      window.addEventListener("pageshow", scheduleMapRefresh);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+          scheduleMapRefresh();
+        }
+      });
 
       initHeaderAuth({
         onStateChange: ({ user, isAdmin: nextIsAdmin, approvalStatus, approvalPerson: nextApprovalPerson }) => {
