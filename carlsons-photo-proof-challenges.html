@@ -162,6 +162,7 @@
       });
 
       const ENTRY_POINTS = 10;
+      const PUBLIC_VOTER_STORAGE_KEY = "savemhq-photo-proof-voter-id";
       const statusText = document.getElementById("photo-proof-status");
       const challengeSelect = document.getElementById("photo-proof-challenge");
       const captionInput = document.getElementById("photo-proof-caption");
@@ -191,15 +192,51 @@
       let canManageEntries = false;
       let approvalPerson = "";
       let isAdmin = false;
+      let fallbackPublicVoterId = "";
+
+      const createPublicVoterId = () => {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+          return `device-${window.crypto.randomUUID()}`;
+        }
+
+        return `device-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+      };
+
+      const getPublicVoterId = () => {
+        try {
+          const existing = String(localStorage.getItem(PUBLIC_VOTER_STORAGE_KEY) || "").trim();
+          if (existing) {
+            return existing;
+          }
+
+          const nextId = createPublicVoterId();
+          localStorage.setItem(PUBLIC_VOTER_STORAGE_KEY, nextId);
+          return nextId;
+        } catch {
+          if (!fallbackPublicVoterId) {
+            fallbackPublicVoterId = createPublicVoterId();
+          }
+
+          return fallbackPublicVoterId;
+        }
+      };
+
+      const currentVoterIds = () => new Set([
+        getPublicVoterId(),
+        String(signedInUser?.uid || "").trim(),
+      ].filter(Boolean));
 
       const currentUserLabel = () => {
         const email = String(signedInUser?.email || "").trim().toLowerCase();
         const knownProfile = getKnownUserProfile(email);
-        return knownProfile?.displayName || String(signedInUser?.displayName || email || "Friend").trim();
+        return knownProfile?.displayName || String(signedInUser?.displayName || email || "Guest device").trim();
       };
 
       const votesForEntry = (entryId) => voteMap.get(entryId) || [];
-      const didCurrentUserVote = (entryId) => votesForEntry(entryId).some((vote) => vote.uid === signedInUser?.uid);
+      const didCurrentUserVote = (entryId) => {
+        const voterIds = currentVoterIds();
+        return votesForEntry(entryId).some((vote) => voterIds.has(vote.uid));
+      };
       const canDeleteEntry = (entry) => canManageEntries && (isAdmin || entry.uploaderPerson === approvalPerson);
 
       const applyViewerMode = () => {
@@ -209,8 +246,8 @@
         primaryLink.setAttribute("href", isSignedOut ? "#photo-proof-gallery-section" : "#photo-proof-board");
         primaryLink.textContent = isSignedOut ? "Open Roadside Evidence" : "Open Challenge Board";
         galleryIntro.textContent = isSignedOut
-          ? "Vote for the best roadside evidence to help us determine the winner!"
-          : "Friends can browse by prompt and vote on the entries they think deserve extra points.";
+          ? "Vote for the best roadside evidence once per device, or sign in if you want to upload."
+          : "Friends can browse by prompt and vote once per device on the entries they think deserve extra points.";
       };
 
       const groupedChallenges = () => PHOTO_PROOF_CHALLENGES.map((challenge) => {
@@ -325,8 +362,8 @@
                               class="btn ${didCurrentUserVote(entry.id) ? "btn-primary" : "btn-secondary"} photo-proof-vote-button"
                               type="button"
                               data-entry-id="${escapeHtml(entry.id)}"
-                              ${!canVote ? "disabled" : ""}
-                            >${didCurrentUserVote(entry.id) ? "Voted" : "Vote For This"}</button>
+                              ${!canVote || didCurrentUserVote(entry.id) ? "disabled" : ""}
+                            >${didCurrentUserVote(entry.id) ? "Vote Recorded" : "Vote For This"}</button>
                             ${canDeleteEntry(entry)
                               ? `<button class="trip-delete-button photo-proof-delete-button" type="button" data-entry-id="${escapeHtml(entry.id)}" data-photo-path="${escapeHtml(entry.photoPath)}">Delete Photo</button>`
                               : ""}
@@ -431,12 +468,12 @@
         }
 
         const button = event.target instanceof Element ? event.target.closest(".photo-proof-vote-button") : null;
-        if (!button || !canVote || !signedInUser) {
+        if (!button || !canVote) {
           return;
         }
 
         const entryId = String(button.getAttribute("data-entry-id") || "");
-        if (!entryId) {
+        if (!entryId || didCurrentUserVote(entryId)) {
           return;
         }
 
@@ -446,10 +483,10 @@
         try {
           await togglePhotoProofVote({
             entryId,
-            uid: signedInUser.uid,
+            uid: getPublicVoterId(),
             voterLabel: currentUserLabel(),
           });
-          statusText.textContent = "Vote saved.";
+          statusText.textContent = "Vote saved for this device.";
         } catch (error) {
           console.error("Could not update photo proof vote", error);
           const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
@@ -523,18 +560,16 @@
           signedInUser = user;
           isAdmin = Boolean(nextIsAdmin);
           approvalPerson = String(nextApprovalPerson || "").trim().toLowerCase();
-          canVote = Boolean(user) && (isAdmin || approvalStatus === "approved");
+          canVote = Boolean(getPublicVoterId());
           canUpload = canVote && isRoadTripPlayer(approvalPerson);
           canManageEntries = Boolean(user) && (isAdmin || isRoadTripPlayer(approvalPerson));
 
           if (!user) {
-            statusText.textContent = "Watching live in read-only mode.";
+            statusText.textContent = "Public voting is live. Each device gets one vote per photo.";
           } else if (canUpload) {
-            statusText.textContent = "Ready. Upload weird finds fast, then check back for votes.";
-          } else if (canVote) {
-            statusText.textContent = "Signed in. You can vote on the gallery, but only Andy or Savannah can upload new proof shots.";
+            statusText.textContent = "Ready. Upload weird finds fast, then check back for public votes.";
           } else {
-            statusText.textContent = "Signed in, but this page stays read-only until access is approved.";
+            statusText.textContent = "Signed in. Anyone can vote once per device, but only Andy or Savannah can upload new proof shots.";
           }
 
           renderAll();

@@ -358,16 +358,12 @@ service cloud.firestore {
 
     match /roadTrips/{tripId}/photoProofEntries/{entryId}/votes/{uid} {
       allow read: if true;
-      allow create: if isApprovedUser()
-        && request.auth.uid == uid
+      allow create: if request.resource.data.uid == uid
         && request.resource.data.tripId == tripId
         && request.resource.data.entryId == entryId
         && photoProofVoteKeysAreAllowed(uid);
       allow update: if false;
-      allow delete: if isAdmin() || (
-        isApprovedUser()
-        && request.auth.uid == uid
-      ) || photoProofEntryOwnerCanManageVotes(tripId, entryId);
+      allow delete: if isAdmin() || photoProofEntryOwnerCanManageVotes(tripId, entryId);
     }
 
     match /roadTrips/{tripId}/games/{gameId} {

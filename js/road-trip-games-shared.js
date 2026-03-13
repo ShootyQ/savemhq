@@ -855,8 +855,7 @@ export const togglePhotoProofVote = async ({ entryId = "", uid = "", voterLabel 
     const voteSnapshot = await transaction.get(voteRef);
 
     if (voteSnapshot.exists()) {
-      transaction.delete(voteRef);
-      return;
+      throw new Error("photo-proof-vote-already-recorded");
     }
 
     transaction.set(voteRef, {
