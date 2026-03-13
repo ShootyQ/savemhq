@@ -1843,8 +1843,9 @@ body[data-page="photo-proof"] .site-header {
 
 .photo-proof-image {
   width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
+  height: auto;
+  max-height: min(70vh, 26rem);
+  object-fit: contain;
   display: block;
   background: #e9efe9;
 }
