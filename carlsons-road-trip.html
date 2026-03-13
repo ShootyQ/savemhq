@@ -102,7 +102,7 @@
             <div>
               <p class="section-kicker">Recent Activity</p>
               <h2>What Just Happened</h2>
-              <p class="small-note">Newest entries stay at the top. Unmapped entries still appear here.</p>
+              <p class="small-note">Newest five entries stay at the top. Unmapped entries still appear here, and older ones load in smaller batches.</p>
               <p id="trip-feed-status" class="small-note">Sign in as an approved logger to remove a mistaken post.</p>
             </div>
             <div id="trip-feed-list" class="trip-feed-list" aria-live="polite">
@@ -110,6 +110,10 @@
                 <h3>Waiting for the first road-trip log</h3>
                 <p>Once a talking, singing, or activity moment is posted, it will appear here automatically.</p>
               </article>
+            </div>
+            <div class="trip-feed-pagination">
+              <p id="trip-feed-summary" class="small-note"></p>
+              <button id="trip-feed-load-more" class="btn btn-secondary hidden" type="button">Show older entries</button>
             </div>
           </aside>
         </div>
@@ -230,9 +234,13 @@
         ],
       });
 
+      const INITIAL_FEED_COUNT = 5;
+      const FEED_BATCH_COUNT = 5;
       const mapStatus = document.getElementById("trip-map-status");
       const tripFeedList = document.getElementById("trip-feed-list");
       const tripFeedStatus = document.getElementById("trip-feed-status");
+      const tripFeedSummary = document.getElementById("trip-feed-summary");
+      const tripFeedLoadMore = document.getElementById("trip-feed-load-more");
       const personFilter = document.getElementById("trip-person-filter");
       const eventFilter = document.getElementById("trip-event-filter");
       const totalEvents = document.getElementById("trip-total-events");
@@ -247,6 +255,7 @@
       let isAdmin = false;
       let deletingEventId = "";
       let mapRefreshTimeoutId = 0;
+      let visibleFeedCount = INITIAL_FEED_COUNT;
 
       const createSubjectAvatarHtml = (subjectMeta, options = {}) => {
         const {
@@ -394,6 +403,42 @@
         tripFeedStatus.textContent = message;
       };
 
+      const resetFeedPagination = () => {
+        visibleFeedCount = INITIAL_FEED_COUNT;
+      };
+
+      const getVisibleFeedCount = (events) => {
+        if (!events.length) {
+          return 0;
+        }
+
+        return Math.min(Math.max(visibleFeedCount, INITIAL_FEED_COUNT), events.length);
+      };
+
+      const renderFeedPagination = (events, visibleCount) => {
+        if (!events.length) {
+          tripFeedSummary.textContent = "";
+          tripFeedLoadMore.classList.add("hidden");
+          tripFeedLoadMore.disabled = true;
+          return;
+        }
+
+        const remainingCount = Math.max(0, events.length - visibleCount);
+        tripFeedSummary.textContent = remainingCount
+          ? `Showing ${visibleCount} of ${events.length} matching logs.`
+          : `Showing all ${visibleCount} matching logs.`;
+
+        if (!remainingCount) {
+          tripFeedLoadMore.classList.add("hidden");
+          tripFeedLoadMore.disabled = true;
+          return;
+        }
+
+        tripFeedLoadMore.disabled = false;
+        tripFeedLoadMore.classList.remove("hidden");
+        tripFeedLoadMore.textContent = `Show ${Math.min(FEED_BATCH_COUNT, remainingCount)} older entr${remainingCount === 1 ? "y" : "ies"}`;
+      };
+
       const renderFeed = (events) => {
         if (!events.length) {
           tripFeedList.innerHTML = `
@@ -402,18 +447,23 @@
               <p>Try a different filter or post the first road-trip moment from one of the log pages.</p>
             </article>
           `;
+          renderFeedPagination(events, 0);
           return;
         }
 
+        const visibleCount = getVisibleFeedCount(events);
+        visibleFeedCount = visibleCount;
+
         tripFeedList.innerHTML = events
-          .map((event) => {
+          .slice(0, visibleCount)
+          .map((event, index) => {
             const eventTypeMeta = getEventTypeMeta(event.eventType);
             const subjectMeta = getSubjectMeta(event.subject, event.subjectLabel);
             const showDelete = canDeleteEvent(event);
             const isDeleting = deletingEventId && deletingEventId === event.id;
 
             return `
-              <article class="trip-feed-item">
+              <article class="trip-feed-item" data-feed-index="${index}">
                 <div class="trip-feed-topline">
                   <div class="trip-feed-subject">
                     ${createSubjectAvatarHtml(subjectMeta, {
@@ -440,6 +490,7 @@
           })
           .join("");
 
+          renderFeedPagination(events, visibleCount);
         refreshRevealMotion({ scope: tripFeedList, selector: ".trip-feed-item" });
       };
 
@@ -473,7 +524,11 @@
         latestEvent.textContent = events[0]?.createdLabel || "Waiting";
       };
 
-      const refreshFromFilters = () => {
+      const refreshFromFilters = ({ resetFeed = false } = {}) => {
+        if (resetFeed) {
+          resetFeedPagination();
+        }
+
         const events = filteredEvents();
         renderStats(events);
         renderFeed(events);
@@ -531,8 +586,28 @@
         }
       });
 
-      personFilter.addEventListener("change", refreshFromFilters);
-      eventFilter.addEventListener("change", refreshFromFilters);
+      personFilter.addEventListener("change", () => {
+        refreshFromFilters({ resetFeed: true });
+      });
+      eventFilter.addEventListener("change", () => {
+        refreshFromFilters({ resetFeed: true });
+      });
+      tripFeedLoadMore.addEventListener("click", () => {
+        const events = filteredEvents();
+        const previousCount = getVisibleFeedCount(events);
+
+        if (previousCount >= events.length) {
+          return;
+        }
+
+        visibleFeedCount = Math.min(events.length, previousCount + FEED_BATCH_COUNT);
+        renderFeed(events);
+
+        const firstOlderEntry = tripFeedList.querySelector(`[data-feed-index="${previousCount}"]`);
+        if (firstOlderEntry instanceof HTMLElement) {
+          firstOlderEntry.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
       window.addEventListener("resize", scheduleMapRefresh);
       window.addEventListener("orientationchange", scheduleMapRefresh);
       window.addEventListener("pageshow", scheduleMapRefresh);
