@@ -66,15 +66,15 @@ export const ROAD_TRIP_SUBJECTS = {
 
 export const ROAD_TRIP_GAMES = [
   {
-    title: "Talking + Singing",
-    href: "carlsons-kid-sayings.html",
-    description: "Capture quotes, one-liners, and sing-along moments from one fast page.",
+    title: "Quick Logger",
+    href: "carlsons-road-trip-log.html",
+    description: "Capture quotes, one-liners, sing-alongs, and what the crew is doing from one fast page.",
     eventType: "kid-said",
   },
   {
-    title: "What We're Doing",
-    href: "carlsons-sing-along.html",
-    description: "Log whatever the crew is doing right now and pin it on the map.",
+    title: "Quick Logger",
+    href: "carlsons-road-trip-log.html",
+    description: "Log whatever the crew is doing right now from the same unified logger.",
     eventType: "doing",
   },
 ];
@@ -360,6 +360,7 @@ export const submitRoadTripEvent = async ({
   subjectLabel = "",
   content = "",
   photoFile = null,
+  photoFiles = [],
   sourcePage = "",
   onStatus = null,
   onProgress = null,
@@ -367,30 +368,45 @@ export const submitRoadTripEvent = async ({
   const logger = resolveRoadTripLogger({ userEmail, approvalPerson });
   const trimmedContent = String(content || "").trim();
   const subjectMeta = getSubjectMeta(subject, subjectLabel);
+  const rawPhotoFiles = [
+    ...((Array.isArray(photoFiles) ? photoFiles : []).filter((file) => file instanceof Blob)),
+    ...(photoFile instanceof Blob ? [photoFile] : []),
+  ];
+  const normalizedPhotoFiles = rawPhotoFiles.slice(0, 3);
 
   if (!logger.person || !trimmedContent || !eventType) {
     throw new Error("missing-road-trip-fields");
   }
 
+  if (rawPhotoFiles.length > 3) {
+    throw new Error("too-many-road-trip-photos");
+  }
+
   onStatus?.("Checking location...");
   const locationPromise = captureSubmitLocation();
-  let photoUrl = "";
-  let photoPath = "";
+  const photoUrls = [];
+  const photoPaths = [];
 
-  if (photoFile instanceof Blob) {
-    onStatus?.("Preparing photo...");
-    const preparedFile = await prepareRoadTripEventImage(photoFile);
-    const normalizedMimeType = String(preparedFile.type || photoFile.type || "image/jpeg").toLowerCase();
+  for (const [index, nextPhotoFile] of normalizedPhotoFiles.entries()) {
+    onStatus?.(`Preparing photo ${index + 1} of ${normalizedPhotoFiles.length}...`);
+    const preparedFile = await prepareRoadTripEventImage(nextPhotoFile);
+    const normalizedMimeType = String(preparedFile.type || nextPhotoFile.type || "image/jpeg").toLowerCase();
     const fileExtension = normalizedMimeType.includes("png") ? "png" : "jpg";
-    photoPath = `roadTrips/${ROAD_TRIP_ID}/events/${String(eventType || "moment").trim().toLowerCase()}/${Date.now()}-${logger.person}-${sanitizeStorageFileName(photoFile.name || subjectMeta.label)}.${fileExtension}`;
+    const photoPath = `roadTrips/${ROAD_TRIP_ID}/events/${String(eventType || "moment").trim().toLowerCase()}/${Date.now()}-${index + 1}-${logger.person}-${sanitizeStorageFileName(nextPhotoFile.name || subjectMeta.label)}.${fileExtension}`;
     const storageRef = ref(storage, photoPath);
 
-    onStatus?.("Uploading photo...");
-    photoUrl = await uploadRoadTripEventPhoto({
+    onStatus?.(`Uploading photo ${index + 1} of ${normalizedPhotoFiles.length}...`);
+    const photoUrl = await uploadRoadTripEventPhoto({
       storageRef,
       file: preparedFile,
-      onProgress,
+      onProgress: (progress) => {
+        const overallProgress = Math.round((((index + (Number(progress) / 100)) / normalizedPhotoFiles.length) * 100));
+        onProgress?.(overallProgress);
+      },
     });
+
+    photoUrls.push(photoUrl);
+    photoPaths.push(photoPath);
   }
 
   const location = await locationPromise;
@@ -405,7 +421,12 @@ export const submitRoadTripEvent = async ({
     subject: String(subject || "").trim().toLowerCase(),
     subjectLabel: subjectMeta.label,
     content: trimmedContent,
-    ...(photoUrl ? { photoUrl, photoPath } : {}),
+    ...(photoUrls.length ? {
+      photoUrl: photoUrls[0],
+      photoPath: photoPaths[0],
+      photoUrls,
+      photoPaths,
+    } : {}),
     routeLeg,
     lat: Number.isFinite(location.lat) ? location.lat : null,
     lng: Number.isFinite(location.lng) ? location.lng : null,
@@ -417,15 +438,22 @@ export const submitRoadTripEvent = async ({
   return location;
 };
 
-export const deleteRoadTripEvent = async ({ eventId = "", photoPath = "" } = {}) => {
+export const deleteRoadTripEvent = async ({ eventId = "", photoPath = "", photoPaths = [] } = {}) => {
   const normalizedEventId = String(eventId || "").trim();
-  const normalizedPhotoPath = String(photoPath || "").trim();
+  const normalizedPhotoPaths = [
+    ...((Array.isArray(photoPaths) ? photoPaths : []).map((value) => String(value || "").trim()).filter(Boolean)),
+    ...[String(photoPath || "").trim()].filter(Boolean),
+  ].filter((value, index, values) => values.indexOf(value) === index);
 
   if (!normalizedEventId) {
     throw new Error("missing-road-trip-event-id");
   }
 
-  if (normalizedPhotoPath) {
+  for (const normalizedPhotoPath of normalizedPhotoPaths) {
+    if (!normalizedPhotoPath) {
+      continue;
+    }
+
     try {
       await deleteObject(ref(storage, normalizedPhotoPath));
     } catch (error) {
@@ -451,6 +479,17 @@ export const subscribeToRoadTripEvents = ({ onData, onError } = {}) => {
       const events = snapshot.docs.map((eventDoc) => {
         const data = eventDoc.data();
         const createdAt = data.createdAt?.toDate?.() || null;
+        const photoUrls = Array.isArray(data.photoUrls)
+          ? data.photoUrls.map((value) => String(value || "").trim()).filter(Boolean)
+          : [];
+        const photoPaths = Array.isArray(data.photoPaths)
+          ? data.photoPaths.map((value) => String(value || "").trim()).filter(Boolean)
+          : [];
+        const fallbackPhotoUrl = String(data.photoUrl || "").trim();
+        const fallbackPhotoPath = String(data.photoPath || "").trim();
+        const normalizedPhotoUrls = photoUrls.length ? photoUrls : (fallbackPhotoUrl ? [fallbackPhotoUrl] : []);
+        const normalizedPhotoPaths = photoPaths.length ? photoPaths : (fallbackPhotoPath ? [fallbackPhotoPath] : []);
+
         return {
           id: eventDoc.id,
           tripId: String(data.tripId || ROAD_TRIP_ID),
@@ -460,8 +499,10 @@ export const subscribeToRoadTripEvents = ({ onData, onError } = {}) => {
           subject: String(data.subject || "").trim().toLowerCase(),
           subjectLabel: String(data.subjectLabel || "").trim(),
           content: String(data.content || "").trim(),
-          photoUrl: String(data.photoUrl || "").trim(),
-          photoPath: String(data.photoPath || "").trim(),
+          photoUrl: normalizedPhotoUrls[0] || fallbackPhotoUrl,
+          photoPath: normalizedPhotoPaths[0] || fallbackPhotoPath,
+          photoUrls: normalizedPhotoUrls,
+          photoPaths: normalizedPhotoPaths,
           routeLeg: String(data.routeLeg || "").trim(),
           lat: Number.isFinite(Number(data.lat)) ? Number(data.lat) : null,
           lng: Number.isFinite(Number(data.lng)) ? Number(data.lng) : null,

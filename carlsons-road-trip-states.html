@@ -137,6 +137,8 @@
       let canManageBoard = false;
       let approvalPerson = "";
       let sharedStatesState = createSharedStatesGamePreviewState();
+      let sharedStatesUnsubscribe = () => {};
+      let sharedStatesRetryTimeoutId = 0;
 
       const getRecentStates = () => {
         try {
@@ -150,6 +152,15 @@
         }
       };
 
+      const clearSharedStatesRetry = () => {
+        if (!sharedStatesRetryTimeoutId) {
+          return;
+        }
+
+        window.clearTimeout(sharedStatesRetryTimeoutId);
+        sharedStatesRetryTimeoutId = 0;
+      };
+
       const saveRecentState = (stateName) => {
         const normalized = ROAD_TRIP_SHARED_STATES.find((entry) => entry === stateName);
         if (!normalized) {
@@ -157,7 +168,11 @@
         }
 
         const next = [normalized, ...getRecentStates().filter((entry) => entry !== normalized)].slice(0, 8);
-        localStorage.setItem(RECENT_STATES_STORAGE_KEY, JSON.stringify(next));
+        try {
+          localStorage.setItem(RECENT_STATES_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // Ignore storage failures on mobile private browsing.
+        }
       };
 
       const renderStatePills = (host, states = []) => {
@@ -219,6 +234,39 @@
         renderGrid();
       };
 
+      const scheduleSharedStatesRetry = () => {
+        if (document.hidden || sharedStatesRetryTimeoutId) {
+          return;
+        }
+
+        sharedStatesRetryTimeoutId = window.setTimeout(() => {
+          sharedStatesRetryTimeoutId = 0;
+          startSharedStatesSubscription();
+        }, 1800);
+      };
+
+      const startSharedStatesSubscription = () => {
+        clearSharedStatesRetry();
+        sharedStatesUnsubscribe();
+        sharedStatesUnsubscribe = subscribeToSharedStatesGame({
+          onData: (state) => {
+            clearSharedStatesRetry();
+            sharedStatesState = state || createSharedStatesGamePreviewState();
+            statusText.textContent = canManageBoard
+              ? "Shared states board is live. Tap any state from the common list."
+              : "Shared states board is live. Watching in read-only mode.";
+            renderState();
+          },
+          onError: (error) => {
+            console.error("Could not subscribe to shared states game", error);
+            const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+            statusText.textContent = `Could not load shared states board (${details}). Retrying...`;
+            renderState();
+            scheduleSharedStatesRetry();
+          },
+        });
+      };
+
       const toggleState = async (stateName) => {
         if (!canManageBoard || !approvalPerson) {
           return;
@@ -238,6 +286,8 @@
 
       initHeaderShell();
       initRevealMotion();
+      renderState();
+      startSharedStatesSubscription();
 
       statesGrid.addEventListener("click", (event) => {
         const target = event.target instanceof Element ? event.target.closest(".road-trip-state-option") : null;
@@ -255,6 +305,18 @@
         }
 
         toggleState(String(target.getAttribute("data-state") || ""));
+      });
+
+      window.addEventListener("pageshow", () => {
+        renderState();
+        startSharedStatesSubscription();
+      });
+
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+          renderState();
+          startSharedStatesSubscription();
+        }
       });
 
       initHeaderAuth({
@@ -275,22 +337,6 @@
             statusText.textContent = "Signed in, but this page is read-only unless you are Andy or Savannah.";
           }
 
-          renderState();
-        },
-      });
-
-      subscribeToSharedStatesGame({
-        onData: (state) => {
-          sharedStatesState = state || createSharedStatesGamePreviewState();
-          statusText.textContent = canManageBoard
-            ? "Shared states board is live. Tap any state from the common list."
-            : "Shared states board is live. Watching in read-only mode.";
-          renderState();
-        },
-        onError: (error) => {
-          console.error("Could not subscribe to shared states game", error);
-          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
-          statusText.textContent = `Could not load shared states board (${details}).`;
           renderState();
         },
       });

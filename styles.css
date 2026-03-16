@@ -1486,6 +1486,15 @@ body[data-page="photo-proof"] .site-header {
   background: #edf2ee;
 }
 
+.trip-photo-grid {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.trip-photo-grid.has-multiple {
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+}
+
 .trip-map-note .small-note {
   margin-top: 0.1rem;
 }
@@ -1649,6 +1658,10 @@ body[data-page="photo-proof"] .site-header {
   border-radius: 0.95rem;
   border: 1px solid #d8e0d7;
   background: #e8efea;
+}
+
+.trip-feed-photo-grid.has-multiple {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
 }
 
 .trip-delete-button {

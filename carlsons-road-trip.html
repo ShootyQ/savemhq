@@ -36,13 +36,13 @@
             </div>
             <div class="hero-actions trip-live-links">
               <a class="btn btn-primary" href="#trip-map-section">Open Live Map</a>
+              <a class="btn btn-primary" href="carlsons-road-trip-log.html">Open Quick Logger</a>
               <a class="btn btn-secondary" href="carlsons-road-trip-games.html">Open Games Hub</a>
               <a class="btn btn-secondary" href="carlsons-alphabet-game.html">Open Alphabet Game</a>
               <a class="btn btn-secondary" href="carlsons-road-trip-scavenger-hunt.html">Open Scavenger Hunt</a>
               <a class="btn btn-secondary" href="carlsons-road-trip-states.html">Open Shared States</a>
               <a class="btn btn-secondary" href="carlsons-photo-proof-challenges.html">Open Photo Challenges</a>
-              <a class="btn btn-secondary" href="carlsons-kid-sayings.html">Log Talking + Singing</a>
-              <a class="btn btn-secondary" href="carlsons-sing-along.html">Log What We're Doing</a>
+              <a class="btn btn-secondary" href="carlsons-road-trip-log.html">Go To Logging</a>
             </div>
           </div>
         </div>
@@ -169,17 +169,10 @@
             </article>
 
             <article class="project-card trip-game-card">
-              <span class="trip-category-badge">Q + ♪ Talking + Singing</span>
-              <h3>Talking + Singing</h3>
-              <p>One quick page for quotes, one-liners, sing-alongs, and sudden backseat concerts.</p>
-              <a class="btn btn-primary" href="carlsons-kid-sayings.html">Open Moments Log</a>
-            </article>
-
-            <article class="project-card trip-game-card">
-              <span class="trip-category-badge is-stop">D What We're Doing</span>
-              <h3>What We're Doing</h3>
-              <p>Track stops, mini-adventures, car activities, or whatever the crew is up to in the moment.</p>
-              <a class="btn btn-primary" href="carlsons-sing-along.html">Open Activity Log</a>
+              <span class="trip-category-badge">Quick logger</span>
+              <h3>Moments, Singing, And Doing</h3>
+              <p>One fast logger for quotes, sing-alongs, snack stops, pool runs, restaurant chaos, and every other live road-trip update.</p>
+              <a class="btn btn-primary" href="carlsons-road-trip-log.html">Open Quick Logger</a>
             </article>
           </div>
         </div>
@@ -198,8 +191,7 @@
             <li><a href="carlsons-road-trip-scavenger-hunt.html">Scavenger</a></li>
             <li><a href="carlsons-road-trip-states.html">States</a></li>
             <li><a href="carlsons-photo-proof-challenges.html">Photos</a></li>
-            <li><a href="carlsons-kid-sayings.html">Moments</a></li>
-            <li><a href="carlsons-sing-along.html">What We're Doing</a></li>
+            <li><a href="carlsons-road-trip-log.html">Log</a></li>
           </ul>
         </nav>
       </div>
@@ -232,8 +224,7 @@
           { label: "Games", href: "carlsons-road-trip-games.html" },
           { label: "States", href: "carlsons-road-trip-states.html" },
           { label: "Photos", href: "carlsons-photo-proof-challenges.html" },
-          { label: "Moments", href: "carlsons-kid-sayings.html" },
-          { label: "Doing", href: "carlsons-sing-along.html" },
+          { label: "Log", href: "carlsons-road-trip-log.html" },
         ],
       });
 
@@ -263,6 +254,21 @@
       let mapRefreshTimeoutId = 0;
       let visibleFeedCount = INITIAL_FEED_COUNT;
       let fallbackReactionDeviceId = "";
+
+      const createPhotoGalleryHtml = ({ photoUrls = [], content = "", galleryClassName, imageClassName } = {}) => {
+        const safeUrls = Array.isArray(photoUrls) ? photoUrls.filter(Boolean) : [];
+        if (!safeUrls.length) {
+          return "";
+        }
+
+        return `
+          <div class="trip-photo-grid ${escapeHtml(galleryClassName)} ${safeUrls.length > 1 ? "has-multiple" : "is-single"}">
+            ${safeUrls.map((photoUrl, index) => `
+              <img class="${escapeHtml(imageClassName)}" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(`Attached photo ${index + 1} for ${content}`)}" loading="lazy" />
+            `).join("")}
+          </div>
+        `;
+      };
 
       const createReactionDeviceId = () => {
         if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -402,7 +408,12 @@
               </div>
             </div>
             <p>${escapeHtml(event.content)}</p>
-            ${event.photoUrl ? `<img class="trip-map-note-photo" src="${escapeHtml(event.photoUrl)}" alt="${escapeHtml(`Attached photo for ${event.content}`)}" loading="lazy" />` : ""}
+            ${createPhotoGalleryHtml({
+              photoUrls: event.photoUrls,
+              content: event.content,
+              galleryClassName: "trip-map-note-photo-grid",
+              imageClassName: "trip-map-note-photo",
+            })}
             <p class="small-note">${escapeHtml(event.createdLabel)}</p>
           </div>
         `;
@@ -556,11 +567,16 @@
                   </div>
                   <div class="trip-feed-actions">
                     <span class="small-note">${escapeHtml(event.createdLabel)}</span>
-                    ${showDelete ? `<button class="trip-delete-button" type="button" data-event-id="${escapeHtml(event.id)}" data-photo-path="${escapeHtml(event.photoPath || "")}" ${isDeleting ? "disabled" : ""}>${isDeleting ? "Deleting..." : "Delete"}</button>` : ""}
+                    ${showDelete ? `<button class="trip-delete-button" type="button" data-event-id="${escapeHtml(event.id)}" ${isDeleting ? "disabled" : ""}>${isDeleting ? "Deleting..." : "Delete"}</button>` : ""}
                   </div>
                 </div>
                 <p>${escapeHtml(event.content)}</p>
-                ${event.photoUrl ? `<img class="trip-feed-photo" src="${escapeHtml(event.photoUrl)}" alt="${escapeHtml(`Attached photo for ${event.content}`)}" loading="lazy" />` : ""}
+                ${createPhotoGalleryHtml({
+                  photoUrls: event.photoUrls,
+                  content: event.content,
+                  galleryClassName: "trip-feed-photo-grid",
+                  imageClassName: "trip-feed-photo",
+                })}
                 ${renderReactionButtons(event.id)}
               </article>
             `;
@@ -692,7 +708,6 @@
         }
 
         const eventId = String(deleteButton.getAttribute("data-event-id") || "").trim();
-        const photoPath = String(deleteButton.getAttribute("data-photo-path") || "").trim();
         const eventRecord = allEvents.find((item) => item.id === eventId);
 
         if (!eventId || !eventRecord || !canDeleteEvent(eventRecord)) {
@@ -711,7 +726,7 @@
         updateFeedStatus("Deleting log...");
 
         try {
-          await deleteRoadTripEvent({ eventId, photoPath });
+          await deleteRoadTripEvent({ eventId, photoPaths: eventRecord.photoPaths, photoPath: eventRecord.photoPath });
           updateFeedStatus("Log deleted.");
         } catch (error) {
           console.error("Could not delete road trip event", error);

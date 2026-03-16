@@ -73,13 +73,33 @@ service cloud.firestore {
         "content",
         "photoUrl",
         "photoPath",
+        "photoUrls",
+        "photoPaths",
         "routeLeg",
         "lat",
         "lng",
         "locationSource",
         "sourcePage",
         "createdAt"
-      ]);
+      ]) && roadTripEventPhotosAreAllowed();
+    }
+
+    function roadTripEventPhotosAreAllowed() {
+      return (
+        !request.resource.data.keys().hasAny(["photoUrl", "photoPath"])
+        || (
+          request.resource.data.photoUrl is string
+          && request.resource.data.photoPath is string
+        )
+      ) && (
+        !request.resource.data.keys().hasAny(["photoUrls", "photoPaths"])
+        || (
+          request.resource.data.photoUrls is list
+          && request.resource.data.photoPaths is list
+          && request.resource.data.photoUrls.size() == request.resource.data.photoPaths.size()
+          && request.resource.data.photoUrls.size() <= 3
+        )
+      );
     }
 
     function roadTripReactionKeysAreAllowed(uid, eventId) {
