@@ -741,7 +741,16 @@
       });
 
       initHeaderShell();
-      initRevealMotion();
+      initRevealMotion({
+        selector: [
+          ".section",
+          ".hero-surface",
+          ".bird-summary-grid > *",
+          ".bird-board-grid > *",
+          ".bird-master-layout > *",
+          ".bird-history-grid > *",
+        ].join(", "),
+      });
       birdDateInput.value = state.selectedDate;
 
       subscribeToBirdSpecies({
