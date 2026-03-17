@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grandparents Birds | SavemHQ</title>
+    <meta
+      name="description"
+      content="A backyard bird window tracker with monthly check-ins, optional daily logs, and a growing family bird list."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="grandparents-birds">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="hero section">
+        <div class="container hero-inner bird-hero-grid">
+          <div class="home-hero-copy">
+            <p class="tagline">Backyard Bird Window</p>
+            <h1>Grandparents Birds</h1>
+            <p class="subheadline">
+              A warm little bird log for the feeder window in North Carolina, built for quick monthly check-ins with optional daily sightings.
+            </p>
+            <div class="hero-surface bird-hero-surface">
+              <p class="intro">
+                Start each month fresh, tap birds as they show up at the feeders, and keep a growing master list ready for the next surprise visitor.
+              </p>
+              <p class="wink">Fast on phones and iPads, still roomy enough for a totals view on desktop.</p>
+            </div>
+            <div class="hero-actions bird-live-links">
+              <a class="btn btn-primary" href="#bird-logger">Log A Bird</a>
+              <a class="btn btn-secondary" href="#bird-master-list">Browse Master List</a>
+              <a class="btn btn-secondary" href="#bird-history">See Month History</a>
+            </div>
+          </div>
+
+          <aside class="bird-window-card reveal-item" aria-label="Bird tracker overview">
+            <p class="section-kicker">Window View</p>
+            <h2>Monthly First, Daily If Wanted</h2>
+            <div class="bird-window-pill-row">
+              <span class="bird-window-pill">One-tap bird logging</span>
+              <span class="bird-window-pill">Optional day-by-day notes</span>
+              <span class="bird-window-pill">Master list always ready</span>
+            </div>
+            <div class="bird-window-stat-grid" aria-live="polite">
+              <div class="bird-window-stat">
+                <span class="small-note">Tracking month</span>
+                <strong id="bird-hero-month">This month</strong>
+              </div>
+              <div class="bird-window-stat">
+                <span class="small-note">Birds this month</span>
+                <strong id="bird-hero-month-count">0</strong>
+              </div>
+              <div class="bird-window-stat">
+                <span class="small-note">Birds today</span>
+                <strong id="bird-hero-day-count">0</strong>
+              </div>
+              <div class="bird-window-stat">
+                <span class="small-note">Overall unique</span>
+                <strong id="bird-hero-total-count">0</strong>
+              </div>
+            </div>
+            <p id="bird-page-status" class="small-note">Loading bird tracker...</p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section section-card">
+        <div class="container bird-summary-grid">
+          <article class="project-card bird-stat-card reveal-item">
+            <p class="section-kicker">Quick Snapshot</p>
+            <h2>Feeder Totals</h2>
+            <div class="bird-stat-grid" aria-live="polite">
+              <div class="bird-stat-chip">
+                <span class="small-note">Master list birds</span>
+                <strong id="bird-master-count">0</strong>
+              </div>
+              <div class="bird-stat-chip">
+                <span class="small-note">Selected month</span>
+                <strong id="bird-month-count">0</strong>
+              </div>
+              <div class="bird-stat-chip">
+                <span class="small-note">Selected day</span>
+                <strong id="bird-day-count">0</strong>
+              </div>
+              <div class="bird-stat-chip">
+                <span class="small-note">Months logged</span>
+                <strong id="bird-months-count">0</strong>
+              </div>
+            </div>
+            <p id="bird-summary-note" class="small-note">No birds logged yet.</p>
+          </article>
+
+          <article id="bird-logger" class="project-card bird-logger-card reveal-item">
+            <div class="bird-card-topline">
+              <div>
+                <p class="section-kicker">Quick Logger</p>
+                <h2>Tap A Bird</h2>
+              </div>
+              <span id="bird-month-pill" class="bird-chip bird-chip-accent">This month</span>
+            </div>
+
+            <div class="entry-grid bird-entry-grid">
+              <div class="entry-row">
+                <label for="bird-date">Date</label>
+                <input id="bird-date" type="date" />
+              </div>
+              <div class="entry-row bird-checkbox-row">
+                <label for="bird-include-daily">Daily log</label>
+                <label class="bird-checkbox-pill">
+                  <input id="bird-include-daily" type="checkbox" />
+                  <span>Also add this bird to the selected day</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="entry-row bird-search-row">
+              <label for="bird-search">Bird name</label>
+              <input
+                id="bird-search"
+                type="search"
+                placeholder="Tap here, then type cardinal, finch, chickadee..."
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
+
+            <p id="bird-log-note" class="small-note">
+              Start typing to filter the master list, then tap a bird to log it.
+            </p>
+
+            <div id="bird-search-results" class="bird-option-grid" aria-live="polite"></div>
+
+            <div id="bird-add-panel" class="bird-add-panel hidden">
+              <p id="bird-add-copy" class="small-note">That bird is not in the master list yet.</p>
+              <div class="form-actions">
+                <button id="bird-add-button" class="btn btn-secondary" type="button">Add bird</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container bird-board-grid">
+          <article class="project-card bird-month-panel reveal-item">
+            <div class="bird-card-topline">
+              <div>
+                <p class="section-kicker">Selected Month</p>
+                <h2 id="bird-selected-month-heading">Month Check-In</h2>
+              </div>
+              <span id="bird-selected-month-count" class="bird-chip">0 birds</span>
+            </div>
+            <p class="section-intro">These are the unique birds already checked off for the selected month.</p>
+            <div id="bird-month-list" class="bird-chip-grid" aria-live="polite"></div>
+          </article>
+
+          <article class="project-card bird-day-panel reveal-item">
+            <div class="bird-card-topline">
+              <div>
+                <p class="section-kicker">Daily View</p>
+                <h2>Optional Day Log</h2>
+              </div>
+              <span id="bird-selected-day-pill" class="bird-chip">Today</span>
+            </div>
+            <p class="section-intro">If you want, you can track which birds showed up on specific days inside the month.</p>
+            <div id="bird-day-list" class="bird-day-list" aria-live="polite"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="bird-master-list" class="section section-card">
+        <div class="container bird-master-layout">
+          <article class="project-card bird-master-panel reveal-item">
+            <div class="bird-card-topline">
+              <div>
+                <p class="section-kicker">Master List</p>
+                <h2>All Known Birds</h2>
+              </div>
+              <span id="bird-filter-pill" class="bird-chip">All birds</span>
+            </div>
+            <p class="section-intro">This list powers the quick logger above. Later you can seed it with your North Carolina starter birds.</p>
+            <div id="bird-master-grid" class="bird-master-grid" aria-live="polite"></div>
+          </article>
+
+          <article class="project-card bird-totals-panel reveal-item">
+            <p class="section-kicker">Overall Totals</p>
+            <h2>What The Window Has Seen</h2>
+            <div id="bird-overall-grid" class="bird-overall-grid" aria-live="polite"></div>
+            <p class="small-note">This panel is especially handy on desktop when your dad wants the bigger-picture totals.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="bird-history" class="section">
+        <div class="container">
+          <p class="section-kicker">Month History</p>
+          <h2>Browse Logged Months</h2>
+          <p class="section-intro">Open any month to switch the tracker view to that part of the year.</p>
+          <div id="bird-history-grid" class="project-grid bird-history-grid" aria-live="polite"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Bird feeders, window seats, and one more good family tracker.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#bird-logger">Log</a></li>
+            <li><a href="#bird-master-list">Master List</a></li>
+            <li><a href="#bird-history">Months</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+      import {
+        formatDayLabel,
+        formatMonthLabel,
+        GRANDPARENTS_BIRD_STARTER_SPECIES,
+        getDayIdForDate,
+        getMonthIdForDate,
+        logBirdSighting,
+        normalizeBirdName,
+        saveBirdSpecies,
+        seedStarterBirdSpecies,
+        slugifyBirdName,
+        subscribeToBirdDays,
+        subscribeToBirdMonths,
+        subscribeToBirdSpecies,
+        toLocalDateInputValue,
+      } from "./js/grandparents-birds-shared.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Bird Log", href: "#bird-logger" },
+          { label: "Master List", href: "#bird-master-list" },
+          { label: "Months", href: "#bird-history" },
+        ],
+      });
+
+      const pageStatus = document.getElementById("bird-page-status");
+      const summaryNote = document.getElementById("bird-summary-note");
+      const monthPill = document.getElementById("bird-month-pill");
+      const monthHeading = document.getElementById("bird-selected-month-heading");
+      const monthCountValue = document.getElementById("bird-month-count");
+      const masterCountValue = document.getElementById("bird-master-count");
+      const dayCountValue = document.getElementById("bird-day-count");
+      const monthsCountValue = document.getElementById("bird-months-count");
+      const selectedMonthCount = document.getElementById("bird-selected-month-count");
+      const selectedDayPill = document.getElementById("bird-selected-day-pill");
+      const heroMonth = document.getElementById("bird-hero-month");
+      const heroMonthCount = document.getElementById("bird-hero-month-count");
+      const heroDayCount = document.getElementById("bird-hero-day-count");
+      const heroTotalCount = document.getElementById("bird-hero-total-count");
+      const filterPill = document.getElementById("bird-filter-pill");
+      const logNote = document.getElementById("bird-log-note");
+      const addPanel = document.getElementById("bird-add-panel");
+      const addCopy = document.getElementById("bird-add-copy");
+      const addButton = document.getElementById("bird-add-button");
+      const birdDateInput = document.getElementById("bird-date");
+      const includeDailyInput = document.getElementById("bird-include-daily");
+      const searchInput = document.getElementById("bird-search");
+      const searchResults = document.getElementById("bird-search-results");
+      const monthList = document.getElementById("bird-month-list");
+      const dayList = document.getElementById("bird-day-list");
+      const masterGrid = document.getElementById("bird-master-grid");
+      const overallGrid = document.getElementById("bird-overall-grid");
+      const historyGrid = document.getElementById("bird-history-grid");
+
+      const state = {
+        user: null,
+        isAdmin: false,
+        approvalStatus: "signed-out",
+        selectedDate: toLocalDateInputValue(new Date()),
+        search: "",
+        speciesLoaded: false,
+        species: [],
+        months: [],
+        days: [],
+        isBusy: false,
+      };
+
+      let unsubscribeDays = null;
+      let starterSeedStatus = "idle";
+
+      const isApprovedWriter = () => state.isAdmin || state.approvalStatus === "approved";
+
+      const getSelectedMonthId = () => getMonthIdForDate(state.selectedDate);
+      const getSelectedDayId = () => getDayIdForDate(state.selectedDate);
+
+      const selectedMonthData = () => state.months.find((month) => String(month.monthId || month.id || "") === getSelectedMonthId()) || null;
+      const selectedDayData = () => state.days.find((day) => String(day.dayId || day.id || "") === getSelectedDayId()) || null;
+
+      const uniqueBirdIdsAcrossMonths = () => {
+        const idSet = new Set();
+        state.months.forEach((month) => {
+          (Array.isArray(month.birdIds) ? month.birdIds : []).forEach((birdId) => idSet.add(String(birdId)));
+        });
+        return idSet;
+      };
+
+      const masterBirds = () => [...state.species].sort((left, right) => String(left.name || "").localeCompare(String(right.name || "")));
+
+      const filteredSpecies = () => {
+        const query = state.search.trim().toLowerCase();
+        const birds = masterBirds();
+
+        if (!query) {
+          return birds.slice(0, 24);
+        }
+
+        return birds
+          .filter((bird) => String(bird.name || "").toLowerCase().includes(query))
+          .slice(0, 24);
+      };
+
+      const currentAddName = () => normalizeBirdName(state.search);
+
+      const hasExactBirdMatch = () => {
+        const searchName = currentAddName().toLowerCase();
+        return state.species.some((bird) => String(bird.name || "").toLowerCase() === searchName || String(bird.slug || bird.id || "") === slugifyBirdName(searchName));
+      };
+
+      const updateDaySubscription = () => {
+        unsubscribeDays?.();
+        unsubscribeDays = subscribeToBirdDays(getSelectedMonthId(), {
+          onData: (days) => {
+            state.days = days;
+            render();
+          },
+          onError: (error) => {
+            console.error("Could not load bird day logs", error);
+            const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+            pageStatus.textContent = `Could not load daily bird logs (${details}).`;
+            state.days = [];
+            render();
+          },
+        });
+      };
+
+      const maybeSeedStarterBirds = async () => {
+        if (!state.speciesLoaded || !isApprovedWriter() || starterSeedStatus === "seeding") {
+          return;
+        }
+
+        starterSeedStatus = "seeding";
+
+        try {
+          const result = await seedStarterBirdSpecies({
+            user: state.user,
+            species: state.species,
+          });
+
+          if (result.addedCount > 0) {
+            logNote.textContent = `Added ${result.addedCount} starter birds to the master list.`;
+          }
+
+          starterSeedStatus = "done";
+          render();
+        } catch (error) {
+          console.error("Could not seed starter birds", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          starterSeedStatus = "idle";
+          pageStatus.textContent = `Could not seed starter birds (${details}).`;
+          render();
+        }
+      };
+
+      const setBusy = (isBusy, message = "") => {
+        state.isBusy = isBusy;
+        if (message) {
+          logNote.textContent = message;
+        }
+        renderSearchResults();
+      };
+
+      const renderStats = () => {
+        const monthData = selectedMonthData();
+        const dayData = selectedDayData();
+        const overallBirds = uniqueBirdIdsAcrossMonths();
+        const selectedMonthBirdNames = Array.isArray(monthData?.birdNames) ? monthData.birdNames : [];
+        const selectedDayBirdNames = Array.isArray(dayData?.birdNames) ? dayData.birdNames : [];
+        const monthLabel = formatMonthLabel(state.selectedDate);
+
+        heroMonth.textContent = monthLabel;
+        heroMonthCount.textContent = String(selectedMonthBirdNames.length);
+        heroDayCount.textContent = String(selectedDayBirdNames.length);
+        heroTotalCount.textContent = String(overallBirds.size);
+        masterCountValue.textContent = String(state.species.length);
+        monthCountValue.textContent = String(selectedMonthBirdNames.length);
+        dayCountValue.textContent = String(selectedDayBirdNames.length);
+        monthsCountValue.textContent = String(state.months.length);
+        monthPill.textContent = monthLabel;
+        monthHeading.textContent = `${monthLabel} Check-In`;
+        selectedMonthCount.textContent = `${selectedMonthBirdNames.length} bird${selectedMonthBirdNames.length === 1 ? "" : "s"}`;
+        selectedDayPill.textContent = formatDayLabel(state.selectedDate);
+        filterPill.textContent = state.search.trim() ? `Filtered by “${currentAddName()}”` : "All birds";
+
+        if (state.species.length === 0) {
+          summaryNote.textContent = `The master list is empty right now. The starter list includes ${GRANDPARENTS_BIRD_STARTER_SPECIES.length} birds and will load for approved users.`;
+        } else if (selectedMonthBirdNames.length === 0) {
+          summaryNote.textContent = `No birds logged for ${monthLabel} yet.`;
+        } else {
+          summaryNote.textContent = `${selectedMonthBirdNames.length} unique birds logged in ${monthLabel}, with ${overallBirds.size} total across every month so far.`;
+        }
+
+        if (starterSeedStatus === "seeding") {
+          pageStatus.textContent = `Loading the ${GRANDPARENTS_BIRD_STARTER_SPECIES.length}-bird starter list...`;
+        } else if (!isApprovedWriter()) {
+          pageStatus.textContent = "Signed-out visitors can browse the tracker. Approved family users can add birds and sightings.";
+        } else {
+          pageStatus.textContent = `Ready to log birds for ${monthLabel}.`;
+        }
+      };
+
+      const renderSearchResults = () => {
+        const monthData = selectedMonthData();
+        const dayData = selectedDayData();
+        const selectedMonthIds = new Set(Array.isArray(monthData?.birdIds) ? monthData.birdIds : []);
+        const selectedDayIds = new Set(Array.isArray(dayData?.birdIds) ? dayData.birdIds : []);
+        const birds = filteredSpecies();
+        const canWrite = isApprovedWriter() && !state.isBusy;
+
+        if (!state.search.trim() && state.species.length === 0) {
+          searchResults.innerHTML = '<p class="small-note bird-empty-state">No birds are in the master list yet.</p>';
+          addPanel.classList.toggle("hidden", !isApprovedWriter());
+          addCopy.textContent = "Start the list by adding the first backyard bird.";
+          addButton.textContent = "Add first bird";
+          return;
+        }
+
+        if (birds.length === 0) {
+          searchResults.innerHTML = '<p class="small-note bird-empty-state">No matching birds yet.</p>';
+        } else {
+          searchResults.innerHTML = birds.map((bird) => {
+            const birdId = String(bird.slug || bird.id || "");
+            const inMonth = selectedMonthIds.has(birdId);
+            const inDay = selectedDayIds.has(birdId);
+            return `
+              <button
+                class="bird-option ${inMonth ? "is-in-month" : ""} ${inDay ? "is-in-day" : ""}"
+                type="button"
+                data-bird-id="${birdId}"
+                ${canWrite ? "" : "disabled"}
+              >
+                <strong>${bird.name}</strong>
+                <span class="bird-option-meta">
+                  ${inMonth ? '<span class="bird-mini-pill">In month</span>' : '<span class="bird-mini-pill is-muted">Month</span>'}
+                  ${inDay ? '<span class="bird-mini-pill">In day</span>' : '<span class="bird-mini-pill is-muted">Day</span>'}
+                </span>
+              </button>
+            `;
+          }).join("");
+        }
+
+        const showAddPanel = isApprovedWriter() && Boolean(currentAddName()) && !hasExactBirdMatch();
+        addPanel.classList.toggle("hidden", !showAddPanel);
+        if (showAddPanel) {
+          addCopy.textContent = `${currentAddName()} is not in the master list yet.`;
+          addButton.textContent = includeDailyInput.checked ? "Add bird and log it" : "Add bird to master list";
+        }
+
+        if (!isApprovedWriter()) {
+          logNote.textContent = "Browse the list freely. Sign in with an approved account to add birds or log sightings.";
+        } else if (state.isBusy) {
+          logNote.textContent = "Saving your bird update...";
+        } else if (includeDailyInput.checked) {
+          logNote.textContent = `Tap a bird to add it to ${formatMonthLabel(state.selectedDate)} and ${formatDayLabel(state.selectedDate)}.`;
+        } else {
+          logNote.textContent = `Tap a bird to add it to ${formatMonthLabel(state.selectedDate)}.`;
+        }
+
+        refreshRevealMotion({ scope: searchResults, selector: ".bird-option" });
+      };
+
+      const renderMonthBirds = () => {
+        const monthData = selectedMonthData();
+        const birdNames = Array.isArray(monthData?.birdNames) ? [...monthData.birdNames].sort((left, right) => String(left).localeCompare(String(right))) : [];
+
+        if (birdNames.length === 0) {
+          monthList.innerHTML = '<p class="small-note bird-empty-state">No birds have been checked off for this month yet.</p>';
+          return;
+        }
+
+        monthList.innerHTML = birdNames.map((birdName) => `<span class="bird-chip bird-chip-soft">${birdName}</span>`).join("");
+      };
+
+      const renderDayLogs = () => {
+        if (state.days.length === 0) {
+          dayList.innerHTML = '<p class="small-note bird-empty-state">No daily bird logs for this month yet.</p>';
+          return;
+        }
+
+        dayList.innerHTML = state.days.map((day) => {
+          const birdNames = Array.isArray(day.birdNames) ? [...day.birdNames].sort((left, right) => String(left).localeCompare(String(right))) : [];
+          const isSelected = String(day.dayId || day.id || "") === getSelectedDayId();
+          return `
+            <article class="bird-day-card ${isSelected ? "is-selected" : ""}">
+              <div class="bird-card-topline">
+                <div>
+                  <h3>${day.label || formatDayLabel(day.dateKey || day.dayId || state.selectedDate)}</h3>
+                  <p class="small-note">${birdNames.length} unique bird${birdNames.length === 1 ? "" : "s"}</p>
+                </div>
+                <button class="btn btn-secondary bird-jump-button" type="button" data-day-id="${day.dayId || day.id || ""}">Open day</button>
+              </div>
+              <div class="bird-chip-grid">
+                ${birdNames.map((birdName) => `<span class="bird-chip bird-chip-soft">${birdName}</span>`).join("")}
+              </div>
+            </article>
+          `;
+        }).join("");
+
+        refreshRevealMotion({ scope: dayList, selector: ".bird-day-card" });
+      };
+
+      const renderMasterList = () => {
+        const birds = state.search.trim() ? filteredSpecies() : masterBirds();
+        if (birds.length === 0) {
+          masterGrid.innerHTML = '<p class="small-note bird-empty-state">Once birds are added, they will all appear here.</p>';
+          return;
+        }
+
+        masterGrid.innerHTML = birds.map((bird) => `<span class="bird-chip bird-chip-outline">${bird.name}</span>`).join("");
+      };
+
+      const renderOverallTotals = () => {
+        const monthCount = state.months.length;
+        const birdSet = uniqueBirdIdsAcrossMonths();
+        const busiestMonth = [...state.months].sort((left, right) => (Array.isArray(right.birdIds) ? right.birdIds.length : 0) - (Array.isArray(left.birdIds) ? left.birdIds.length : 0))[0] || null;
+        const mostRecentMonth = state.months[0] || null;
+
+        overallGrid.innerHTML = `
+          <div class="bird-overall-card">
+            <span class="small-note">Unique birds logged</span>
+            <strong>${birdSet.size}</strong>
+          </div>
+          <div class="bird-overall-card">
+            <span class="small-note">Months with activity</span>
+            <strong>${monthCount}</strong>
+          </div>
+          <div class="bird-overall-card">
+            <span class="small-note">Busiest month</span>
+            <strong>${busiestMonth ? busiestMonth.label || busiestMonth.monthId : "Waiting"}</strong>
+          </div>
+          <div class="bird-overall-card">
+            <span class="small-note">Most recent month</span>
+            <strong>${mostRecentMonth ? mostRecentMonth.label || mostRecentMonth.monthId : "Waiting"}</strong>
+          </div>
+        `;
+      };
+
+      const renderHistory = () => {
+        if (state.months.length === 0) {
+          historyGrid.innerHTML = '<p class="small-note bird-empty-state">Month history will appear here after the first log.</p>';
+          return;
+        }
+
+        historyGrid.innerHTML = state.months.map((month) => {
+          const birdCount = Array.isArray(month.birdIds) ? month.birdIds.length : 0;
+          const isSelected = String(month.monthId || month.id || "") === getSelectedMonthId();
+          return `
+            <article class="project-card bird-history-card ${isSelected ? "is-selected" : ""}">
+              <div class="bird-card-topline">
+                <div>
+                  <h3>${month.label || month.monthId || "Month"}</h3>
+                  <p class="small-note">${birdCount} unique bird${birdCount === 1 ? "" : "s"}</p>
+                </div>
+                <button class="btn btn-secondary bird-month-open" type="button" data-month-id="${month.monthId || month.id || ""}">Open month</button>
+              </div>
+              <div class="bird-chip-grid">
+                ${(Array.isArray(month.birdNames) ? month.birdNames : []).slice(0, 8).map((birdName) => `<span class="bird-chip bird-chip-soft">${birdName}</span>`).join("")}
+              </div>
+            </article>
+          `;
+        }).join("");
+
+        refreshRevealMotion({ scope: historyGrid, selector: ".bird-history-card" });
+      };
+
+      const render = () => {
+        birdDateInput.value = state.selectedDate;
+        renderStats();
+        renderSearchResults();
+        renderMonthBirds();
+        renderDayLogs();
+        renderMasterList();
+        renderOverallTotals();
+        renderHistory();
+      };
+
+      const findBirdById = (birdId) => state.species.find((bird) => String(bird.slug || bird.id || "") === String(birdId || "")) || null;
+
+      const logBird = async (bird) => {
+        if (!bird || !isApprovedWriter()) {
+          return;
+        }
+
+        try {
+          setBusy(true, "Saving your bird update...");
+          await logBirdSighting({
+            bird,
+            dateValue: state.selectedDate,
+            includeDaily: includeDailyInput.checked,
+            user: state.user,
+          });
+          searchInput.value = "";
+          state.search = "";
+          setBusy(false, `Logged ${bird.name} for ${formatMonthLabel(state.selectedDate)}.`);
+        } catch (error) {
+          console.error("Could not log bird sighting", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          setBusy(false, `Could not log this bird (${details}). Check Firestore rules if needed.`);
+        }
+      };
+
+      const addBirdFromSearch = async () => {
+        const name = currentAddName();
+        if (!name || !isApprovedWriter()) {
+          return;
+        }
+
+        try {
+          setBusy(true, `Adding ${name} to the master list...`);
+          const bird = await saveBirdSpecies({
+            name,
+            user: state.user,
+          });
+
+          if (includeDailyInput.checked || state.species.length === 0) {
+            await logBirdSighting({
+              bird,
+              dateValue: state.selectedDate,
+              includeDaily: includeDailyInput.checked,
+              user: state.user,
+            });
+          }
+
+          searchInput.value = "";
+          state.search = "";
+          setBusy(false, `${bird.name} added to the master list.`);
+          render();
+        } catch (error) {
+          console.error("Could not add bird to master list", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          setBusy(false, `Could not add that bird (${details}).`);
+        }
+      };
+
+      searchInput.addEventListener("input", (event) => {
+        state.search = event.target.value || "";
+        renderSearchResults();
+        renderMasterList();
+      });
+
+      birdDateInput.addEventListener("change", (event) => {
+        state.selectedDate = event.target.value || toLocalDateInputValue(new Date());
+        updateDaySubscription();
+        render();
+      });
+
+      includeDailyInput.addEventListener("change", () => {
+        renderSearchResults();
+      });
+
+      addButton.addEventListener("click", () => {
+        addBirdFromSearch();
+      });
+
+      searchResults.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const option = target.closest("[data-bird-id]");
+        if (!(option instanceof HTMLElement)) {
+          return;
+        }
+
+        const bird = findBirdById(option.dataset.birdId);
+        if (!bird) {
+          return;
+        }
+
+        logBird(bird);
+      });
+
+      dayList.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const button = target.closest("[data-day-id]");
+        if (!(button instanceof HTMLElement)) {
+          return;
+        }
+
+        const dayId = String(button.dataset.dayId || "").trim();
+        if (!dayId) {
+          return;
+        }
+
+        state.selectedDate = dayId;
+        birdDateInput.value = dayId;
+        render();
+      });
+
+      historyGrid.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const button = target.closest("[data-month-id]");
+        if (!(button instanceof HTMLElement)) {
+          return;
+        }
+
+        const monthId = String(button.dataset.monthId || "").trim();
+        if (!monthId) {
+          return;
+        }
+
+        state.selectedDate = `${monthId}-01`;
+        birdDateInput.value = state.selectedDate;
+        updateDaySubscription();
+        render();
+      });
+
+      initHeaderShell();
+      initRevealMotion();
+      birdDateInput.value = state.selectedDate;
+
+      subscribeToBirdSpecies({
+        onData: (species) => {
+          state.speciesLoaded = true;
+          state.species = species;
+          render();
+          maybeSeedStarterBirds();
+        },
+        onError: (error) => {
+          console.error("Could not load bird species", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          pageStatus.textContent = `Could not load bird master list (${details}).`;
+          state.speciesLoaded = false;
+          state.species = [];
+          render();
+        },
+      });
+
+      subscribeToBirdMonths({
+        onData: (months) => {
+          state.months = months;
+          render();
+        },
+        onError: (error) => {
+          console.error("Could not load bird months", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          pageStatus.textContent = `Could not load bird months (${details}).`;
+          state.months = [];
+          render();
+        },
+      });
+
+      updateDaySubscription();
+
+      initHeaderAuth({
+        onStateChange: ({ user, isAdmin, approvalStatus }) => {
+          state.user = user;
+          state.isAdmin = Boolean(isAdmin);
+          state.approvalStatus = approvalStatus || "signed-out";
+          render();
+          maybeSeedStarterBirds();
+        },
+      });
+
+      render();
+    </script>
+  </body>
+</html>

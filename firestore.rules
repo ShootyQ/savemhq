@@ -319,6 +319,119 @@ service cloud.firestore {
       return !resource.data.keys().hasAny(["locked"]) || resource.data.locked != true;
     }
 
+    function backyardBirdSpeciesKeysAreAllowed(speciesId) {
+      return request.resource.data.keys().hasAll([
+        "name",
+        "slug",
+        "source",
+        "createdByUid",
+        "createdByLabel",
+        "createdAt",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "name",
+        "slug",
+        "source",
+        "createdByUid",
+        "createdByLabel",
+        "createdAt",
+        "updatedAt"
+      ])
+        && request.resource.data.slug == speciesId
+        && request.resource.data.name is string
+        && request.resource.data.slug is string
+        && request.resource.data.source is string
+        && request.resource.data.createdByUid is string
+        && request.resource.data.createdByLabel is string;
+    }
+
+    function backyardBirdMonthKeysAreAllowed(monthId) {
+      return request.resource.data.keys().hasAll([
+        "monthId",
+        "label",
+        "year",
+        "monthNumber",
+        "sortOrder",
+        "birdIds",
+        "birdNames",
+        "lastLoggedBirdId",
+        "lastLoggedBirdName",
+        "lastLoggedByUid",
+        "lastLoggedByLabel",
+        "updatedAt",
+        "lastLoggedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "monthId",
+        "label",
+        "year",
+        "monthNumber",
+        "sortOrder",
+        "birdIds",
+        "birdNames",
+        "lastLoggedBirdId",
+        "lastLoggedBirdName",
+        "lastLoggedByUid",
+        "lastLoggedByLabel",
+        "updatedAt",
+        "lastLoggedAt"
+      ])
+        && request.resource.data.monthId == monthId
+        && request.resource.data.label is string
+        && request.resource.data.year is int
+        && request.resource.data.monthNumber is int
+        && request.resource.data.sortOrder is int
+        && request.resource.data.birdIds is list
+        && request.resource.data.birdNames is list
+        && request.resource.data.birdIds.size() <= 300
+        && request.resource.data.birdNames.size() <= 300
+        && request.resource.data.lastLoggedBirdId is string
+        && request.resource.data.lastLoggedBirdName is string
+        && request.resource.data.lastLoggedByUid is string
+        && request.resource.data.lastLoggedByLabel is string;
+    }
+
+    function backyardBirdDayKeysAreAllowed(monthId, dayId) {
+      return request.resource.data.keys().hasAll([
+        "dayId",
+        "monthId",
+        "dateKey",
+        "label",
+        "birdIds",
+        "birdNames",
+        "lastLoggedBirdId",
+        "lastLoggedBirdName",
+        "lastLoggedByUid",
+        "lastLoggedByLabel",
+        "updatedAt",
+        "lastLoggedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "dayId",
+        "monthId",
+        "dateKey",
+        "label",
+        "birdIds",
+        "birdNames",
+        "lastLoggedBirdId",
+        "lastLoggedBirdName",
+        "lastLoggedByUid",
+        "lastLoggedByLabel",
+        "updatedAt",
+        "lastLoggedAt"
+      ])
+        && request.resource.data.dayId == dayId
+        && request.resource.data.monthId == monthId
+        && request.resource.data.dateKey == dayId
+        && request.resource.data.label is string
+        && request.resource.data.birdIds is list
+        && request.resource.data.birdNames is list
+        && request.resource.data.birdIds.size() <= 300
+        && request.resource.data.birdNames.size() <= 300
+        && request.resource.data.lastLoggedBirdId is string
+        && request.resource.data.lastLoggedBirdName is string
+        && request.resource.data.lastLoggedByUid is string
+        && request.resource.data.lastLoggedByLabel is string;
+    }
+
     match /competitions/{year}/months/{month} {
       allow read: if true;
       allow create: if isAdmin() || (
@@ -452,6 +565,32 @@ service cloud.firestore {
             && sharedStatesGameKeysAreAllowed()
           )
         );
+      allow delete: if isAdmin();
+    }
+
+    match /backyardBirds/{trackerId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /backyardBirds/{trackerId}/species/{speciesId} {
+      allow read: if true;
+      allow create, update: if isApprovedUser()
+        && backyardBirdSpeciesKeysAreAllowed(speciesId);
+      allow delete: if isAdmin();
+    }
+
+    match /backyardBirds/{trackerId}/months/{monthId} {
+      allow read: if true;
+      allow create, update: if isApprovedUser()
+        && backyardBirdMonthKeysAreAllowed(monthId);
+      allow delete: if isAdmin();
+    }
+
+    match /backyardBirds/{trackerId}/months/{monthId}/days/{dayId} {
+      allow read: if true;
+      allow create, update: if isApprovedUser()
+        && backyardBirdDayKeysAreAllowed(monthId, dayId);
       allow delete: if isAdmin();
     }
   }

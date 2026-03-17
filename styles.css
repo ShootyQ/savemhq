@@ -1157,6 +1157,22 @@ body[data-page="photo-proof"] {
     linear-gradient(180deg, #f8fbf5 0%, #f5efe6 100%);
 }
 
+body[data-page="grandparents-birds"] {
+  --max-width: 88rem;
+  background:
+    radial-gradient(56rem 30rem at 4% -6%, rgba(237, 244, 209, 0.92) 0%, transparent 72%),
+    radial-gradient(48rem 24rem at 106% -2%, rgba(198, 229, 236, 0.9) 0%, transparent 70%),
+    radial-gradient(34rem 18rem at 76% 16%, rgba(238, 205, 154, 0.26) 0%, transparent 72%),
+    repeating-linear-gradient(
+      -35deg,
+      rgba(111, 148, 95, 0.04),
+      rgba(111, 148, 95, 0.04) 1px,
+      transparent 1px,
+      transparent 14px
+    ),
+    linear-gradient(180deg, #f8fbf3 0%, #f3efe3 100%);
+}
+
 body[data-page="road-trip-hub"] .site-header,
 body[data-page="road-trip-log"] .site-header,
 body[data-page="road-trip-games"] .site-header,
@@ -1165,6 +1181,314 @@ body[data-page="photo-proof"] .site-header {
   background: rgba(249, 252, 247, 0.92);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
+}
+
+body[data-page="grandparents-birds"] .site-header {
+  background: rgba(247, 251, 244, 0.92);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.bird-hero-grid {
+  grid-template-columns: minmax(0, 1.08fr) minmax(18rem, 0.92fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.bird-hero-surface {
+  max-width: 42rem;
+}
+
+.bird-window-card,
+.bird-stat-card,
+.bird-logger-card,
+.bird-month-panel,
+.bird-day-panel,
+.bird-master-panel,
+.bird-totals-panel,
+.bird-history-card,
+.bird-overall-card,
+.bird-day-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.bird-window-card::before,
+.bird-stat-card::before,
+.bird-logger-card::before,
+.bird-month-panel::before,
+.bird-day-panel::before,
+.bird-master-panel::before,
+.bird-totals-panel::before,
+.bird-history-card::before,
+.bird-overall-card::before,
+.bird-day-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.28), transparent 38%);
+  pointer-events: none;
+}
+
+.bird-window-card {
+  display: grid;
+  gap: 0.95rem;
+  padding: 1.1rem;
+  border-radius: 1.4rem;
+  border: 1px solid #cadfcd;
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(159, 206, 219, 0.28), transparent 36%),
+    radial-gradient(85% 85% at 0% 100%, rgba(150, 184, 116, 0.22), transparent 44%),
+    linear-gradient(165deg, rgba(255, 252, 245, 0.98), rgba(233, 245, 233, 0.95));
+  box-shadow: var(--shadow-md);
+}
+
+.bird-window-pill-row,
+.bird-chip-grid,
+.bird-master-grid,
+.bird-option-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.bird-window-pill,
+.bird-chip,
+.bird-mini-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.bird-window-pill,
+.bird-chip {
+  border: 1px solid #d7e0cf;
+  background: rgba(255, 252, 246, 0.92);
+  color: #544b3f;
+  padding: 0.34rem 0.74rem;
+  font-size: 0.82rem;
+}
+
+.bird-chip-soft {
+  background: linear-gradient(150deg, rgba(244, 249, 236, 0.98), rgba(237, 247, 244, 0.96));
+  border-color: #cfe0cf;
+}
+
+.bird-chip-accent {
+  background: linear-gradient(150deg, rgba(255, 246, 228, 0.98), rgba(234, 248, 248, 0.96));
+  border-color: #d9d4b8;
+  color: #725437;
+}
+
+.bird-chip-outline {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: #cfddd0;
+}
+
+.bird-mini-pill {
+  border: 1px solid #d6e0d1;
+  background: rgba(255, 255, 255, 0.86);
+  color: #4f5f49;
+  font-size: 0.72rem;
+  padding: 0.18rem 0.48rem;
+}
+
+.bird-mini-pill.is-muted {
+  color: #8a8177;
+  background: rgba(250, 247, 241, 0.9);
+}
+
+.bird-window-stat-grid,
+.bird-stat-grid,
+.bird-overall-grid,
+.bird-summary-grid,
+.bird-board-grid,
+.bird-master-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.bird-window-stat-grid,
+.bird-stat-grid,
+.bird-overall-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bird-window-stat,
+.bird-stat-chip,
+.bird-overall-card {
+  border: 1px solid #d7e0d5;
+  border-radius: 1rem;
+  background: rgba(255, 253, 248, 0.94);
+  padding: 0.85rem 0.9rem;
+  display: grid;
+  gap: 0.22rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.bird-window-stat strong,
+.bird-stat-chip strong,
+.bird-overall-card strong {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(1.2rem, 2.8vw, 1.65rem);
+  line-height: 1;
+}
+
+.bird-summary-grid,
+.bird-board-grid,
+.bird-master-layout {
+  grid-template-columns: minmax(18rem, 0.85fr) minmax(0, 1.15fr);
+  align-items: start;
+}
+
+.bird-card-topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.bird-logger-card,
+.bird-month-panel,
+.bird-day-panel,
+.bird-master-panel,
+.bird-totals-panel,
+.bird-history-card,
+.bird-day-card {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.bird-entry-grid {
+  align-items: start;
+}
+
+.bird-checkbox-row {
+  align-content: start;
+}
+
+.bird-checkbox-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3rem;
+  border: 1px solid #d6e0d4;
+  border-radius: 0.95rem;
+  background: rgba(255, 253, 248, 0.94);
+  padding: 0.78rem 0.88rem;
+  color: #4d4339;
+  font-weight: 700;
+}
+
+.bird-checkbox-pill input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
+.bird-search-row input {
+  min-height: 3.2rem;
+  font-size: 1rem;
+}
+
+.bird-option-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+}
+
+.bird-option {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  min-height: 6rem;
+  border: 1px solid #d6dfd3;
+  border-radius: 1rem;
+  background: linear-gradient(160deg, rgba(255, 252, 247, 0.98), rgba(236, 247, 241, 0.95));
+  color: #433a31;
+  font: inherit;
+  text-align: left;
+  padding: 0.85rem 0.9rem;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.bird-option:hover:not(:disabled),
+.bird-option:focus-visible {
+  transform: translateY(-1px);
+  border-color: #9ec9b2;
+  box-shadow: 0 10px 18px rgba(77, 115, 84, 0.14);
+  outline: none;
+}
+
+.bird-option.is-in-month {
+  border-color: #b7d5b0;
+  background: linear-gradient(160deg, rgba(245, 250, 235, 0.98), rgba(236, 247, 241, 0.96));
+}
+
+.bird-option.is-in-day {
+  box-shadow: 0 0 0 2px rgba(154, 196, 208, 0.16);
+}
+
+.bird-option:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.bird-option-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.bird-add-panel {
+  border: 1px dashed #cfc7ae;
+  border-radius: 1rem;
+  background: rgba(255, 248, 236, 0.72);
+  padding: 0.9rem;
+}
+
+.bird-day-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.bird-day-card,
+.bird-history-card {
+  padding: 0.95rem;
+  border: 1px solid #d4ddd3;
+  border-radius: 1.05rem;
+  background: linear-gradient(160deg, rgba(255, 252, 248, 0.98), rgba(237, 247, 243, 0.95));
+}
+
+.bird-day-card.is-selected,
+.bird-history-card.is-selected {
+  border-color: #97c3bb;
+  box-shadow: 0 0 0 2px rgba(125, 180, 177, 0.14);
+}
+
+.bird-jump-button,
+.bird-month-open {
+  min-width: 8rem;
+}
+
+.bird-master-grid {
+  margin-top: 0.25rem;
+}
+
+.bird-overall-grid {
+  margin-top: 0.35rem;
+}
+
+.bird-empty-state {
+  margin: 0;
+}
+
+.bird-history-grid {
+  grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
 }
 
 .trip-hero-grid {
@@ -2378,6 +2702,11 @@ select:focus-visible {
     align-items: flex-start;
   }
 
+  .bird-card-topline {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .trip-feed-actions {
     justify-items: start;
   }
@@ -2406,6 +2735,12 @@ select:focus-visible {
 
   .photo-proof-group-header {
     align-items: flex-start;
+  }
+
+  .bird-window-stat-grid,
+  .bird-stat-grid,
+  .bird-overall-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
   .road-trip-state-columns {
@@ -2489,6 +2824,13 @@ select:focus-visible {
     width: 100%;
   }
 
+  .bird-summary-grid,
+  .bird-board-grid,
+  .bird-master-layout,
+  .bird-hero-grid {
+    grid-template-columns: 1fr;
+  }
+
   .trip-stat-chip {
     min-width: 0;
     flex: 1 1 10rem;
@@ -2559,10 +2901,21 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .bird-option-grid,
+  .bird-history-grid {
+    grid-template-columns: 1fr;
+  }
+
   .photo-proof-layout,
   .photo-proof-score-row,
   .photo-proof-entry-grid,
   .road-trip-states-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .bird-window-stat-grid,
+  .bird-stat-grid,
+  .bird-overall-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2642,6 +2995,12 @@ select:focus-visible {
 
   .btn {
     width: 100%;
+  }
+
+  .bird-chip,
+  .bird-window-pill,
+  .bird-mini-pill {
+    font-size: 0.74rem;
   }
 
   .hero-actions {
