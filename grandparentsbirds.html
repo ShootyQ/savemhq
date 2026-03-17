@@ -107,12 +107,11 @@
                 <label for="bird-date">Date</label>
                 <input id="bird-date" type="date" />
               </div>
-              <div class="entry-row bird-checkbox-row">
-                <label for="bird-include-daily">Daily log</label>
-                <label class="bird-checkbox-pill">
-                  <input id="bird-include-daily" type="checkbox" />
-                  <span>Also add this bird to the selected day</span>
-                </label>
+              <div class="entry-row bird-auto-note-row">
+                <label>Daily log</label>
+                <div class="bird-checkbox-pill bird-checkbox-pill-static">
+                  <span>Every bird logged here is automatically added to the selected day too.</span>
+                </div>
               </div>
             </div>
 
@@ -270,7 +269,6 @@
       const addCopy = document.getElementById("bird-add-copy");
       const addButton = document.getElementById("bird-add-button");
       const birdDateInput = document.getElementById("bird-date");
-      const includeDailyInput = document.getElementById("bird-include-daily");
       const searchInput = document.getElementById("bird-search");
       const searchResults = document.getElementById("bird-search-results");
       const monthList = document.getElementById("bird-month-list");
@@ -469,17 +467,15 @@
         addPanel.classList.toggle("hidden", !showAddPanel);
         if (showAddPanel) {
           addCopy.textContent = `${currentAddName()} is not in the master list yet.`;
-          addButton.textContent = includeDailyInput.checked ? "Add bird and log it" : "Add bird to master list";
+          addButton.textContent = "Add bird and log it";
         }
 
         if (!isApprovedWriter()) {
           logNote.textContent = "Browse the list freely. Sign in with an approved account to add birds or log sightings.";
         } else if (state.isBusy) {
           logNote.textContent = "Saving your bird update...";
-        } else if (includeDailyInput.checked) {
-          logNote.textContent = `Tap a bird to add it to ${formatMonthLabel(state.selectedDate)} and ${formatDayLabel(state.selectedDate)}.`;
         } else {
-          logNote.textContent = `Tap a bird to add it to ${formatMonthLabel(state.selectedDate)}.`;
+          logNote.textContent = `Tap a bird to add it to ${formatMonthLabel(state.selectedDate)} and ${formatDayLabel(state.selectedDate)}.`;
         }
 
         refreshRevealMotion({ scope: searchResults, selector: ".bird-option" });
@@ -612,7 +608,7 @@
           await logBirdSighting({
             bird,
             dateValue: state.selectedDate,
-            includeDaily: includeDailyInput.checked,
+            includeDaily: true,
             user: state.user,
           });
           searchInput.value = "";
@@ -638,14 +634,12 @@
             user: state.user,
           });
 
-          if (includeDailyInput.checked || state.species.length === 0) {
-            await logBirdSighting({
-              bird,
-              dateValue: state.selectedDate,
-              includeDaily: includeDailyInput.checked,
-              user: state.user,
-            });
-          }
+          await logBirdSighting({
+            bird,
+            dateValue: state.selectedDate,
+            includeDaily: true,
+            user: state.user,
+          });
 
           searchInput.value = "";
           state.search = "";
@@ -668,10 +662,6 @@
         state.selectedDate = event.target.value || toLocalDateInputValue(new Date());
         updateDaySubscription();
         render();
-      });
-
-      includeDailyInput.addEventListener("change", () => {
-        renderSearchResults();
       });
 
       addButton.addEventListener("click", () => {
