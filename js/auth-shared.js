@@ -139,25 +139,7 @@ export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 const approvalsCollection = collection(db, "loginApprovals");
 
-const MOBILE_AUTH_USER_AGENT_PATTERN = /android|iphone|ipad|ipod|mobile/i;
-
-const shouldPreferRedirectSignIn = () => {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const coarsePointer = typeof window.matchMedia === "function"
-    && window.matchMedia("(pointer: coarse)").matches;
-  const userAgent = typeof navigator === "undefined" ? "" : String(navigator.userAgent || "");
-  return coarsePointer || MOBILE_AUTH_USER_AGENT_PATTERN.test(userAgent);
-};
-
 const signInWithBestAvailableMethod = async () => {
-  if (shouldPreferRedirectSignIn()) {
-    await signInWithRedirect(auth, googleProvider);
-    return { method: "redirect" };
-  }
-
   try {
     await signInWithPopup(auth, googleProvider);
     return { method: "popup" };
