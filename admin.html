@@ -215,9 +215,9 @@
                   ${accessOptions}
                 </div>
                 <div class="form-actions">
-                  <button class="btn btn-primary" data-action="approved" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Accept</button>
-                  <button class="btn btn-secondary" data-action="denied" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Do Not Accept</button>
-                  <button class="btn btn-secondary" data-action="save-access" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Save Access</button>
+                  <button class="btn btn-primary" data-action="approved" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Approve + Save</button>
+                  <button class="btn btn-secondary" data-action="denied" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Deny</button>
+                  <button class="btn btn-secondary" data-action="save-access" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Save Role/Access Only</button>
                 </div>
               </article>
             `;
@@ -404,8 +404,8 @@
               { merge: true }
             );
             adminStatus.textContent = assignedSections.length
-              ? `Saved access for ${accessLabels(assignedSections)}${assignedPerson ? ` with player ${personLabel(assignedPerson)}` : ""}.`
-              : "Saved profile changes with no section access assigned.";
+              ? `Saved role/access only for ${accessLabels(assignedSections)}${assignedPerson ? ` with player ${personLabel(assignedPerson)}` : ""}. Approval status did not change.`
+              : "Saved role/access only. Approval status did not change.";
             return;
           }
 
@@ -419,7 +419,9 @@
             },
             { merge: true }
           );
-          adminStatus.textContent = `Updated request to ${action}.`;
+          adminStatus.textContent = action === "approved"
+            ? `Approved account and saved current role/access settings.`
+            : "Denied account. Current role/access selections were saved with the denial.";
         } catch (error) {
           console.error("Could not update approval status", error);
           const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
