@@ -18,55 +18,43 @@
       <section class="hero section bird-hero-section">
         <div class="container hero-inner bird-hero-grid">
           <div class="home-hero-copy bird-hero-copy">
-            <p class="tagline">Porch Birding Ledger</p>
+            <p class="tagline">Porch Bird Log</p>
             <h1>Grandparents Birds</h1>
             <p class="subheadline">
-              A farmhouse-style birding station for the feeder window in North Carolina, built around the porch watch first and the archive second.
+              A simpler bird page with two jobs only: keep the daily log up top, then browse the longer bird ledger below.
             </p>
             <div class="hero-surface bird-hero-surface">
               <p class="intro">
-                Keep the running watch from the rocker side of the glass: set the date, tap what landed, and let the season shelf fill in as the months roll by.
+                Start in the Logbook to mark what showed up at the feeder today. Scroll down to the Ledger when you want the bigger picture.
               </p>
-              <div class="bird-porch-note">
-                <span class="bird-porch-note-label">Porch Notes</span>
-                <p>
-                  Fast enough for quick phone taps, roomy enough for iPad bird debates, and organized like a field notebook instead of another game board.
-                </p>
-              </div>
-            </div>
-            <div class="hero-actions bird-live-links">
-              <a class="btn btn-primary" href="#bird-logger">Mark The Feeder</a>
-              <a class="btn btn-secondary" href="#bird-master-list">Open Field Guide</a>
-              <a class="btn btn-secondary" href="#bird-history">Browse Season Shelf</a>
+              <nav class="bird-page-nav" aria-label="Bird page sections">
+                <a class="bird-nav-pill" href="#bird-logbook">Logbook</a>
+                <a class="bird-nav-pill" href="#bird-ledger">Ledger</a>
+              </nav>
             </div>
           </div>
 
           <aside class="bird-window-card reveal-item" aria-label="Bird tracker overview">
-            <p class="section-kicker">Watchboard</p>
-            <h2>This Month At The Feeder</h2>
+            <p class="section-kicker">Current Page</p>
+            <h2>Where To Start</h2>
             <p class="bird-window-copy">
-              The live board stays focused on what the porch has seen lately, with just enough detail to keep the family in sync.
+              Pick the date, tap the bird, and the page updates the day log and month list together.
             </p>
-            <div class="bird-window-pill-row">
-              <span class="bird-window-pill">Front porch watch</span>
-              <span class="bird-window-pill">Daily daybook</span>
-              <span class="bird-window-pill">Season shelf archive</span>
-            </div>
             <div class="bird-window-stat-grid" aria-live="polite">
               <div class="bird-window-stat">
-                <span class="small-note">Tracking month</span>
+                <span class="small-note">Watching</span>
                 <strong id="bird-hero-month">This month</strong>
               </div>
               <div class="bird-window-stat">
-                <span class="small-note">Birds this month</span>
-                <strong id="bird-hero-month-count">0</strong>
-              </div>
-              <div class="bird-window-stat">
-                <span class="small-note">Birds today</span>
+                <span class="small-note">Today</span>
                 <strong id="bird-hero-day-count">0</strong>
               </div>
               <div class="bird-window-stat">
-                <span class="small-note">Overall unique</span>
+                <span class="small-note">This month</span>
+                <strong id="bird-hero-month-count">0</strong>
+              </div>
+              <div class="bird-window-stat">
+                <span class="small-note">All time</span>
                 <strong id="bird-hero-total-count">0</strong>
               </div>
             </div>
@@ -75,61 +63,24 @@
         </div>
       </section>
 
-      <section class="section bird-station-section">
-        <div class="container bird-station-layout">
-          <article class="bird-watchboard reveal-item">
-            <div class="bird-card-topline">
-              <div>
-                <p class="section-kicker">Watch Now</p>
-                <h2 id="bird-selected-month-heading">Month Check-In</h2>
-              </div>
-              <span id="bird-selected-month-count" class="bird-chip bird-chip-accent">0 birds</span>
-            </div>
-            <p id="bird-summary-note" class="section-intro bird-watch-note">No birds logged yet.</p>
-
-            <div class="bird-stat-grid" aria-live="polite">
-              <div class="bird-stat-chip">
-                <span class="small-note">Field guide birds</span>
-                <strong id="bird-master-count">0</strong>
-              </div>
-              <div class="bird-stat-chip">
-                <span class="small-note">Birds this month</span>
-                <strong id="bird-month-count">0</strong>
-              </div>
-              <div class="bird-stat-chip">
-                <span class="small-note">Birds this day</span>
-                <strong id="bird-day-count">0</strong>
-              </div>
-              <div class="bird-stat-chip">
-                <span class="small-note">Months on shelf</span>
-                <strong id="bird-months-count">0</strong>
-              </div>
-            </div>
-
-            <div class="bird-watch-shelf">
-              <div class="bird-card-topline bird-watch-shelf-head">
-                <div>
-                  <p class="bird-shelf-label">Pinned To The Board</p>
-                  <h3>Birds Already Marked This Month</h3>
-                </div>
-                <span id="bird-month-pill" class="bird-chip">This month</span>
-              </div>
-              <div id="bird-month-list" class="bird-chip-grid" aria-live="polite"></div>
-            </div>
-          </article>
+      <section id="bird-logbook" class="section bird-logbook-section">
+        <div class="container bird-logbook-layout">
+          <div class="bird-logbook-intro reveal-item">
+            <p class="section-kicker">Logbook</p>
+            <h2>Log What The Feeder Saw</h2>
+            <p class="section-intro">
+              This is the working part of the page: choose the date, log birds, then glance at the selected day and month without bouncing around.
+            </p>
+          </div>
 
           <article id="bird-logger" class="bird-logger-card reveal-item">
             <div class="bird-card-topline">
               <div>
-                <p class="section-kicker">Logging Bench</p>
-                <h2>Mark The Feeder</h2>
+                <p class="bird-shelf-label">Step 1</p>
+                <h3>Pick The Date And Mark A Bird</h3>
               </div>
-              <span id="bird-selected-day-pill" class="bird-chip bird-chip-outline">Today</span>
+              <span id="bird-month-pill" class="bird-chip bird-chip-accent">This month</span>
             </div>
-
-            <p class="section-intro bird-logger-intro">
-              Pick the date, search the field guide, and tap the bird that landed. Every mark updates the month board and the day book together.
-            </p>
 
             <div class="entry-grid bird-entry-grid">
               <div class="entry-row">
@@ -137,9 +88,9 @@
                 <input id="bird-date" type="date" />
               </div>
               <div class="entry-row bird-auto-note-row">
-                <label>Station rule</label>
+                <label>Selected day</label>
                 <div class="bird-checkbox-pill bird-checkbox-pill-static">
-                  <span>Each bird logged here is automatically written into the selected day too.</span>
+                  <span id="bird-selected-day-pill">Today</span>
                 </div>
               </div>
             </div>
@@ -168,76 +119,87 @@
               </div>
             </div>
           </article>
-        </div>
-      </section>
 
-      <section class="section section-card bird-daybook-section">
-        <div class="container bird-daybook-layout">
-          <article class="bird-day-panel reveal-item">
-            <div class="bird-card-topline">
-              <div>
-                <p class="section-kicker">Today At The Feeder</p>
-                <h2>Day Book</h2>
+          <div class="bird-logbook-grid">
+            <article class="bird-day-panel reveal-item">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Step 2</p>
+                  <h3>Today In The Logbook</h3>
+                </div>
+                <span class="bird-chip bird-chip-outline">Daily view</span>
               </div>
-              <span class="bird-chip bird-chip-soft">Daily sightings</span>
-            </div>
-            <p class="section-intro">
-              Reopen any logged day to jump the station back to that exact watch and see which birds showed up together.
-            </p>
-            <div id="bird-day-list" class="bird-day-list" aria-live="polite"></div>
-          </article>
+              <p class="section-intro">
+                Reopen any day here if you want to jump the page back to that exact watch.
+              </p>
+              <div id="bird-day-list" class="bird-day-list" aria-live="polite"></div>
+            </article>
 
-          <aside class="bird-totals-panel reveal-item">
-            <p class="section-kicker">Porch Ledger</p>
-            <h2>Season Snapshot</h2>
-            <p class="section-intro bird-ledger-intro">
-              The slow view: how many birds the window has seen, which month was fullest, and where the running ledger stands now.
-            </p>
-            <div id="bird-overall-grid" class="bird-overall-grid" aria-live="polite"></div>
-          </aside>
-        </div>
-      </section>
-
-      <section id="bird-master-list" class="section bird-field-section">
-        <div class="container bird-field-layout">
-          <article class="bird-master-panel reveal-item">
-            <div class="bird-card-topline">
-              <div>
-                <p class="section-kicker">Field Guide Drawer</p>
-                <h2>All Known Birds</h2>
+            <article class="bird-month-panel reveal-item">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Step 3</p>
+                  <h3 id="bird-selected-month-heading">Month Check-In</h3>
+                </div>
+                <span id="bird-selected-month-count" class="bird-chip">0 birds</span>
               </div>
-              <span id="bird-filter-pill" class="bird-chip">All birds</span>
-            </div>
-            <p class="section-intro">
-              This running guide powers the logger above. Approved family users can add new birds the moment a surprise visitor lands at the feeder.
-            </p>
-            <div id="bird-master-grid" class="bird-master-grid" aria-live="polite"></div>
-          </article>
-
-          <aside class="bird-almanac-card reveal-item">
-            <p class="section-kicker">House Rules</p>
-            <h2>How This Station Works</h2>
-            <ul class="bird-rule-list">
-              <li>Signed-out visitors can browse the porch ledger and the season shelf.</li>
-              <li>Approved family users can add birds and mark sightings in real time.</li>
-              <li>The month board tracks unique birds, while the day book keeps the daily watch.</li>
-            </ul>
-          </aside>
+              <p id="bird-summary-note" class="section-intro bird-watch-note">No birds logged yet.</p>
+              <div id="bird-month-list" class="bird-chip-grid" aria-live="polite"></div>
+            </article>
+          </div>
         </div>
       </section>
 
-      <section id="bird-history" class="section bird-history-section">
-        <div class="container bird-history-shell">
-          <div class="bird-season-header reveal-item">
-            <div>
-              <p class="section-kicker">Season Shelf</p>
-              <h2>Browse Logged Months</h2>
-            </div>
-            <p class="section-intro bird-season-copy">
-              Open any month on the shelf to swing the station back to that part of the year and pick up the watch from there.
+      <section id="bird-ledger" class="section section-card bird-ledger-section">
+        <div class="container bird-ledger-layout">
+          <div class="bird-ledger-intro reveal-item">
+            <p class="section-kicker">Ledger</p>
+            <h2>Browse The Bigger Picture</h2>
+            <p class="section-intro bird-ledger-copy">
+              The Ledger is for reference: totals, the full field guide, and older months already on the shelf.
             </p>
           </div>
-          <div id="bird-history-grid" class="bird-history-grid" aria-live="polite"></div>
+
+          <div class="bird-ledger-grid">
+            <aside class="bird-totals-panel reveal-item">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Season Totals</p>
+                  <h3>Porch Ledger</h3>
+                </div>
+                <span class="bird-chip bird-chip-accent"><span id="bird-master-count">0</span> birds known</span>
+              </div>
+              <div id="bird-overall-grid" class="bird-overall-grid" aria-live="polite"></div>
+            </aside>
+
+            <article id="bird-master-list" class="bird-master-panel reveal-item">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Field Guide</p>
+                  <h3>All Known Birds</h3>
+                </div>
+                <span id="bird-filter-pill" class="bird-chip">All birds</span>
+              </div>
+              <p class="section-intro">
+                This is the full bird list behind the Logbook. Use it when you want to browse instead of search.
+              </p>
+              <div id="bird-master-grid" class="bird-master-grid" aria-live="polite"></div>
+            </article>
+          </div>
+
+          <article id="bird-history" class="bird-history-panel reveal-item">
+            <div class="bird-card-topline">
+              <div>
+                <p class="bird-shelf-label">Season Shelf</p>
+                <h3>Browse Logged Months</h3>
+              </div>
+              <span class="bird-chip bird-chip-soft"><span id="bird-months-count">0</span> months</span>
+            </div>
+            <p class="section-intro bird-season-copy">
+              Open any month on the shelf to jump the Logbook back to that part of the year.
+            </p>
+            <div id="bird-history-grid" class="bird-history-grid" aria-live="polite"></div>
+          </article>
         </div>
       </section>
     </main>
@@ -248,8 +210,8 @@
         <nav aria-label="Footer">
           <ul class="footer-nav">
             <li><a href="index.html">Home</a></li>
-            <li><a href="#bird-logger">Log</a></li>
-            <li><a href="#bird-master-list">Master List</a></li>
+            <li><a href="#bird-logbook">Logbook</a></li>
+            <li><a href="#bird-ledger">Ledger</a></li>
             <li><a href="#bird-history">Months</a></li>
           </ul>
         </nav>
@@ -292,9 +254,7 @@
       const summaryNote = document.getElementById("bird-summary-note");
       const monthPill = document.getElementById("bird-month-pill");
       const monthHeading = document.getElementById("bird-selected-month-heading");
-      const monthCountValue = document.getElementById("bird-month-count");
       const masterCountValue = document.getElementById("bird-master-count");
-      const dayCountValue = document.getElementById("bird-day-count");
       const monthsCountValue = document.getElementById("bird-months-count");
       const selectedMonthCount = document.getElementById("bird-selected-month-count");
       const selectedDayPill = document.getElementById("bird-selected-day-pill");
@@ -442,8 +402,6 @@
         heroDayCount.textContent = String(selectedDayBirdNames.length);
         heroTotalCount.textContent = String(overallBirds.size);
         masterCountValue.textContent = String(state.species.length);
-        monthCountValue.textContent = String(selectedMonthBirdNames.length);
-        dayCountValue.textContent = String(selectedDayBirdNames.length);
         monthsCountValue.textContent = String(state.months.length);
         monthPill.textContent = monthLabel;
         monthHeading.textContent = `${monthLabel} Check-In`;
@@ -782,10 +740,10 @@
         selector: [
           ".section",
           ".hero-surface",
-          ".bird-station-layout > *",
-          ".bird-daybook-layout > *",
-          ".bird-field-layout > *",
-          ".bird-history-shell > *",
+          ".bird-logbook-layout > *",
+          ".bird-logbook-grid > *",
+          ".bird-ledger-layout > *",
+          ".bird-ledger-grid > *",
           ".bird-history-grid > *",
         ].join(", "),
       });

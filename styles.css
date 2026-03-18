@@ -1224,18 +1224,19 @@ body[data-page="grandparents-birds"] .site-header {
 }
 
 .bird-hero-grid {
-  grid-template-columns: minmax(0, 1.08fr) minmax(19rem, 0.92fr);
-  gap: 1.2rem;
+  grid-template-columns: minmax(0, 1.06fr) minmax(18rem, 0.9fr);
+  gap: 1.25rem;
   align-items: start;
 }
 
 .bird-hero-copy,
-.bird-watchboard,
+.bird-logbook-intro,
+.bird-history-panel,
 .bird-logger-card,
 .bird-day-panel,
+.bird-month-panel,
 .bird-totals-panel,
 .bird-master-panel,
-.bird-almanac-card,
 .bird-window-card,
 .bird-day-card,
 .bird-history-card {
@@ -1244,8 +1245,8 @@ body[data-page="grandparents-birds"] .site-header {
 }
 
 .bird-hero-surface {
-  max-width: 44rem;
-  padding: 1.2rem 1.25rem;
+  max-width: 42rem;
+  padding: 1.2rem 1.25rem 1.1rem;
   border: 1px solid rgba(141, 116, 84, 0.22);
   border-radius: 1.35rem;
   background:
@@ -1260,30 +1261,49 @@ body[data-page="grandparents-birds"] .site-header {
   box-shadow: 0 18px 32px rgba(109, 82, 49, 0.1);
 }
 
-.bird-porch-note {
-  display: grid;
-  gap: 0.35rem;
+.bird-page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
   margin-top: 1rem;
-  padding-top: 0.95rem;
-  border-top: 1px dashed rgba(136, 109, 76, 0.25);
 }
 
-.bird-porch-note-label,
+.bird-nav-pill,
 .bird-shelf-label {
-  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 0.76rem;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.bird-nav-pill {
+  text-decoration: none;
+  padding: 0.52rem 0.88rem;
+  border: 1px solid rgba(136, 109, 76, 0.18);
+  background: rgba(255, 249, 239, 0.88);
+  color: #674f37;
+}
+
+.bird-nav-pill:hover {
+  color: #4c3825;
+  background: rgba(247, 237, 219, 0.95);
+}
+
+.bird-shelf-label {
   color: #7d5f3b;
 }
 
 .bird-window-card::before,
-.bird-watchboard::before,
+.bird-logbook-intro::before,
+.bird-history-panel::before,
 .bird-logger-card::before,
 .bird-day-panel::before,
+.bird-month-panel::before,
 .bird-master-panel::before,
 .bird-totals-panel::before,
-.bird-almanac-card::before,
 .bird-history-card::before,
 .bird-overall-card::before,
 .bird-day-card::before {
@@ -1320,7 +1340,6 @@ body[data-page="grandparents-birds"] .site-header {
   max-width: 34ch;
 }
 
-.bird-window-pill-row,
 .bird-chip-grid,
 .bird-master-grid,
 .bird-option-grid {
@@ -1339,7 +1358,6 @@ body[data-page="grandparents-birds"] .site-header {
   font-weight: 800;
 }
 
-.bird-window-pill,
 .bird-chip {
   border: 1px solid rgba(136, 109, 76, 0.2);
   background: rgba(255, 250, 241, 0.92);
@@ -1347,12 +1365,6 @@ body[data-page="grandparents-birds"] .site-header {
   padding: 0.38rem 0.8rem;
   font-size: 0.82rem;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
-}
-
-.bird-window-pill {
-  border-color: rgba(245, 235, 214, 0.22);
-  background: rgba(247, 240, 224, 0.13);
-  color: #fbf3e0;
 }
 
 .bird-chip-soft {
@@ -1385,24 +1397,21 @@ body[data-page="grandparents-birds"] .site-header {
 }
 
 .bird-window-stat-grid,
-.bird-stat-grid,
 .bird-overall-grid,
-.bird-station-layout,
-.bird-daybook-layout,
-.bird-field-layout,
-.bird-history-shell {
+.bird-logbook-layout,
+.bird-logbook-grid,
+.bird-ledger-layout,
+.bird-ledger-grid {
   display: grid;
   gap: 1rem;
 }
 
 .bird-window-stat-grid,
-.bird-stat-grid,
 .bird-overall-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .bird-window-stat,
-.bird-stat-chip,
 .bird-overall-card {
   border: 1px solid rgba(139, 114, 80, 0.22);
   border-radius: 1rem;
@@ -1414,7 +1423,6 @@ body[data-page="grandparents-birds"] .site-header {
 }
 
 .bird-window-stat strong,
-.bird-stat-chip strong,
 .bird-overall-card strong {
   font-family: "Fraunces", Georgia, serif;
   font-size: clamp(1.2rem, 2.8vw, 1.65rem);
@@ -1435,23 +1443,15 @@ body[data-page="grandparents-birds"] .site-header {
   color: rgba(251, 243, 224, 0.78);
 }
 
-.bird-station-layout,
-.bird-daybook-layout,
-.bird-field-layout {
-  grid-template-columns: minmax(19rem, 1.02fr) minmax(18rem, 0.98fr);
-  align-items: start;
-}
-
-.bird-daybook-layout {
-  grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
-}
-
-.bird-field-layout {
-  grid-template-columns: minmax(0, 1.18fr) minmax(18rem, 0.82fr);
-}
-
-.bird-history-shell {
+.bird-logbook-layout,
+.bird-ledger-layout {
   gap: 1.15rem;
+}
+
+.bird-logbook-grid,
+.bird-ledger-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
 }
 
 .bird-card-topline {
@@ -1462,12 +1462,13 @@ body[data-page="grandparents-birds"] .site-header {
   gap: 0.7rem;
 }
 
-.bird-watchboard,
+.bird-logbook-intro,
+.bird-history-panel,
 .bird-logger-card,
 .bird-day-panel,
+.bird-month-panel,
 .bird-master-panel,
 .bird-totals-panel,
-.bird-almanac-card,
 .bird-history-card,
 .bird-day-card {
   display: grid;
@@ -1487,26 +1488,17 @@ body[data-page="grandparents-birds"] .site-header {
   box-shadow: 0 18px 30px rgba(99, 72, 40, 0.08);
 }
 
-.bird-watchboard {
+.bird-logbook-intro,
+.bird-history-panel {
   background:
     radial-gradient(120% 120% at 100% 0%, rgba(205, 220, 182, 0.22), transparent 38%),
     linear-gradient(180deg, rgba(255, 250, 242, 0.96), rgba(243, 236, 222, 0.96));
 }
 
 .bird-watch-note,
-.bird-logger-intro,
-.bird-ledger-intro,
+.bird-ledger-copy,
 .bird-season-copy {
   margin: 0;
-}
-
-.bird-watch-shelf {
-  display: grid;
-  gap: 0.8rem;
-  padding: 0.95rem;
-  border-radius: 1.1rem;
-  border: 1px dashed rgba(130, 111, 83, 0.25);
-  background: rgba(255, 249, 239, 0.68);
 }
 
 .bird-entry-grid {
@@ -1528,6 +1520,10 @@ body[data-page="grandparents-birds"] .site-header {
   padding: 0.78rem 0.88rem;
   color: #544431;
   font-weight: 700;
+}
+
+.bird-checkbox-pill-static {
+  justify-content: flex-start;
 }
 
 .bird-checkbox-pill input {
@@ -1654,36 +1650,17 @@ body[data-page="grandparents-birds"] .site-header {
   gap: 1rem;
 }
 
-.bird-almanac-card {
-  align-content: start;
+.bird-month-panel,
+.bird-history-panel {
   background:
-    linear-gradient(180deg, rgba(244, 236, 219, 0.96), rgba(237, 228, 211, 0.94)),
+    linear-gradient(180deg, rgba(252, 247, 238, 0.96), rgba(242, 234, 220, 0.95)),
     repeating-linear-gradient(
       0deg,
-      rgba(136, 109, 76, 0.03),
-      rgba(136, 109, 76, 0.03) 1px,
+      rgba(136, 109, 76, 0.025),
+      rgba(136, 109, 76, 0.025) 1px,
       transparent 1px,
-      transparent 16px
+      transparent 15px
     );
-}
-
-.bird-rule-list {
-  display: grid;
-  gap: 0.75rem;
-  margin: 0;
-  padding-left: 1.15rem;
-  color: #5c4b37;
-}
-
-.bird-rule-list li::marker {
-  color: #87603c;
-}
-
-.bird-season-header {
-  display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(16rem, 1fr);
-  gap: 1rem;
-  align-items: end;
 }
 
 .bird-status-line {
@@ -2907,11 +2884,6 @@ select:focus-visible {
     align-items: flex-start;
   }
 
-  .bird-season-header {
-    grid-template-columns: 1fr;
-    align-items: flex-start;
-  }
-
   .trip-feed-actions {
     justify-items: start;
   }
@@ -2943,7 +2915,6 @@ select:focus-visible {
   }
 
   .bird-window-stat-grid,
-  .bird-stat-grid,
   .bird-overall-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -3029,10 +3000,9 @@ select:focus-visible {
     width: 100%;
   }
 
-  .bird-station-layout,
-  .bird-daybook-layout,
-  .bird-field-layout,
-  .bird-hero-grid {
+  .bird-hero-grid,
+  .bird-logbook-grid,
+  .bird-ledger-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3119,7 +3089,6 @@ select:focus-visible {
   }
 
   .bird-window-stat-grid,
-  .bird-stat-grid,
   .bird-overall-grid {
     grid-template-columns: 1fr;
   }
