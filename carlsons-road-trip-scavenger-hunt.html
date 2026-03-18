@@ -100,7 +100,7 @@
     </footer>
 
     <script type="module">
-      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
@@ -211,11 +211,14 @@
       });
 
       initHeaderAuth({
-        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson }) => {
-          canManageHunt = Boolean(user) && (isAdmin || ((approvalStatus === "approved") && ["andy", "savannah"].includes(String(approvalPerson || "").toLowerCase())));
+        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson, approvalSections }) => {
+          const canAccessRoadTrip = Boolean(user) && hasSectionAccess({ isAdmin, approvalStatus, approvalSections, userEmail: user.email }, "road-trip");
+          canManageHunt = canAccessRoadTrip && (isAdmin || ((approvalStatus === "approved") && ["andy", "savannah"].includes(String(approvalPerson || "").toLowerCase())));
 
           if (!user) {
             statusText.textContent = "Watching live in read-only mode. Sign in as Andy or Savannah to mark finds or add items.";
+          } else if (!canAccessRoadTrip) {
+            statusText.textContent = "Signed in, but road-trip access is not assigned to this account.";
           } else if (canManageHunt) {
             statusText.textContent = "Ready. Tap finds and add more roadside oddities when they show up.";
             try {

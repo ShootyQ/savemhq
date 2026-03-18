@@ -27,6 +27,25 @@ export const firebaseConfig = {
 
 export const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
 export const SAVANNAH_EMAIL = "savannahbcarlson@gmail.com";
+export const ACCESS_SECTIONS = [
+  {
+    id: "plates",
+    label: "Plate Entry",
+    description: "Use the private plate entry page and competition editing tools.",
+  },
+  {
+    id: "birds",
+    label: "Grandparents Birds",
+    description: "Add birds and log sightings in the bird tracker.",
+  },
+  {
+    id: "road-trip",
+    label: "Road Trip",
+    description: "Use the interactive road-trip pages and game controls.",
+  },
+];
+
+const ACCESS_SECTION_IDS = new Set(ACCESS_SECTIONS.map((section) => section.id));
 
 const KNOWN_USER_PROFILES = {
   [ADMIN_EMAIL]: {
@@ -46,6 +65,44 @@ const KNOWN_USER_PROFILES = {
 export const getKnownUserProfile = (email) => KNOWN_USER_PROFILES[String(email || "").toLowerCase()] || null;
 
 export const getPersonFromEmail = (email) => getKnownUserProfile(email)?.person || "";
+
+export const normalizeAccessSections = (value) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return [...new Set(
+    value
+      .map((sectionId) => String(sectionId || "").trim().toLowerCase())
+      .filter((sectionId) => ACCESS_SECTION_IDS.has(sectionId))
+  )];
+};
+
+export const hasSectionAccess = ({
+  isAdmin = false,
+  approvalStatus = "signed-out",
+  approvalSections = [],
+  userEmail = "",
+} = {}, sectionId) => {
+  const normalizedSectionId = String(sectionId || "").trim().toLowerCase();
+  if (!normalizedSectionId) {
+    return false;
+  }
+
+  if (isAdmin) {
+    return true;
+  }
+
+  if (getKnownUserProfile(userEmail)?.autoApprove) {
+    return true;
+  }
+
+  if (approvalStatus !== "approved") {
+    return false;
+  }
+
+  return normalizeAccessSections(approvalSections).includes(normalizedSectionId);
+};
 
 const approvalFieldsForEmail = (email) => {
   const knownProfile = getKnownUserProfile(email);
@@ -103,6 +160,7 @@ export const ensureApprovalRecord = async (user) => {
         uid: user.uid,
         email: user.email || "",
         ...knownApprovalFields,
+        accessSections: [],
         status: shouldAutoApprove ? "approved" : "pending",
         requestedAt: serverTimestamp(),
         lastLoginAttemptAt: serverTimestamp(),
@@ -116,18 +174,21 @@ export const ensureApprovalRecord = async (user) => {
       return {
         status: "approved",
         person: knownApprovalFields.person || "",
+        accessSections: [],
       };
     }
 
     return {
       status: "pending",
       person: "",
+      accessSections: [],
     };
   }
 
   const data = snapshot.data();
   let status = data.status || "pending";
   let person = String(data.person || knownApprovalFields.person || "");
+  const accessSections = normalizeAccessSections(data.accessSections);
 
   await setDoc(
     approvalRef,
@@ -156,6 +217,7 @@ export const ensureApprovalRecord = async (user) => {
   return {
     status,
     person,
+    accessSections,
   };
 };
 
@@ -207,12 +269,19 @@ export const initHeaderAuth = ({ onStateChange, signedOutText = "Signed out." } 
       const approval = await ensureApprovalRecord(user);
       const approvalStatus = approval.status;
       const approvalPerson = approval.person;
+      const approvalSections = normalizeAccessSections(approval.accessSections);
       const knownProfile = getKnownUserProfile(user.email);
       const isAdmin = Boolean(knownProfile?.isAdmin);
       const signedInLabel = signedInLabelForUser(user);
+      const userEmail = String(user.email || "").toLowerCase();
 
       adminLink?.classList.toggle("hidden", !isAdmin);
-      addPlatesLink?.classList.toggle("hidden", !(approvalStatus === "approved" || isAdmin));
+      addPlatesLink?.classList.toggle("hidden", !hasSectionAccess({
+        isAdmin,
+        approvalStatus,
+        approvalSections,
+        userEmail,
+      }, "plates"));
 
       if (headerAuthStatus) {
         if (approvalStatus === "approved" || isAdmin) {
@@ -224,7 +293,7 @@ export const initHeaderAuth = ({ onStateChange, signedOutText = "Signed out." } 
         }
       }
 
-      onStateChange?.({ user, isAdmin, approvalStatus, approvalPerson });
+      onStateChange?.({ user, isAdmin, approvalStatus, approvalPerson, approvalSections });
     } catch (error) {
       const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
       addPlatesLink?.classList.add("hidden");
@@ -237,6 +306,7 @@ export const initHeaderAuth = ({ onStateChange, signedOutText = "Signed out." } 
         isAdmin: false,
         approvalStatus: "error",
         approvalPerson: "",
+        approvalSections: [],
         error,
       });
     }

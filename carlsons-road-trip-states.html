@@ -100,7 +100,7 @@
     </footer>
 
     <script type="module">
-      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
@@ -320,12 +320,15 @@
       });
 
       initHeaderAuth({
-        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson: nextApprovalPerson }) => {
+        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson: nextApprovalPerson, approvalSections }) => {
           approvalPerson = String(nextApprovalPerson || "").trim().toLowerCase();
-          canManageBoard = Boolean(user) && (isAdmin || ((approvalStatus === "approved") && isRoadTripPlayer(approvalPerson)));
+          const canAccessRoadTrip = Boolean(user) && hasSectionAccess({ isAdmin, approvalStatus, approvalSections, userEmail: user.email }, "road-trip");
+          canManageBoard = canAccessRoadTrip && (isAdmin || ((approvalStatus === "approved") && isRoadTripPlayer(approvalPerson)));
 
           if (!user) {
             statusText.textContent = "Watching the shared states board in read-only mode.";
+          } else if (!canAccessRoadTrip) {
+            statusText.textContent = "Signed in, but road-trip access is not assigned to this account.";
           } else if (canManageBoard) {
             statusText.textContent = "Shared board is live. Tap a state to add or remove it from the family board.";
             try {

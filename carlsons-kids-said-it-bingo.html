@@ -110,7 +110,7 @@
     </footer>
 
     <script type="module">
-      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
@@ -281,13 +281,16 @@
       });
 
       initHeaderAuth({
-        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson }) => {
-          canManageBoards = Boolean(user) && (isAdmin || ((approvalStatus === "approved") && ["andy", "savannah"].includes(String(approvalPerson || "").toLowerCase())));
+        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson, approvalSections }) => {
+          const canAccessRoadTrip = Boolean(user) && hasSectionAccess({ isAdmin, approvalStatus, approvalSections, userEmail: user.email }, "road-trip");
+          canManageBoards = canAccessRoadTrip && (isAdmin || ((approvalStatus === "approved") && ["andy", "savannah"].includes(String(approvalPerson || "").toLowerCase())));
           nextRoundButton.disabled = !canManageBoards;
           resetBingoButton.disabled = !canManageBoards;
 
           if (!user) {
             statusText.textContent = "Watching live in read-only mode. Sign in as Andy or Savannah to mark squares.";
+          } else if (!canAccessRoadTrip) {
+            statusText.textContent = "Signed in, but road-trip access is not assigned to this account.";
           } else if (canManageBoards) {
             statusText.textContent = "Live and ready. Tap a square when one of these classics happens.";
             try {

@@ -96,7 +96,7 @@
     </footer>
 
     <script type="module">
-      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
@@ -224,8 +224,8 @@
       initRevealMotion();
 
       initHeaderAuth({
-        onStateChange: async ({ user, isAdmin, approvalStatus }) => {
-          if (!(user && (approvalStatus === "approved" || isAdmin))) {
+        onStateChange: async ({ user, isAdmin, approvalStatus, approvalSections }) => {
+          if (!(user && hasSectionAccess({ isAdmin, approvalStatus, approvalSections, userEmail: user.email }, "road-trip"))) {
             return;
           }
 

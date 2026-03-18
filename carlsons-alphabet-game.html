@@ -90,7 +90,7 @@
     </footer>
 
     <script type="module">
-      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { initRevealMotion } from "./js/reveal-motion.js";
@@ -159,11 +159,14 @@
       savannahButton.addEventListener("click", () => recordWin("savannah"));
 
       initHeaderAuth({
-        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson }) => {
-          canManageScore = Boolean(user) && (isAdmin || ((approvalStatus === "approved") && ["andy", "savannah"].includes(String(approvalPerson || "").toLowerCase())));
+        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson, approvalSections }) => {
+          const canAccessRoadTrip = Boolean(user) && hasSectionAccess({ isAdmin, approvalStatus, approvalSections, userEmail: user.email }, "road-trip");
+          canManageScore = canAccessRoadTrip && (isAdmin || ((approvalStatus === "approved") && ["andy", "savannah"].includes(String(approvalPerson || "").toLowerCase())));
 
           if (!user) {
             statusText.textContent = "Watching live in read-only mode. Sign in as Andy or Savannah to add wins.";
+          } else if (!canAccessRoadTrip) {
+            statusText.textContent = "Signed in, but road-trip access is not assigned to this account.";
           } else if (canManageScore) {
             statusText.textContent = "Ready. Tap the winner when a round ends.";
             try {

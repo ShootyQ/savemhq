@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login Approvals | SavemHQ</title>
-    <meta name="description" content="Admin page to approve or deny SavemHQ login requests." />
+    <meta name="description" content="Admin page to approve or deny SavemHQ login requests and assign page access." />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="admin">
@@ -16,7 +16,7 @@
         <div class="container hero-inner">
           <p class="tagline">Operations Deck</p>
           <h1>Login Approval Center</h1>
-          <p class="subheadline">Review requests, manage access, and lock finalized months with confidence.</p>
+          <p class="subheadline">Review requests, assign page access, and lock finalized months with confidence.</p>
         </div>
       </section>
 
@@ -29,7 +29,7 @@
 
           <article class="project-card">
             <h2>Approval Queue</h2>
-            <p class="small-note">Only approved users can access private plate entry.</p>
+            <p class="small-note">Approve accounts, assign player roles, and choose which sections each login can use.</p>
             <div id="approvals-list" class="stack-form" aria-live="polite">
               <p class="small-note">Sign in as admin to load requests.</p>
             </div>
@@ -66,7 +66,7 @@
         serverTimestamp,
         setDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-      import { ADMIN_EMAIL, db, initHeaderAuth } from "./js/auth-shared.js";
+      import { ACCESS_SECTIONS, ADMIN_EMAIL, db, initHeaderAuth, normalizeAccessSections } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
@@ -141,6 +141,11 @@
       };
 
       const personLabel = (personValue) => PERSON_OPTIONS.find((option) => option.value === personValue)?.label || "Unassigned";
+      const accessLabels = (sectionIds = []) => {
+        const labelById = new Map(ACCESS_SECTIONS.map((section) => [section.id, section.label]));
+        const labels = normalizeAccessSections(sectionIds).map((sectionId) => labelById.get(sectionId) || sectionId);
+        return labels.length ? labels.join(", ") : "No section access assigned";
+      };
 
       const personFieldValue = (data) => {
         const explicit = String(data.person || "").toLowerCase();
@@ -173,13 +178,31 @@
             const isAdminRecord = (data.email || "").toLowerCase() === ADMIN_EMAIL;
             const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
             const assignedPerson = personFieldValue(data);
+            const assignedSections = normalizeAccessSections(data.accessSections);
             const personOptions = PERSON_OPTIONS.map((option) => `<option value="${option.value}" ${option.value === assignedPerson ? "selected" : ""}>${option.label}</option>`).join("");
+            const accessOptions = ACCESS_SECTIONS.map((section) => `
+              <label class="approval-access-option">
+                <input
+                  type="checkbox"
+                  data-access-checkbox
+                  data-uid="${approvalDoc.id}"
+                  data-section-id="${section.id}"
+                  ${assignedSections.includes(section.id) ? "checked" : ""}
+                  ${isAdminRecord ? "disabled" : ""}
+                />
+                <span>
+                  <strong>${section.label}</strong>
+                  <span class="small-note">${section.description}</span>
+                </span>
+              </label>
+            `).join("");
 
             return `
               <article class="project-card">
                 <h3>${data.email || "Unknown email"}</h3>
                 <p><strong>Status:</strong> ${statusLabel}</p>
                 <p><strong>Player:</strong> ${personLabel(assignedPerson)}</p>
+                <p><strong>Sections:</strong> ${accessLabels(assignedSections)}</p>
                 <p><strong>Requested:</strong> ${formatDate(data.requestedAt)}</p>
                 <p><strong>Last login attempt:</strong> ${formatDate(data.lastLoginAttemptAt)}</p>
                 <p><strong>Reviewed by:</strong> ${data.reviewedBy || "N/A"}</p>
@@ -187,10 +210,14 @@
                 <select id="person-${approvalDoc.id}" data-person-select data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>
                   ${personOptions}
                 </select>
+                <div class="approval-access-grid">
+                  <p class="entry-label">Assign section access</p>
+                  ${accessOptions}
+                </div>
                 <div class="form-actions">
                   <button class="btn btn-primary" data-action="approved" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Accept</button>
                   <button class="btn btn-secondary" data-action="denied" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Do Not Accept</button>
-                  <button class="btn btn-secondary" data-action="save-person" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Save Player</button>
+                  <button class="btn btn-secondary" data-action="save-access" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Save Access</button>
                 </div>
               </article>
             `;
@@ -207,6 +234,12 @@
 
         return String(select.value || "").toLowerCase();
       };
+
+      const selectedAccessSectionsForUid = (uid) => normalizeAccessSections(
+        Array.from(approvalsList.querySelectorAll(`[data-access-checkbox][data-uid="${uid}"]`))
+          .filter((input) => input instanceof HTMLInputElement && input.checked)
+          .map((input) => input.dataset.sectionId)
+      );
 
       const startApprovalSubscription = () => {
         if (unsubscribeApprovals) {
@@ -355,20 +388,24 @@
         }
 
         const assignedPerson = selectedPersonForUid(uid);
+        const assignedSections = selectedAccessSectionsForUid(uid);
         const payload = {
           person: assignedPerson || null,
-          personLabel: personLabel(assignedPerson),
+          personLabel: assignedPerson ? personLabel(assignedPerson) : null,
+          accessSections: assignedSections,
         };
 
         target.disabled = true;
         try {
-          if (action === "save-person") {
+          if (action === "save-access") {
             await setDoc(
               doc(approvalsCollection, uid),
               payload,
               { merge: true }
             );
-            adminStatus.textContent = assignedPerson ? `Saved player assignment: ${personLabel(assignedPerson)}.` : "Cleared player assignment.";
+            adminStatus.textContent = assignedSections.length
+              ? `Saved access for ${accessLabels(assignedSections)}${assignedPerson ? ` with player ${personLabel(assignedPerson)}` : ""}.`
+              : "Saved profile changes with no section access assigned.";
             return;
           }
 

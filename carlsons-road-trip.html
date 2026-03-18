@@ -199,7 +199,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script type="module">
-      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
@@ -770,15 +770,18 @@
       });
 
       initHeaderAuth({
-        onStateChange: ({ user, isAdmin: nextIsAdmin, approvalStatus, approvalPerson: nextApprovalPerson }) => {
+        onStateChange: ({ user, isAdmin: nextIsAdmin, approvalStatus, approvalPerson: nextApprovalPerson, approvalSections }) => {
           approvalPerson = String(nextApprovalPerson || "").toLowerCase();
           isAdmin = Boolean(nextIsAdmin);
-          canDeleteOwnEvents = Boolean(user) && (approvalStatus === "approved" || isAdmin);
+          const canAccessRoadTrip = Boolean(user) && hasSectionAccess({ isAdmin, approvalStatus, approvalSections, userEmail: user?.email }, "road-trip");
+          canDeleteOwnEvents = canAccessRoadTrip;
 
           if (!user) {
             updateFeedStatus("Sign in as an approved logger to remove a mistaken post.");
           } else if (isAdmin) {
             updateFeedStatus("Signed in as admin. You can delete any road-trip log.");
+          } else if (!canAccessRoadTrip) {
+            updateFeedStatus("Signed in, but road-trip access is not assigned to this account.");
           } else if (canDeleteOwnEvents && approvalPerson) {
             updateFeedStatus(`Signed in as ${approvalPerson}. You can delete your own logs.`);
           } else if (approvalStatus === "pending") {

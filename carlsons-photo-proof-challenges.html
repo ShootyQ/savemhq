@@ -134,7 +134,7 @@
     </footer>
 
     <script type="module">
-      import { initHeaderAuth, getKnownUserProfile } from "./js/auth-shared.js";
+      import { getKnownUserProfile, hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
@@ -556,16 +556,19 @@
       });
 
       initHeaderAuth({
-        onStateChange: ({ user, isAdmin: nextIsAdmin, approvalStatus, approvalPerson: nextApprovalPerson }) => {
+        onStateChange: ({ user, isAdmin: nextIsAdmin, approvalStatus, approvalPerson: nextApprovalPerson, approvalSections }) => {
           signedInUser = user;
           isAdmin = Boolean(nextIsAdmin);
           approvalPerson = String(nextApprovalPerson || "").trim().toLowerCase();
+          const canAccessRoadTrip = Boolean(user) && hasSectionAccess({ isAdmin, approvalStatus, approvalSections, userEmail: user?.email }, "road-trip");
           canVote = Boolean(getPublicVoterId());
-          canUpload = canVote && isRoadTripPlayer(approvalPerson);
-          canManageEntries = Boolean(user) && (isAdmin || isRoadTripPlayer(approvalPerson));
+          canUpload = canVote && canAccessRoadTrip && isRoadTripPlayer(approvalPerson);
+          canManageEntries = canAccessRoadTrip && (isAdmin || isRoadTripPlayer(approvalPerson));
 
           if (!user) {
             statusText.textContent = "Public voting is live. Each device gets one vote per photo.";
+          } else if (!canAccessRoadTrip) {
+            statusText.textContent = "Signed in. Voting is public, but road-trip upload access is not assigned to this account.";
           } else if (canUpload) {
             statusText.textContent = "Ready. Upload weird finds fast, then check back for public votes.";
           } else {

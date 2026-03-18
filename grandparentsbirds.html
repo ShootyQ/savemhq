@@ -257,7 +257,7 @@
     </footer>
 
     <script type="module">
-      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
@@ -320,6 +320,7 @@
         user: null,
         isAdmin: false,
         approvalStatus: "signed-out",
+        approvalSections: [],
         selectedDate: toLocalDateInputValue(new Date()),
         search: "",
         speciesLoaded: false,
@@ -332,7 +333,12 @@
       let unsubscribeDays = null;
       let starterSeedStatus = "idle";
 
-      const isApprovedWriter = () => state.isAdmin || state.approvalStatus === "approved";
+      const isApprovedWriter = () => hasSectionAccess({
+        isAdmin: state.isAdmin,
+        approvalStatus: state.approvalStatus,
+        approvalSections: state.approvalSections,
+        userEmail: state.user?.email,
+      }, "birds");
 
       const getSelectedMonthId = () => getMonthIdForDate(state.selectedDate);
       const getSelectedDayId = () => getDayIdForDate(state.selectedDate);
@@ -819,10 +825,11 @@
       updateDaySubscription();
 
       initHeaderAuth({
-        onStateChange: ({ user, isAdmin, approvalStatus }) => {
+        onStateChange: ({ user, isAdmin, approvalStatus, approvalSections }) => {
           state.user = user;
           state.isAdmin = Boolean(isAdmin);
           state.approvalStatus = approvalStatus || "signed-out";
+          state.approvalSections = Array.isArray(approvalSections) ? approvalSections : [];
           render();
           maybeSeedStarterBirds();
         },

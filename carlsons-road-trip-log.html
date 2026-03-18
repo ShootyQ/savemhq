@@ -140,7 +140,7 @@
     </footer>
 
     <script type="module">
-      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
@@ -320,7 +320,8 @@
       });
 
       initHeaderAuth({
-        onStateChange: ({ user, isAdmin, approvalStatus, approvalPerson: stateApprovalPerson }) => {
+        onStateChange: ({ user, isAdmin, approvalStatus, approvalPerson: stateApprovalPerson, approvalSections }) => {
+          const canAccessRoadTrip = Boolean(user) && hasSectionAccess({ isAdmin, approvalStatus, approvalSections, userEmail: user?.email }, "road-trip");
           if (!user) {
             canSubmit = false;
             currentUserEmail = "";
@@ -331,19 +332,30 @@
             return;
           }
 
-          if (!(approvalStatus === "approved" || isAdmin)) {
+          if (!canAccessRoadTrip) {
             canSubmit = false;
             logPanel.classList.add("hidden");
             lockedPanel.classList.remove("hidden");
             statusText.textContent = approvalStatus === "denied"
               ? "This account is denied for road-trip logging."
-              : "This account is not approved for road-trip logging yet.";
+              : approvalStatus === "approved"
+                ? "Your login is approved, but road-trip access is not assigned yet."
+                : "This account is not approved for road-trip logging yet.";
             return;
           }
 
           canSubmit = true;
           currentUserEmail = String(user.email || "").toLowerCase();
           approvalPerson = String(stateApprovalPerson || "").toLowerCase();
+
+          if (!isAdmin && !approvalPerson) {
+            canSubmit = false;
+            logPanel.classList.add("hidden");
+            lockedPanel.classList.remove("hidden");
+            statusText.textContent = "Your road-trip access is approved, but no Andy or Savannah player is assigned to this login yet.";
+            return;
+          }
+
           logPanel.classList.remove("hidden");
           lockedPanel.classList.add("hidden");
           syncFormMode();

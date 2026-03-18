@@ -31,24 +31,77 @@ service cloud.firestore {
         );
     }
 
+    function approvalRecordExists() {
+      return isAuthed()
+        && exists(/databases/$(database)/documents/loginApprovals/$(request.auth.uid));
+    }
+
+    function approvalStatusIsApproved() {
+      return approvalRecordExists()
+        && get(/databases/$(database)/documents/loginApprovals/$(request.auth.uid)).data.status == "approved";
+    }
+
+    function approvalAccessSectionsContain(section) {
+      return approvalRecordExists()
+        && get(/databases/$(database)/documents/loginApprovals/$(request.auth.uid)).data.accessSections is list
+        && get(/databases/$(database)/documents/loginApprovals/$(request.auth.uid)).data.accessSections.hasAny([section]);
+    }
+
+    function approvalPersonMatches(value) {
+      return approvalRecordExists()
+        && get(/databases/$(database)/documents/loginApprovals/$(request.auth.uid)).data.person == value;
+    }
+
+    function isApprovedForSection(section) {
+      return isAuthed()
+        && (
+          isAutoApprovedUser()
+          || (
+            approvalStatusIsApproved()
+            && approvalAccessSectionsContain(section)
+          )
+        );
+    }
+
+    function approvalRecordKeysAreAllowed() {
+      return request.resource.data.keys().hasAll([
+        "uid",
+        "email",
+        "status",
+        "requestedAt",
+        "lastLoginAttemptAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "uid",
+        "email",
+        "status",
+        "requestedAt",
+        "lastLoginAttemptAt",
+        "reviewedAt",
+        "reviewedBy",
+        "person",
+        "personLabel",
+        "accessSections"
+      ])
+        && request.resource.data.uid is string
+        && request.resource.data.email is string
+        && request.resource.data.status is string
+        && (!request.resource.data.keys().hasAny(["reviewedBy"]) || request.resource.data.reviewedBy == null || request.resource.data.reviewedBy is string)
+        && (!request.resource.data.keys().hasAny(["person"]) || request.resource.data.person == null || request.resource.data.person is string)
+        && (!request.resource.data.keys().hasAny(["personLabel"]) || request.resource.data.personLabel == null || request.resource.data.personLabel is string)
+        && (!request.resource.data.keys().hasAny(["accessSections"]) || (
+          request.resource.data.accessSections is list
+          && request.resource.data.accessSections.size() <= 12
+        ));
+    }
+
     function requestPersonMatchesAuthedRoadTripLogger() {
-      return (
-        request.auth.token.email == "andrewpcarlson85@gmail.com"
-        && request.resource.data.person == "andy"
-      ) || (
-        request.auth.token.email == "savannahbcarlson@gmail.com"
-        && request.resource.data.person == "savannah"
-      );
+      return isApprovedForSection("road-trip")
+        && approvalPersonMatches(request.resource.data.person);
     }
 
     function resourcePersonMatchesAuthedRoadTripLogger() {
-      return (
-        request.auth.token.email == "andrewpcarlson85@gmail.com"
-        && resource.data.person == "andy"
-      ) || (
-        request.auth.token.email == "savannahbcarlson@gmail.com"
-        && resource.data.person == "savannah"
-      );
+      return isApprovedForSection("road-trip")
+        && approvalPersonMatches(resource.data.person);
     }
 
     function roadTripEventKeysAreAllowed() {
@@ -198,23 +251,13 @@ service cloud.firestore {
     }
 
     function requestUploaderMatchesAuthedRoadTripLogger() {
-      return (
-        request.auth.token.email == "andrewpcarlson85@gmail.com"
-        && request.resource.data.uploaderPerson == "andy"
-      ) || (
-        request.auth.token.email == "savannahbcarlson@gmail.com"
-        && request.resource.data.uploaderPerson == "savannah"
-      );
+      return isApprovedForSection("road-trip")
+        && approvalPersonMatches(request.resource.data.uploaderPerson);
     }
 
     function resourceUploaderMatchesAuthedRoadTripLogger() {
-      return (
-        request.auth.token.email == "andrewpcarlson85@gmail.com"
-        && resource.data.uploaderPerson == "andy"
-      ) || (
-        request.auth.token.email == "savannahbcarlson@gmail.com"
-        && resource.data.uploaderPerson == "savannah"
-      );
+      return isApprovedForSection("road-trip")
+        && approvalPersonMatches(resource.data.uploaderPerson);
     }
 
     function photoProofEntryKeysAreAllowed() {
@@ -262,31 +305,15 @@ service cloud.firestore {
     }
 
     function photoProofEntryOwnerCanManageVotes(tripId, entryId) {
-      return isAutoApprovedUser()
+      return isApprovedForSection("road-trip")
         && exists(/databases/$(database)/documents/roadTrips/$(tripId)/photoProofEntries/$(entryId))
-        && (
-          (
-            request.auth.token.email == "andrewpcarlson85@gmail.com"
-            && get(/databases/$(database)/documents/roadTrips/$(tripId)/photoProofEntries/$(entryId)).data.uploaderPerson == "andy"
-          ) || (
-            request.auth.token.email == "savannahbcarlson@gmail.com"
-            && get(/databases/$(database)/documents/roadTrips/$(tripId)/photoProofEntries/$(entryId)).data.uploaderPerson == "savannah"
-          )
-        );
+        && approvalPersonMatches(get(/databases/$(database)/documents/roadTrips/$(tripId)/photoProofEntries/$(entryId)).data.uploaderPerson);
     }
 
     function roadTripEventOwnerCanManageReactions(tripId, eventId) {
-      return isAutoApprovedUser()
+      return isApprovedForSection("road-trip")
         && exists(/databases/$(database)/documents/roadTrips/$(tripId)/events/$(eventId))
-        && (
-          (
-            request.auth.token.email == "andrewpcarlson85@gmail.com"
-            && get(/databases/$(database)/documents/roadTrips/$(tripId)/events/$(eventId)).data.person == "andy"
-          ) || (
-            request.auth.token.email == "savannahbcarlson@gmail.com"
-            && get(/databases/$(database)/documents/roadTrips/$(tripId)/events/$(eventId)).data.person == "savannah"
-          )
-        );
+        && approvalPersonMatches(get(/databases/$(database)/documents/roadTrips/$(tripId)/events/$(eventId)).data.person);
     }
 
     function sharedStatesGameKeysAreAllowed() {
@@ -435,7 +462,7 @@ service cloud.firestore {
     match /competitions/{year}/months/{month} {
       allow read: if true;
       allow create: if isAdmin() || (
-        isApprovedUser()
+        isApprovedForSection("plates")
         && request.resource.data.keys().hasOnly([
           "month",
           "order",
@@ -445,7 +472,7 @@ service cloud.firestore {
         ])
       );
       allow update: if isAdmin() || (
-        isApprovedUser()
+        isApprovedForSection("plates")
         && monthIsUnlocked()
         && monthWriteKeysAreAllowed()
       );
@@ -453,30 +480,65 @@ service cloud.firestore {
     }
 
     match /loginApprovals/{uid} {
-      allow create: if isApprovalOwner(uid)
+      allow create: if isAdmin() || (
+        isApprovalOwner(uid)
+        && approvalRecordKeysAreAllowed()
         && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && !request.resource.data.keys().hasAny(["accessSections"])
         && (
-          request.resource.data.status == "pending"
-          || (
+          (
+            !isAutoApprovedUser()
+            && request.resource.data.status == "pending"
+            && !request.resource.data.keys().hasAny(["person", "personLabel"])
+            && request.resource.data.reviewedAt == null
+            && request.resource.data.reviewedBy == null
+          ) || (
             isAutoApprovedUser()
             && request.resource.data.status == "approved"
             && request.resource.data.reviewedBy == request.auth.token.email
           )
-        );
+        )
+      );
 
       allow read: if isAdmin() || isApprovalOwner(uid);
 
       allow update: if isAdmin() || (
         isApprovalOwner(uid)
+        && approvalRecordKeysAreAllowed()
         && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.requestedAt == resource.data.requestedAt
+        && request.resource.data.person == resource.data.person
+        && request.resource.data.personLabel == resource.data.personLabel
+        && request.resource.data.accessSections == resource.data.accessSections
         && request.resource.data.status == resource.data.status
+        && request.resource.data.reviewedAt == resource.data.reviewedAt
+        && request.resource.data.reviewedBy == resource.data.reviewedBy
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "email",
+          "lastLoginAttemptAt"
+        ])
       ) || (
         isApprovalOwner(uid)
         && isAutoApprovedUser()
+        && approvalRecordKeysAreAllowed()
         && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.requestedAt == resource.data.requestedAt
+        && request.resource.data.person == resource.data.person
+        && request.resource.data.personLabel == resource.data.personLabel
+        && request.resource.data.accessSections == resource.data.accessSections
         && resource.data.status != "approved"
         && request.resource.data.status == "approved"
         && request.resource.data.reviewedBy == request.auth.token.email
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "email",
+          "lastLoginAttemptAt",
+          "status",
+          "reviewedAt",
+          "reviewedBy"
+        ])
       );
 
       allow delete: if isAdmin();
@@ -489,13 +551,13 @@ service cloud.firestore {
 
     match /roadTrips/{tripId}/events/{eventId} {
       allow read: if true;
-      allow create: if isAutoApprovedUser()
+      allow create: if isApprovedForSection("road-trip")
         && roadTripEventKeysAreAllowed()
         && requestPersonMatchesAuthedRoadTripLogger()
         && request.resource.data.tripId == tripId;
       allow update: if false;
       allow delete: if isAdmin() || (
-        isAutoApprovedUser()
+        isApprovedForSection("road-trip")
         && resource.data.tripId == tripId
         && resourcePersonMatchesAuthedRoadTripLogger()
       );
@@ -510,7 +572,7 @@ service cloud.firestore {
 
     match /roadTrips/{tripId}/photoProofEntries/{entryId} {
       allow read: if true;
-      allow create: if isAutoApprovedUser()
+      allow create: if isApprovedForSection("road-trip")
         && photoProofEntryKeysAreAllowed()
         && request.resource.data.tripId == tripId
         && [
@@ -525,7 +587,7 @@ service cloud.firestore {
         && requestUploaderMatchesAuthedRoadTripLogger();
       allow update: if false;
       allow delete: if isAdmin() || (
-        isAutoApprovedUser()
+        isApprovedForSection("road-trip")
         && resource.data.tripId == tripId
         && resourceUploaderMatchesAuthedRoadTripLogger()
       );
@@ -543,7 +605,7 @@ service cloud.firestore {
 
     match /roadTrips/{tripId}/games/{gameId} {
       allow read: if true;
-      allow create, update: if isAutoApprovedUser()
+      allow create, update: if isApprovedForSection("road-trip")
         && request.resource.data.tripId == tripId
         && request.resource.data.gameId == gameId
         && (
@@ -575,21 +637,21 @@ service cloud.firestore {
 
     match /backyardBirds/{trackerId}/species/{speciesId} {
       allow read: if true;
-      allow create, update: if isApprovedUser()
+      allow create, update: if isApprovedForSection("birds")
         && backyardBirdSpeciesKeysAreAllowed(speciesId);
       allow delete: if isAdmin();
     }
 
     match /backyardBirds/{trackerId}/months/{monthId} {
       allow read: if true;
-      allow create, update: if isApprovedUser()
+      allow create, update: if isApprovedForSection("birds")
         && backyardBirdMonthKeysAreAllowed(monthId);
       allow delete: if isAdmin();
     }
 
     match /backyardBirds/{trackerId}/months/{monthId}/days/{dayId} {
       allow read: if true;
-      allow create, update: if isApprovedUser()
+      allow create, update: if isApprovedForSection("birds")
         && backyardBirdDayKeysAreAllowed(monthId, dayId);
       allow delete: if isAdmin();
     }

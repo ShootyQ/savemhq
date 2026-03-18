@@ -72,7 +72,7 @@
         serverTimestamp,
         setDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-      import { auth, db, getPersonFromEmail, initHeaderAuth } from "./js/auth-shared.js";
+      import { auth, db, getPersonFromEmail, hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { mountSiteHeader } from "./js/header-component.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
@@ -416,7 +416,7 @@
       initHeaderShell();
       initRevealMotion();
       initHeaderAuth({
-        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson }) => {
+        onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson, approvalSections }) => {
           if (!user) {
             entryPanel.classList.add("hidden");
             entryLocked.classList.remove("hidden");
@@ -428,13 +428,22 @@
             return;
           }
 
-          if (!(approvalStatus === "approved" || isAdmin)) {
+          const canAccessPlates = hasSectionAccess({
+            isAdmin,
+            approvalStatus,
+            approvalSections,
+            userEmail: user.email,
+          }, "plates");
+
+          if (!canAccessPlates) {
             entryPanel.classList.add("hidden");
             entryLocked.classList.remove("hidden");
             if (approvalStatus === "denied") {
               plateStatus.textContent = "This account is denied for plate entry.";
             } else if (approvalStatus === "error") {
               plateStatus.textContent = "Could not verify access. Check Firestore rules.";
+            } else if (approvalStatus === "approved") {
+              plateStatus.textContent = "Your login is approved, but plate-entry access has not been assigned yet.";
             } else {
               plateStatus.textContent = "Your account is pending approval for plate entry.";
             }
