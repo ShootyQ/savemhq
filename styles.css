@@ -4,78 +4,15 @@
   --bg: #f6f3eb;
   --surface: #fffdf9;
   --surface-soft: #eef4ef;
-  --surface-tint: #e8f1ef;
-  --text: #3f382f;
-  --muted: #6f665c;
-  --accent: #bd9065;
-  --accent-strong: #9f7148;
-  --accent-soft: #f2e6d8;
-  --sea: #3aa6be;
-  --sea-deep: #0e7ea0;
-  --sea-soft: #daf4f6;
-  --reef: #6ea98a;
-  --border: #dce2d9;
-  --line: rgba(76, 132, 133, 0.18);
-  --success: #5f9178;
-  --danger: #b35d56;
-  --max-width: 74rem;
-  --radius-sm: 0.75rem;
-  --radius: 1.05rem;
-  --radius-lg: 1.5rem;
-  --shadow-sm: 0 6px 18px rgba(80, 56, 34, 0.08);
-  --shadow-md: 0 14px 34px rgba(80, 56, 34, 0.13);
-  --shadow-lg: 0 20px 50px rgba(71, 49, 28, 0.17);
-  --duration-fast: 160ms;
-  --duration-mid: 260ms;
-  --ease: cubic-bezier(0.2, 0.75, 0.25, 1);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  margin: 0;
-  font-family: "Manrope", "Segoe UI", system-ui, -apple-system, sans-serif;
-  line-height: 1.62;
-  color: var(--text);
-  background:
-    radial-gradient(52rem 30rem at 12% -2%, #fff7ea 0%, transparent 70%),
-    radial-gradient(46rem 25rem at 92% 0%, #d7f2f5 0%, transparent 72%),
-    radial-gradient(36rem 20rem at 78% 18%, rgba(113, 194, 188, 0.12) 0%, transparent 68%),
-    repeating-linear-gradient(
-      -45deg,
-      rgba(127, 175, 164, 0.035),
-      rgba(127, 175, 164, 0.035) 1px,
-      transparent 1px,
-      transparent 12px
-    ),
-    var(--bg);
-}
-
-.reveal-item {
-  opacity: 0;
-  transform: translateY(16px) scale(0.99);
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.32rem 0.58rem;
+  border-radius: 999px;
   transition:
-    opacity 520ms var(--ease),
-    transform 560ms var(--ease);
-  transition-delay: calc(var(--reveal-order, 0) * 70ms);
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    transform var(--duration-fast) var(--ease);
 }
-
-.reveal-item.is-visible {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-
-body[data-page="home"] {
-  background:
-    radial-gradient(58rem 34rem at -4% -6%, #caf0f3 0%, transparent 72%),
-    radial-gradient(54rem 32rem at 112% -2%, #f6e6d1 0%, transparent 70%),
-    radial-gradient(38rem 24rem at 78% 16%, rgba(91, 188, 201, 0.14) 0%, transparent 70%),
     linear-gradient(180deg, #f1fbfc 0%, #f6f4eb 56%, #f4ecdf 100%);
 }
 
@@ -1253,7 +1190,8 @@ body[data-page="photo-proof"] {
     linear-gradient(180deg, #f8fbf5 0%, #f5efe6 100%);
 }
 
-body[data-page="grandparents-birds"] {
+body[data-page="grandparents-birds"],
+body[data-page="grandparents-birds-stats"] {
   --max-width: 90rem;
   background:
     radial-gradient(60rem 32rem at 6% -4%, rgba(249, 237, 203, 0.92) 0%, transparent 70%),
@@ -1279,7 +1217,8 @@ body[data-page="photo-proof"] .site-header {
   backdrop-filter: blur(10px);
 }
 
-body[data-page="grandparents-birds"] .site-header {
+body[data-page="grandparents-birds"] .site-header,
+body[data-page="grandparents-birds-stats"] .site-header {
   background: rgba(248, 242, 231, 0.9);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
@@ -1509,6 +1448,67 @@ body[data-page="grandparents-birds"] .site-header {
 
 .bird-window-stat .small-note {
   color: rgba(251, 243, 224, 0.78);
+}
+
+.bird-stats-toolbar,
+.bird-species-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.bird-stats-toolbar {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bird-select-row {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.bird-select {
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid rgba(136, 109, 76, 0.2);
+  border-radius: 0.95rem;
+  background: rgba(255, 250, 241, 0.92);
+  padding: 0.72rem 0.88rem;
+  color: #4f3f2d;
+  font: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.bird-species-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.bird-species-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.05rem;
+  border-radius: 1.2rem;
+  border: 1px solid rgba(135, 116, 88, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(243, 235, 222, 0.94)),
+    repeating-linear-gradient(
+      0deg,
+      rgba(146, 119, 86, 0.03),
+      rgba(146, 119, 86, 0.03) 1px,
+      transparent 1px,
+      transparent 14px
+    );
+  box-shadow: 0 16px 28px rgba(97, 73, 42, 0.08);
+}
+
+.bird-species-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.24), transparent 38%),
+    linear-gradient(180deg, rgba(110, 80, 43, 0.08), transparent 3.2rem);
+  pointer-events: none;
 }
 
 .bird-logbook-layout,
@@ -2983,6 +2983,11 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .bird-stats-toolbar,
+  .bird-species-grid {
+    grid-template-columns: 1fr;
+  }
+
   .bird-page-nav {
     display: grid;
     grid-template-columns: 1fr;
@@ -3265,6 +3270,76 @@ select:focus-visible {
 
   #header-auth-status {
     max-width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  body[data-page="grandparents-birds"] .container,
+  body[data-page="grandparents-birds-stats"] .container {
+    width: min(var(--max-width), 94vw);
+  }
+
+  .bird-hero-surface,
+  .bird-window-card,
+  .bird-logbook-intro,
+  .bird-ledger-intro,
+  .bird-history-panel,
+  .bird-logger-card,
+  .bird-day-panel,
+  .bird-month-panel,
+  .bird-totals-panel,
+  .bird-master-panel,
+  .bird-day-card,
+  .bird-history-card,
+  .bird-species-card {
+    padding: 0.95rem;
+    border-radius: 1.1rem;
+  }
+
+  .bird-page-nav,
+  .bird-chip-grid,
+  .bird-master-grid,
+  .bird-option-grid,
+  .bird-history-grid,
+  .bird-day-list,
+  .bird-window-stat-grid,
+  .bird-overall-grid,
+  .bird-stats-toolbar,
+  .bird-species-grid {
+    gap: 0.7rem;
+  }
+
+  .bird-window-stat,
+  .bird-overall-card,
+  .bird-add-panel,
+  .bird-checkbox-pill,
+  .bird-option,
+  .bird-select {
+    padding: 0.78rem;
+  }
+
+  .bird-option {
+    min-height: 0;
+  }
+
+  .bird-window-stat strong,
+  .bird-overall-card strong {
+    font-size: clamp(1.05rem, 6vw, 1.35rem);
+  }
+
+  .bird-search-row input,
+  #bird-date,
+  .bird-select {
+    min-height: 3rem;
+    font-size: 1rem;
+  }
+
+  .bird-window-copy,
+  .section-intro,
+  .bird-ledger-copy,
+  .bird-season-copy,
+  .bird-watch-note {
+    max-width: none;
   }
 }
 

@@ -25,11 +25,11 @@
             </p>
             <div class="hero-surface bird-hero-surface">
               <p class="intro">
-                Start in the Logbook to mark what showed up at the feeder today. Scroll down to the Ledger when you want the bigger picture.
+                Start typing in the Logbook to mark what showed up at the feeder today. Use the separate stats page when you want the bigger picture.
               </p>
               <nav class="bird-page-nav" aria-label="Bird page sections">
                 <a class="bird-nav-pill" href="#bird-logbook">Logbook</a>
-                <a class="bird-nav-pill" href="#bird-ledger">Ledger</a>
+                <a class="bird-nav-pill" href="grandparentsbirds-stats.html">Stats &amp; Bird List</a>
               </nav>
             </div>
           </div>
@@ -38,7 +38,7 @@
             <p class="section-kicker">Current Page</p>
             <h2>Where To Start</h2>
             <p class="bird-window-copy">
-              Pick the date, tap the bird, and the page updates the day log and month list together.
+              Pick the date, start typing a bird name, and tap the match to update the day log and month list together.
             </p>
             <div class="bird-window-stat-grid" aria-live="polite">
               <div class="bird-window-stat">
@@ -157,58 +157,6 @@
         </div>
       </section>
 
-      <section id="bird-ledger" class="section section-card bird-ledger-section">
-        <div class="container bird-ledger-layout">
-          <div class="bird-ledger-intro reveal-item">
-            <p class="section-kicker">Ledger</p>
-            <h2>Browse The Bigger Picture</h2>
-            <p class="section-intro bird-ledger-copy">
-              The Ledger is for reference: totals, the full field guide, and older months already on the shelf.
-            </p>
-          </div>
-
-          <div class="bird-ledger-grid">
-            <aside class="bird-totals-panel reveal-item">
-              <div class="bird-card-topline">
-                <div>
-                  <p class="bird-shelf-label">Season Totals</p>
-                  <h3>Porch Ledger</h3>
-                </div>
-                <span class="bird-chip bird-chip-accent"><span id="bird-master-count">0</span> birds known</span>
-              </div>
-              <div id="bird-overall-grid" class="bird-overall-grid" aria-live="polite"></div>
-            </aside>
-
-            <article id="bird-master-list" class="bird-master-panel reveal-item">
-              <div class="bird-card-topline">
-                <div>
-                  <p class="bird-shelf-label">Field Guide</p>
-                  <h3>All Known Birds</h3>
-                </div>
-                <span id="bird-filter-pill" class="bird-chip">All birds</span>
-              </div>
-              <p class="section-intro">
-                This is the full bird list behind the Logbook. Use it when you want to browse instead of search.
-              </p>
-              <div id="bird-master-grid" class="bird-master-grid" aria-live="polite"></div>
-            </article>
-          </div>
-
-          <article id="bird-history" class="bird-history-panel reveal-item">
-            <div class="bird-card-topline">
-              <div>
-                <p class="bird-shelf-label">Season Shelf</p>
-                <h3>Browse Logged Months</h3>
-              </div>
-              <span class="bird-chip bird-chip-soft"><span id="bird-months-count">0</span> months</span>
-            </div>
-            <p class="section-intro bird-season-copy">
-              Open any month on the shelf to jump the Logbook back to that part of the year.
-            </p>
-            <div id="bird-history-grid" class="bird-history-grid" aria-live="polite"></div>
-          </article>
-        </div>
-      </section>
     </main>
 
     <footer class="site-footer">
@@ -218,8 +166,7 @@
           <ul class="footer-nav">
             <li><a href="index.html">Home</a></li>
             <li><a href="#bird-logbook">Logbook</a></li>
-            <li><a href="#bird-ledger">Ledger</a></li>
-            <li><a href="#bird-history">Months</a></li>
+            <li><a href="grandparentsbirds-stats.html">Stats &amp; Bird List</a></li>
           </ul>
         </nav>
       </div>
@@ -252,8 +199,7 @@
         navLinks: [
           { label: "Home", href: "index.html" },
           { label: "Bird Log", href: "#bird-logger" },
-          { label: "Master List", href: "#bird-master-list" },
-          { label: "Months", href: "#bird-history" },
+          { label: "Stats & Bird List", href: "grandparentsbirds-stats.html" },
         ],
       });
 
@@ -261,15 +207,12 @@
       const summaryNote = document.getElementById("bird-summary-note");
       const monthPill = document.getElementById("bird-month-pill");
       const monthHeading = document.getElementById("bird-selected-month-heading");
-      const masterCountValue = document.getElementById("bird-master-count");
-      const monthsCountValue = document.getElementById("bird-months-count");
       const selectedMonthCount = document.getElementById("bird-selected-month-count");
       const selectedDayPill = document.getElementById("bird-selected-day-pill");
       const heroMonth = document.getElementById("bird-hero-month");
       const heroMonthCount = document.getElementById("bird-hero-month-count");
       const heroDayCount = document.getElementById("bird-hero-day-count");
       const heroTotalCount = document.getElementById("bird-hero-total-count");
-      const filterPill = document.getElementById("bird-filter-pill");
       const logNote = document.getElementById("bird-log-note");
       const authPrompt = document.getElementById("bird-auth-prompt");
       const authCopy = document.getElementById("bird-auth-copy");
@@ -282,16 +225,19 @@
       const searchResults = document.getElementById("bird-search-results");
       const monthList = document.getElementById("bird-month-list");
       const dayList = document.getElementById("bird-day-list");
-      const masterGrid = document.getElementById("bird-master-grid");
-      const overallGrid = document.getElementById("bird-overall-grid");
-      const historyGrid = document.getElementById("bird-history-grid");
+
+      const selectedDateFromUrl = (() => {
+        const params = new URLSearchParams(window.location.search);
+        const requestedDate = String(params.get("date") || "").trim();
+        return /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : toLocalDateInputValue(new Date());
+      })();
 
       const state = {
         user: null,
         isAdmin: false,
         approvalStatus: "signed-out",
         approvalSections: [],
-        selectedDate: toLocalDateInputValue(new Date()),
+        selectedDate: selectedDateFromUrl,
         search: "",
         speciesLoaded: false,
         species: [],
@@ -331,7 +277,7 @@
         const birds = masterBirds();
 
         if (!query) {
-          return birds.slice(0, 24);
+          return [];
         }
 
         return birds
@@ -411,13 +357,10 @@
         heroMonthCount.textContent = String(selectedMonthBirdNames.length);
         heroDayCount.textContent = String(selectedDayBirdNames.length);
         heroTotalCount.textContent = String(overallBirds.size);
-        masterCountValue.textContent = String(state.species.length);
-        monthsCountValue.textContent = String(state.months.length);
         monthPill.textContent = monthLabel;
         monthHeading.textContent = `${monthLabel} Check-In`;
         selectedMonthCount.textContent = `${selectedMonthBirdNames.length} bird${selectedMonthBirdNames.length === 1 ? "" : "s"}`;
         selectedDayPill.textContent = formatDayLabel(state.selectedDate);
-        filterPill.textContent = state.search.trim() ? `Filtered by “${currentAddName()}”` : "All birds";
 
         if (state.species.length === 0) {
           summaryNote.textContent = `The master list is empty right now. The starter list includes ${GRANDPARENTS_BIRD_STARTER_SPECIES.length} birds and will load for approved users.`;
@@ -460,6 +403,23 @@
           addPanel.classList.toggle("hidden", !isApprovedWriter());
           addCopy.textContent = "Start the list by adding the first backyard bird.";
           addButton.textContent = "Add first bird";
+          return;
+        }
+
+        if (!state.search.trim()) {
+          searchResults.innerHTML = '<p class="small-note bird-empty-state">Start typing a bird name to see matching options.</p>';
+          addPanel.classList.add("hidden");
+
+          if (!isApprovedWriter()) {
+            logNote.textContent = authPending
+              ? "Browse the list freely. Use Google sign-in above to unlock logging on this phone."
+              : "Browse the list freely. This account can view birds, but it is not approved to add sightings.";
+          } else if (state.isBusy) {
+            logNote.textContent = "Saving your bird update...";
+          } else {
+            logNote.textContent = `Type part of a bird name to load matching options for ${formatDayLabel(state.selectedDate)}.`;
+          }
+
           return;
         }
 
@@ -619,9 +579,6 @@
         renderSearchResults();
         renderMonthBirds();
         renderDayLogs();
-        renderMasterList();
-        renderOverallTotals();
-        renderHistory();
       };
 
       const findBirdById = (birdId) => state.species.find((bird) => String(bird.slug || bird.id || "") === String(birdId || "")) || null;
@@ -740,28 +697,6 @@
         render();
       });
 
-      historyGrid.addEventListener("click", (event) => {
-        const target = event.target;
-        if (!(target instanceof HTMLElement)) {
-          return;
-        }
-
-        const button = target.closest("[data-month-id]");
-        if (!(button instanceof HTMLElement)) {
-          return;
-        }
-
-        const monthId = String(button.dataset.monthId || "").trim();
-        if (!monthId) {
-          return;
-        }
-
-        state.selectedDate = `${monthId}-01`;
-        birdDateInput.value = state.selectedDate;
-        updateDaySubscription();
-        render();
-      });
-
       initHeaderShell();
       initRevealMotion({
         selector: [
@@ -769,9 +704,6 @@
           ".hero-surface",
           ".bird-logbook-layout > *",
           ".bird-logbook-grid > *",
-          ".bird-ledger-layout > *",
-          ".bird-ledger-grid > *",
-          ".bird-history-grid > *",
         ].join(", "),
       });
       birdDateInput.value = state.selectedDate;

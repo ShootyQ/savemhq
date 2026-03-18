@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grandparents Bird Stats | SavemHQ</title>
+    <meta
+      name="description"
+      content="Browse grandparents bird totals, the full bird list, and month history with different ways to organize the tracker."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="grandparents-birds-stats">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="hero section bird-hero-section">
+        <div class="container hero-inner bird-hero-grid">
+          <div class="home-hero-copy bird-hero-copy">
+            <p class="tagline">Porch Bird Stats</p>
+            <h1>Grandparents Bird Ledger</h1>
+            <p class="subheadline">
+              This page is for browsing: totals, the full bird list, and month history in whatever order is most useful.
+            </p>
+            <div class="hero-surface bird-hero-surface">
+              <p class="intro">
+                Keep the main bird page focused on logging. Come here when you want to sort birds by name, first seen, or how often they showed up.
+              </p>
+              <nav class="bird-page-nav" aria-label="Bird page sections">
+                <a class="bird-nav-pill" href="grandparentsbirds.html">Back To Logbook</a>
+                <a class="bird-nav-pill" href="#bird-stats-controls">Organize Stats</a>
+                <a class="bird-nav-pill" href="#bird-stats-history">Month Shelf</a>
+              </nav>
+            </div>
+          </div>
+
+          <aside class="bird-window-card reveal-item" aria-label="Bird stats overview">
+            <p class="section-kicker">At A Glance</p>
+            <h2>Ledger Snapshot</h2>
+            <p class="bird-window-copy">
+              Use the sort controls below to change how the bird list and month shelf are organized.
+            </p>
+            <div class="bird-window-stat-grid" aria-live="polite">
+              <div class="bird-window-stat">
+                <span class="small-note">Known birds</span>
+                <strong id="bird-stats-known">0</strong>
+              </div>
+              <div class="bird-window-stat">
+                <span class="small-note">Logged birds</span>
+                <strong id="bird-stats-logged">0</strong>
+              </div>
+              <div class="bird-window-stat">
+                <span class="small-note">Tracked months</span>
+                <strong id="bird-stats-months">0</strong>
+              </div>
+              <div class="bird-window-stat">
+                <span class="small-note">Busiest month</span>
+                <strong id="bird-stats-busiest">Waiting</strong>
+              </div>
+            </div>
+            <p id="bird-stats-status" class="small-note bird-status-line">Loading bird stats...</p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section section-card bird-ledger-section">
+        <div class="container bird-ledger-layout">
+          <div class="bird-ledger-intro reveal-item">
+            <p class="section-kicker">Organize The Ledger</p>
+            <h2>Sort The Birds Your Way</h2>
+            <p class="section-intro bird-ledger-copy">
+              Change the order for the bird list and the month shelf separately. Nothing here affects the saved data.
+            </p>
+          </div>
+
+          <section id="bird-stats-controls" class="bird-stats-toolbar reveal-item" aria-label="Bird stats controls">
+            <div class="entry-row bird-select-row">
+              <label for="bird-sort-select">Bird list order</label>
+              <select id="bird-sort-select" class="bird-select">
+                <option value="alpha">Alphabetical</option>
+                <option value="first-seen">First seen month</option>
+                <option value="most-months">Most months seen</option>
+                <option value="recent">Most recently seen</option>
+              </select>
+            </div>
+            <div class="entry-row bird-select-row">
+              <label for="bird-month-sort-select">Month shelf order</label>
+              <select id="bird-month-sort-select" class="bird-select">
+                <option value="recent">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="busiest">Most birds first</option>
+                <option value="alpha">Month name</option>
+              </select>
+            </div>
+          </section>
+
+          <div class="bird-ledger-grid">
+            <aside class="bird-totals-panel reveal-item">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Overview</p>
+                  <h3>Family Bird Totals</h3>
+                </div>
+                <span id="bird-current-sort-pill" class="bird-chip bird-chip-accent">Alphabetical</span>
+              </div>
+              <p class="section-intro">
+                These numbers update as you change the list order below.
+              </p>
+              <div id="bird-overall-grid" class="bird-overall-grid" aria-live="polite"></div>
+            </aside>
+
+            <article id="bird-stats-list" class="bird-master-panel reveal-item">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Bird List</p>
+                  <h3>All Known Birds</h3>
+                </div>
+                <span id="bird-list-count-pill" class="bird-chip">0 birds</span>
+              </div>
+              <p class="section-intro">
+                Browse every bird in the tracker with quick context for first seen, last seen, and how often it showed up.
+              </p>
+              <div id="bird-species-grid" class="bird-species-grid" aria-live="polite"></div>
+            </article>
+          </div>
+
+          <article id="bird-stats-history" class="bird-history-panel reveal-item">
+            <div class="bird-card-topline">
+              <div>
+                <p class="bird-shelf-label">Month Shelf</p>
+                <h3>Browse Logged Months</h3>
+              </div>
+              <span id="bird-month-sort-pill" class="bird-chip bird-chip-soft">Newest first</span>
+            </div>
+            <p class="section-intro bird-season-copy">
+              Open any month to jump back into the logbook with that month already selected.
+            </p>
+            <div id="bird-history-grid" class="bird-history-grid" aria-live="polite"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Bird totals up front, logging kept simple.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="grandparentsbirds.html">Bird Log</a></li>
+            <li><a href="#bird-stats-controls">Sort Options</a></li>
+            <li><a href="#bird-stats-history">Month Shelf</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+      import {
+        subscribeToBirdMonths,
+        subscribeToBirdSpecies,
+        slugifyBirdName,
+      } from "./js/grandparents-birds-shared.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Bird Log", href: "grandparentsbirds.html" },
+          { label: "Stats & Bird List", href: "grandparentsbirds-stats.html" },
+        ],
+      });
+
+      const statsKnown = document.getElementById("bird-stats-known");
+      const statsLogged = document.getElementById("bird-stats-logged");
+      const statsMonths = document.getElementById("bird-stats-months");
+      const statsBusiest = document.getElementById("bird-stats-busiest");
+      const statusNote = document.getElementById("bird-stats-status");
+      const birdSortSelect = document.getElementById("bird-sort-select");
+      const monthSortSelect = document.getElementById("bird-month-sort-select");
+      const currentSortPill = document.getElementById("bird-current-sort-pill");
+      const monthSortPill = document.getElementById("bird-month-sort-pill");
+      const listCountPill = document.getElementById("bird-list-count-pill");
+      const overallGrid = document.getElementById("bird-overall-grid");
+      const speciesGrid = document.getElementById("bird-species-grid");
+      const historyGrid = document.getElementById("bird-history-grid");
+
+      const state = {
+        birdSort: "alpha",
+        monthSort: "recent",
+        species: [],
+        months: [],
+      };
+
+      const escapeHtml = (value) => String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+      const monthIdValue = (month) => String(month?.monthId || month?.id || "").trim();
+
+      const monthLabelValue = (month) => String(month?.label || monthIdValue(month) || "Month").trim();
+
+      const monthBirdCount = (month) => Array.isArray(month?.birdIds) ? month.birdIds.length : 0;
+
+      const sortMonthsAscending = (months) => [...months].sort((left, right) => monthIdValue(left).localeCompare(monthIdValue(right)));
+
+      const buildBirdRecords = () => {
+        const speciesById = new Map(
+          state.species.map((bird) => [String(bird.slug || bird.id || "").trim(), bird])
+        );
+        const usage = new Map();
+
+        sortMonthsAscending(state.months).forEach((month) => {
+          const monthId = monthIdValue(month);
+          const monthLabel = monthLabelValue(month);
+          const birdIds = Array.isArray(month.birdIds) ? month.birdIds : [];
+          const birdNames = Array.isArray(month.birdNames) ? month.birdNames : [];
+
+          birdIds.forEach((rawBirdId, index) => {
+            const birdId = String(rawBirdId || "").trim();
+            if (!birdId) {
+              return;
+            }
+
+            const species = speciesById.get(birdId);
+            const birdName = String(birdNames[index] || species?.name || birdId).trim();
+            const existing = usage.get(birdId) || {
+              id: birdId,
+              name: birdName,
+              monthsSeenCount: 0,
+              firstMonthId: "",
+              firstMonthLabel: "",
+              lastMonthId: "",
+              lastMonthLabel: "",
+            };
+
+            existing.name = birdName || existing.name;
+            existing.monthsSeenCount += 1;
+
+            if (!existing.firstMonthId) {
+              existing.firstMonthId = monthId;
+              existing.firstMonthLabel = monthLabel;
+            }
+
+            existing.lastMonthId = monthId;
+            existing.lastMonthLabel = monthLabel;
+            usage.set(birdId, existing);
+          });
+        });
+
+        const seenIds = new Set();
+        const allRecords = [];
+
+        state.species.forEach((bird) => {
+          const birdId = String(bird.slug || bird.id || "").trim();
+          if (!birdId) {
+            return;
+          }
+
+          seenIds.add(birdId);
+          const existing = usage.get(birdId);
+          allRecords.push({
+            id: birdId,
+            name: String(bird.name || birdId).trim(),
+            monthsSeenCount: existing?.monthsSeenCount || 0,
+            firstMonthId: existing?.firstMonthId || "",
+            firstMonthLabel: existing?.firstMonthLabel || "Not logged yet",
+            lastMonthId: existing?.lastMonthId || "",
+            lastMonthLabel: existing?.lastMonthLabel || "Not logged yet",
+          });
+        });
+
+        usage.forEach((record, birdId) => {
+          if (seenIds.has(birdId)) {
+            return;
+          }
+
+          allRecords.push(record);
+        });
+
+        return allRecords;
+      };
+
+      const sortedBirdRecords = () => {
+        const records = buildBirdRecords();
+
+        return records.sort((left, right) => {
+          if (state.birdSort === "first-seen") {
+            if (!left.firstMonthId && !right.firstMonthId) {
+              return left.name.localeCompare(right.name);
+            }
+            if (!left.firstMonthId) {
+              return 1;
+            }
+            if (!right.firstMonthId) {
+              return -1;
+            }
+            return left.firstMonthId.localeCompare(right.firstMonthId) || left.name.localeCompare(right.name);
+          }
+
+          if (state.birdSort === "most-months") {
+            return (right.monthsSeenCount - left.monthsSeenCount) || left.name.localeCompare(right.name);
+          }
+
+          if (state.birdSort === "recent") {
+            if (!left.lastMonthId && !right.lastMonthId) {
+              return left.name.localeCompare(right.name);
+            }
+            if (!left.lastMonthId) {
+              return 1;
+            }
+            if (!right.lastMonthId) {
+              return -1;
+            }
+            return right.lastMonthId.localeCompare(left.lastMonthId) || left.name.localeCompare(right.name);
+          }
+
+          return left.name.localeCompare(right.name);
+        });
+      };
+
+      const sortedMonthRecords = () => {
+        const months = [...state.months];
+
+        months.sort((left, right) => {
+          if (state.monthSort === "oldest") {
+            return monthIdValue(left).localeCompare(monthIdValue(right));
+          }
+
+          if (state.monthSort === "busiest") {
+            return (monthBirdCount(right) - monthBirdCount(left)) || monthIdValue(right).localeCompare(monthIdValue(left));
+          }
+
+          if (state.monthSort === "alpha") {
+            return monthLabelValue(left).localeCompare(monthLabelValue(right));
+          }
+
+          return monthIdValue(right).localeCompare(monthIdValue(left));
+        });
+
+        return months;
+      };
+
+      const renderOverview = () => {
+        const loggedBirdIds = new Set();
+        state.months.forEach((month) => {
+          (Array.isArray(month.birdIds) ? month.birdIds : []).forEach((birdId) => loggedBirdIds.add(String(birdId)));
+        });
+
+        const busiestMonth = [...state.months].sort((left, right) => monthBirdCount(right) - monthBirdCount(left))[0] || null;
+
+        statsKnown.textContent = String(state.species.length);
+        statsLogged.textContent = String(loggedBirdIds.size);
+        statsMonths.textContent = String(state.months.length);
+        statsBusiest.textContent = busiestMonth ? monthLabelValue(busiestMonth) : "Waiting";
+        currentSortPill.textContent = birdSortSelect.options[birdSortSelect.selectedIndex]?.text || "Alphabetical";
+        monthSortPill.textContent = monthSortSelect.options[monthSortSelect.selectedIndex]?.text || "Newest first";
+        listCountPill.textContent = `${state.species.length} bird${state.species.length === 1 ? "" : "s"}`;
+
+        overallGrid.innerHTML = `
+          <div class="bird-overall-card">
+            <span class="small-note">Birds known</span>
+            <strong>${state.species.length}</strong>
+          </div>
+          <div class="bird-overall-card">
+            <span class="small-note">Birds ever logged</span>
+            <strong>${loggedBirdIds.size}</strong>
+          </div>
+          <div class="bird-overall-card">
+            <span class="small-note">Months tracked</span>
+            <strong>${state.months.length}</strong>
+          </div>
+          <div class="bird-overall-card">
+            <span class="small-note">Busiest month</span>
+            <strong>${busiestMonth ? escapeHtml(monthLabelValue(busiestMonth)) : "Waiting"}</strong>
+          </div>
+        `;
+
+        statusNote.textContent = state.species.length === 0
+          ? "No birds are loaded yet."
+          : "Use the sort controls to reorganize the ledger without changing the saved bird data.";
+      };
+
+      const renderBirdRecords = () => {
+        const records = sortedBirdRecords();
+
+        if (records.length === 0) {
+          speciesGrid.innerHTML = '<p class="small-note bird-empty-state">Birds will appear here once the ledger has been seeded.</p>';
+          return;
+        }
+
+        speciesGrid.innerHTML = records.map((record) => `
+          <article class="bird-species-card">
+            <div class="bird-card-topline">
+              <div>
+                <p class="bird-shelf-label">Bird Record</p>
+                <h3>${escapeHtml(record.name)}</h3>
+              </div>
+              <span class="bird-chip ${record.monthsSeenCount > 0 ? "bird-chip-accent" : "bird-chip-outline"}">${record.monthsSeenCount} month${record.monthsSeenCount === 1 ? "" : "s"}</span>
+            </div>
+            <div class="bird-chip-grid">
+              <span class="bird-chip bird-chip-soft">First seen: ${escapeHtml(record.firstMonthLabel)}</span>
+              <span class="bird-chip bird-chip-soft">Last seen: ${escapeHtml(record.lastMonthLabel)}</span>
+            </div>
+          </article>
+        `).join("");
+
+        refreshRevealMotion({ scope: speciesGrid, selector: ".bird-species-card" });
+      };
+
+      const renderMonthRecords = () => {
+        const months = sortedMonthRecords();
+
+        if (months.length === 0) {
+          historyGrid.innerHTML = '<p class="small-note bird-empty-state">Month history will appear here after the first bird log.</p>';
+          return;
+        }
+
+        historyGrid.innerHTML = months.map((month) => {
+          const birdNames = Array.isArray(month.birdNames) ? month.birdNames : [];
+          const monthId = monthIdValue(month);
+          return `
+            <article class="bird-history-card">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Month Shelf</p>
+                  <h3>${escapeHtml(monthLabelValue(month))}</h3>
+                  <p class="small-note">${monthBirdCount(month)} unique bird${monthBirdCount(month) === 1 ? "" : "s"}</p>
+                </div>
+                <a class="btn btn-secondary bird-month-open" href="grandparentsbirds.html?date=${escapeHtml(`${monthId}-01`)}#bird-logbook">Open in logbook</a>
+              </div>
+              <div class="bird-chip-grid">
+                ${birdNames.slice(0, 10).map((birdName) => `<span class="bird-chip bird-chip-soft">${escapeHtml(birdName)}</span>`).join("")}
+              </div>
+            </article>
+          `;
+        }).join("");
+
+        refreshRevealMotion({ scope: historyGrid, selector: ".bird-history-card" });
+      };
+
+      const render = () => {
+        renderOverview();
+        renderBirdRecords();
+        renderMonthRecords();
+      };
+
+      birdSortSelect.addEventListener("change", (event) => {
+        state.birdSort = String(event.target.value || "alpha");
+        render();
+      });
+
+      monthSortSelect.addEventListener("change", (event) => {
+        state.monthSort = String(event.target.value || "recent");
+        render();
+      });
+
+      initHeaderShell();
+      initRevealMotion({
+        selector: [
+          ".section",
+          ".hero-surface",
+          ".bird-ledger-layout > *",
+          ".bird-ledger-grid > *",
+          ".bird-history-grid > *",
+        ].join(", "),
+      });
+
+      subscribeToBirdSpecies({
+        onData: (species) => {
+          state.species = species;
+          render();
+        },
+        onError: (error) => {
+          console.error("Could not load bird species", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          statusNote.textContent = `Could not load bird species (${details}).`;
+          state.species = [];
+          render();
+        },
+      });
+
+      subscribeToBirdMonths({
+        onData: (months) => {
+          state.months = months;
+          render();
+        },
+        onError: (error) => {
+          console.error("Could not load bird months", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          statusNote.textContent = `Could not load bird months (${details}).`;
+          state.months = [];
+          render();
+        },
+      });
+
+      initHeaderAuth();
+      render();
+    </script>
+  </body>
+</html>
