@@ -1,8 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   GoogleAuthProvider,
+  getRedirectResult,
   getAuth,
   onAuthStateChanged,
+  signInWithRedirect,
   signInWithPopup,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
@@ -137,6 +139,44 @@ export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 const approvalsCollection = collection(db, "loginApprovals");
 
+const MOBILE_AUTH_USER_AGENT_PATTERN = /android|iphone|ipad|ipod|mobile/i;
+
+const shouldPreferRedirectSignIn = () => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const coarsePointer = typeof window.matchMedia === "function"
+    && window.matchMedia("(pointer: coarse)").matches;
+  const userAgent = typeof navigator === "undefined" ? "" : String(navigator.userAgent || "");
+  return coarsePointer || MOBILE_AUTH_USER_AGENT_PATTERN.test(userAgent);
+};
+
+const signInWithBestAvailableMethod = async () => {
+  if (shouldPreferRedirectSignIn()) {
+    await signInWithRedirect(auth, googleProvider);
+    return { method: "redirect" };
+  }
+
+  try {
+    await signInWithPopup(auth, googleProvider);
+    return { method: "popup" };
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    if ([
+      "auth/popup-blocked",
+      "auth/popup-closed-by-user",
+      "auth/cancelled-popup-request",
+      "auth/operation-not-supported-in-this-environment",
+    ].includes(code)) {
+      await signInWithRedirect(auth, googleProvider);
+      return { method: "redirect" };
+    }
+
+    throw error;
+  }
+};
+
 const getHeaderElements = () => ({
   headerAuthStatus: document.getElementById("header-auth-status"),
   signInBtn: document.getElementById("header-sign-in"),
@@ -236,9 +276,19 @@ export const initHeaderAuth = ({ onStateChange, signedOutText = "Signed out." } 
   const headerElements = getHeaderElements();
   const { headerAuthStatus, signInBtn, signOutBtn, addPlatesLink, adminLink } = headerElements;
 
+  getRedirectResult(auth).catch((error) => {
+    const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+    if (headerAuthStatus) {
+      headerAuthStatus.textContent = `Google sign-in failed (${details}).`;
+    }
+  });
+
   signInBtn?.addEventListener("click", async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithBestAvailableMethod();
+      if (result?.method === "redirect" && headerAuthStatus) {
+        headerAuthStatus.textContent = "Opening Google sign-in...";
+      }
     } catch (error) {
       const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
       if (headerAuthStatus) {

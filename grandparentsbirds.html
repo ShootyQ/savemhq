@@ -110,6 +110,13 @@
               Start typing to filter the field guide, then tap a bird to mark it at the feeder.
             </p>
 
+            <div id="bird-auth-prompt" class="bird-add-panel hidden">
+              <p id="bird-auth-copy" class="small-note">Sign in with an approved family account to log birds from this phone.</p>
+              <div class="form-actions">
+                <button id="bird-auth-button" class="btn btn-secondary" type="button">Sign in to log birds</button>
+              </div>
+            </div>
+
             <div id="bird-search-results" class="bird-option-grid" aria-live="polite"></div>
 
             <div id="bird-add-panel" class="bird-add-panel hidden">
@@ -264,6 +271,9 @@
       const heroTotalCount = document.getElementById("bird-hero-total-count");
       const filterPill = document.getElementById("bird-filter-pill");
       const logNote = document.getElementById("bird-log-note");
+      const authPrompt = document.getElementById("bird-auth-prompt");
+      const authCopy = document.getElementById("bird-auth-copy");
+      const authButton = document.getElementById("bird-auth-button");
       const addPanel = document.getElementById("bird-add-panel");
       const addCopy = document.getElementById("bird-add-copy");
       const addButton = document.getElementById("bird-add-button");
@@ -433,6 +443,17 @@
         const selectedDayIds = new Set(Array.isArray(dayData?.birdIds) ? dayData.birdIds : []);
         const birds = filteredSpecies();
         const canWrite = isApprovedWriter() && !state.isBusy;
+        const authPending = state.approvalStatus === "signed-out" || state.approvalStatus === "error";
+        const shouldShowAuthPrompt = !isApprovedWriter();
+
+        authPrompt.classList.toggle("hidden", !shouldShowAuthPrompt);
+        authButton.disabled = state.isBusy;
+
+        if (shouldShowAuthPrompt) {
+          authCopy.textContent = authPending
+            ? "Sign in with an approved family account to log birds from this phone."
+            : "This account can browse birds, but it is not approved to add sightings.";
+        }
 
         if (!state.search.trim() && state.species.length === 0) {
           searchResults.innerHTML = '<p class="small-note bird-empty-state">No birds are in the master list yet.</p>';
@@ -474,7 +495,9 @@
         }
 
         if (!isApprovedWriter()) {
-          logNote.textContent = "Browse the list freely. Sign in with an approved account to add birds or log sightings.";
+          logNote.textContent = authPending
+            ? "Browse the list freely. Use Google sign-in above to unlock logging on this phone."
+            : "Browse the list freely. This account can view birds, but it is not approved to add sightings.";
         } else if (state.isBusy) {
           logNote.textContent = "Saving your bird update...";
         } else {
@@ -671,6 +694,10 @@
 
       addButton.addEventListener("click", () => {
         addBirdFromSearch();
+      });
+
+      authButton.addEventListener("click", () => {
+        document.getElementById("header-sign-in")?.click();
       });
 
       searchResults.addEventListener("click", (event) => {
