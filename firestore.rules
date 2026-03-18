@@ -485,7 +485,10 @@ service cloud.firestore {
         && approvalRecordKeysAreAllowed()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
-        && !request.resource.data.keys().hasAny(["accessSections"])
+        && (
+          !request.resource.data.keys().hasAny(["accessSections"])
+          || request.resource.data.accessSections == []
+        )
         && (
           (
             !isAutoApprovedUser()
