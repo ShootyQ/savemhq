@@ -205,6 +205,43 @@
             </article>
           </div>
 
+          <div class="bird-story-grid reveal-item">
+            <article class="bird-story-panel">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Daily Snapshot</p>
+                  <h3>What The Day Log Says</h3>
+                </div>
+                <span id="bird-daily-pill" class="bird-chip bird-chip-accent">0 days</span>
+              </div>
+              <p id="bird-daily-story-copy" class="bird-story-copy">Loading daily bird stats...</p>
+              <div id="bird-daily-highlights" class="bird-chip-grid"></div>
+            </article>
+
+            <article class="bird-story-panel">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Best Watch Days</p>
+                  <h3>Busiest Daily Check-Ins</h3>
+                </div>
+                <span id="bird-top-days-pill" class="bird-chip bird-chip-soft">0 days</span>
+              </div>
+              <div id="bird-top-days-list" class="bird-story-list" aria-live="polite"></div>
+            </article>
+
+            <article class="bird-chart-panel">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Day Chart</p>
+                  <h3>Most Active Days</h3>
+                </div>
+                <span id="bird-day-chart-pill" class="bird-chip bird-chip-outline">Waiting</span>
+              </div>
+              <p class="section-intro">A quick bar chart of the strongest daily bird counts so far.</p>
+              <div id="bird-day-chart" class="bird-bar-chart" aria-live="polite"></div>
+            </article>
+          </div>
+
           <div class="bird-ledger-grid">
             <aside class="bird-totals-panel reveal-item">
               <div class="bird-card-topline">
@@ -272,6 +309,7 @@
       import { initHeaderShell } from "./js/header-shell.js";
       import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
       import {
+        subscribeToBirdDays,
         subscribeToBirdMonths,
         subscribeToBirdSpecies,
       } from "./js/grandparents-birds-shared.js";
@@ -316,13 +354,24 @@
       const speciesGrid = document.getElementById("bird-species-grid");
       const historyGrid = document.getElementById("bird-history-grid");
 
+      const dailyPill = document.getElementById("bird-daily-pill");
+      const dailyStoryCopy = document.getElementById("bird-daily-story-copy");
+      const dailyHighlights = document.getElementById("bird-daily-highlights");
+      const topDaysPill = document.getElementById("bird-top-days-pill");
+      const topDaysList = document.getElementById("bird-top-days-list");
+      const dayChartPill = document.getElementById("bird-day-chart-pill");
+      const dayChart = document.getElementById("bird-day-chart");
+
       const state = {
         birdSort: "alpha",
         birdFilter: "logged",
         monthSort: "recent",
         species: [],
         months: [],
+        daysByMonth: {},
       };
+
+      let unsubscribeDaySnapshots = [];
 
       const escapeHtml = (value) => String(value)
         .replace(/&/g, "&amp;")
@@ -336,9 +385,16 @@
       const monthBirdIds = (month) => Array.isArray(month?.birdIds) ? month.birdIds.map((birdId) => String(birdId)) : [];
       const monthBirdNames = (month) => Array.isArray(month?.birdNames) ? month.birdNames : [];
       const monthBirdCount = (month) => monthBirdIds(month).length;
+      const dayBirdIds = (day) => Array.isArray(day?.birdIds) ? day.birdIds.map((birdId) => String(birdId)) : [];
+      const dayBirdNames = (day) => Array.isArray(day?.birdNames) ? day.birdNames : [];
+      const dayBirdCount = (day) => dayBirdIds(day).length;
       const sortMonthsAscending = (months) => [...months].sort((left, right) => monthIdValue(left).localeCompare(monthIdValue(right)));
       const activeMonthsAscending = () => sortMonthsAscending(state.months).filter((month) => monthBirdCount(month) > 0);
       const activeMonthsDescending = () => [...activeMonthsAscending()].reverse();
+      const activeDaysAscending = () => Object.values(state.daysByMonth)
+        .flat()
+        .filter((day) => dayBirdCount(day) > 0)
+        .sort((left, right) => String(left?.dateKey || left?.dayId || "").localeCompare(String(right?.dateKey || right?.dayId || "")));
 
       const buildBirdRecords = () => {
         const speciesById = new Map(
@@ -442,6 +498,22 @@
           label: monthLabelValue(month),
           count: monthBirdCount(month),
         }));
+        const activeDays = activeDaysAscending();
+        const busiestDay = [...activeDays].sort((left, right) => dayBirdCount(right) - dayBirdCount(left) || String(right.dateKey || right.dayId || "").localeCompare(String(left.dateKey || left.dayId || "")))[0] || null;
+        const latestDay = [...activeDays].reverse()[0] || null;
+        const averageBirdsPerDay = activeDays.length
+          ? Math.round((activeDays.reduce((sum, day) => sum + dayBirdCount(day), 0) / activeDays.length) * 10) / 10
+          : 0;
+        const bigDays = activeDays.filter((day) => dayBirdCount(day) >= 5);
+        const topDays = [...activeDays]
+          .sort((left, right) => dayBirdCount(right) - dayBirdCount(left) || String(right.dateKey || right.dayId || "").localeCompare(String(left.dateKey || left.dayId || "")))
+          .slice(0, 6)
+          .map((day) => ({
+            id: String(day.dateKey || day.dayId || ""),
+            label: String(day.label || day.dateKey || day.dayId || "Day").trim(),
+            count: dayBirdCount(day),
+            lastLoggedBirdName: String(day.lastLoggedBirdName || "").trim(),
+          }));
 
         return {
           birdRecords,
@@ -459,7 +531,50 @@
           newestBird,
           latestNewBirds,
           monthCounts,
+          activeDays,
+          busiestDay,
+          latestDay,
+          averageBirdsPerDay,
+          bigDays,
+          topDays,
         };
+      };
+
+      const syncDaySubscriptions = () => {
+        unsubscribeDaySnapshots.forEach((unsubscribe) => unsubscribe?.());
+        unsubscribeDaySnapshots = [];
+        state.daysByMonth = {};
+
+        state.months.forEach((month) => {
+          const monthId = monthIdValue(month);
+          if (!monthId) {
+            return;
+          }
+
+          const unsubscribe = subscribeToBirdDays(monthId, {
+            onData: (days) => {
+              state.daysByMonth = {
+                ...state.daysByMonth,
+                [monthId]: days,
+              };
+              render();
+            },
+            onError: (error) => {
+              console.error("Could not load bird day stats", error);
+              const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+              statusNote.textContent = `Could not load daily bird stats (${details}).`;
+              state.daysByMonth = {
+                ...state.daysByMonth,
+                [monthId]: [],
+              };
+              render();
+            },
+          });
+
+          unsubscribeDaySnapshots.push(unsubscribe);
+        });
+
+        render();
       };
 
       const applyBirdFilter = (records) => {
@@ -571,6 +686,11 @@
             note: aggregates.ascMonths.length > 0 ? `From ${monthLabelValue(aggregates.ascMonths[0])} to ${monthLabelValue(aggregates.ascMonths[aggregates.ascMonths.length - 1])}.` : "No month history yet.",
           },
           {
+            label: "Logged days",
+            value: String(aggregates.activeDays.length),
+            note: aggregates.activeDays.length > 0 ? `${aggregates.bigDays.length} day${aggregates.bigDays.length === 1 ? "" : "s"} reached 5 or more unique birds.` : "Daily logs will appear here after the first check-in.",
+          },
+          {
             label: "Busiest month",
             value: aggregates.busiestMonth ? monthLabelValue(aggregates.busiestMonth) : "Waiting",
             note: aggregates.busiestMonth ? `${monthBirdCount(aggregates.busiestMonth)} unique birds were logged.` : "The month shelf will fill in here.",
@@ -589,6 +709,11 @@
             label: "Newest bird month",
             value: aggregates.newestBird?.firstMonthLabel || "Waiting",
             note: aggregates.newestBird ? `${aggregates.newestBird.name} is the most recent first-time sighting.` : "No first-time sightings yet.",
+          },
+          {
+            label: "Busiest day",
+            value: aggregates.busiestDay ? String(aggregates.busiestDay.label || aggregates.busiestDay.dateKey || aggregates.busiestDay.dayId || "Day") : "Waiting",
+            note: aggregates.busiestDay ? `${dayBirdCount(aggregates.busiestDay)} unique birds were logged that day.` : "A standout day will appear here after enough daily logs.",
           },
           {
             label: "New in latest month",
@@ -744,7 +869,50 @@
           "Top bird bars will appear once birds are logged."
         );
 
+        renderBarChart(
+          dayChart,
+          aggregates.topDays,
+          "count",
+          "Day bars will appear after daily bird logs are added."
+        );
+
+        dayChartPill.textContent = aggregates.activeDays.length
+          ? `${aggregates.activeDays.length} logged days`
+          : "Waiting";
+
         renderTrendStrip(aggregates);
+      };
+
+      const renderDailyStats = (aggregates) => {
+        dailyPill.textContent = `${aggregates.activeDays.length} day${aggregates.activeDays.length === 1 ? "" : "s"}`;
+
+        if (!aggregates.activeDays.length) {
+          dailyStoryCopy.textContent = "No daily bird logs yet. Once the family logs a few feeder days, this section will summarize the strongest watch days.";
+          dailyHighlights.innerHTML = "";
+          topDaysPill.textContent = "0 days";
+          topDaysList.innerHTML = '<p class="small-note bird-empty-state">The top day list will fill in once daily logs are saved.</p>';
+          return;
+        }
+
+        const latestDayLabel = String(aggregates.latestDay?.label || aggregates.latestDay?.dateKey || aggregates.latestDay?.dayId || "Latest day");
+        const busiestDayLabel = String(aggregates.busiestDay?.label || aggregates.busiestDay?.dateKey || aggregates.busiestDay?.dayId || "Busiest day");
+        dailyStoryCopy.textContent = `${latestDayLabel} is the most recent watch day, and ${busiestDayLabel} was the busiest so far with ${aggregates.busiestDay ? dayBirdCount(aggregates.busiestDay) : 0} unique birds. The ledger is averaging ${aggregates.averageBirdsPerDay} birds per logged day.`;
+        dailyHighlights.innerHTML = [
+          `Average/day: ${aggregates.averageBirdsPerDay}`,
+          `Big days: ${aggregates.bigDays.length}`,
+          `Latest day: ${latestDayLabel}`,
+        ].map((value) => `<span class="bird-chip bird-chip-soft">${escapeHtml(value)}</span>`).join("");
+
+        topDaysPill.textContent = `${aggregates.topDays.length} day${aggregates.topDays.length === 1 ? "" : "s"}`;
+        topDaysList.innerHTML = aggregates.topDays.map((day, index) => `
+          <div class="bird-story-row">
+            <span class="bird-story-rank">${index + 1}</span>
+            <div class="bird-story-row-copy">
+              <strong>${escapeHtml(day.label)}</strong>
+              <span class="small-note">${day.count} unique birds${day.lastLoggedBirdName ? `, last added ${escapeHtml(day.lastLoggedBirdName)}` : ""}.</span>
+            </div>
+          </div>
+        `).join("");
       };
 
       const renderTotals = (aggregates) => {
@@ -764,6 +932,14 @@
           <div class="bird-overall-card">
             <span class="small-note">Regular birds</span>
             <strong>${aggregates.porchRegulars.length}</strong>
+          </div>
+          <div class="bird-overall-card">
+            <span class="small-note">Logged days</span>
+            <strong>${aggregates.activeDays.length}</strong>
+          </div>
+          <div class="bird-overall-card">
+            <span class="small-note">Avg birds per day</span>
+            <strong>${aggregates.averageBirdsPerDay}</strong>
           </div>
           <div class="bird-overall-card">
             <span class="small-note">Seen once</span>
@@ -861,6 +1037,7 @@
         renderHeroStats(aggregates);
         renderSummaryCards(aggregates);
         renderStoryModules(aggregates);
+        renderDailyStats(aggregates);
         renderCharts(aggregates);
         renderTotals(aggregates);
         renderBirdRecords();
@@ -913,6 +1090,7 @@
       subscribeToBirdMonths({
         onData: (months) => {
           state.months = months;
+          syncDaySubscriptions();
           render();
         },
         onError: (error) => {
@@ -920,6 +1098,7 @@
           const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
           statusNote.textContent = `Could not load bird months (${details}).`;
           state.months = [];
+          syncDaySubscriptions();
           render();
         },
       });
