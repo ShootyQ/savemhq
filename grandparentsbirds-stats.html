@@ -470,6 +470,48 @@
         return allRecords;
       };
 
+      const buildDailyBirdRecords = () => {
+        const usage = new Map();
+
+        activeDaysAscending().forEach((day) => {
+          const dayId = String(day?.dateKey || day?.dayId || "").trim();
+          const dayLabel = String(day?.label || dayId || "Day").trim();
+          const ids = dayBirdIds(day);
+          const names = dayBirdNames(day);
+
+          ids.forEach((birdId, index) => {
+            if (!birdId) {
+              return;
+            }
+
+            const birdName = String(names[index] || birdId).trim();
+            const existing = usage.get(birdId) || {
+              id: birdId,
+              name: birdName,
+              dailySeenCount: 0,
+              firstDayId: "",
+              firstDayLabel: "",
+              lastDayId: "",
+              lastDayLabel: "",
+            };
+
+            existing.name = birdName || existing.name;
+            existing.dailySeenCount += 1;
+
+            if (!existing.firstDayId) {
+              existing.firstDayId = dayId;
+              existing.firstDayLabel = dayLabel;
+            }
+
+            existing.lastDayId = dayId;
+            existing.lastDayLabel = dayLabel;
+            usage.set(birdId, existing);
+          });
+        });
+
+        return [...usage.values()];
+      };
+
       const getAggregates = () => {
         const birdRecords = buildBirdRecords();
         const loggedBirdRecords = birdRecords.filter((record) => record.monthsSeenCount > 0);
@@ -499,6 +541,7 @@
           count: monthBirdCount(month),
         }));
         const activeDays = activeDaysAscending();
+        const dailyBirdRecords = buildDailyBirdRecords();
         const busiestDay = [...activeDays].sort((left, right) => dayBirdCount(right) - dayBirdCount(left) || String(right.dateKey || right.dayId || "").localeCompare(String(left.dateKey || left.dayId || "")))[0] || null;
         const latestDay = [...activeDays].reverse()[0] || null;
         const averageBirdsPerDay = activeDays.length
@@ -514,9 +557,14 @@
             count: dayBirdCount(day),
             lastLoggedBirdName: String(day.lastLoggedBirdName || "").trim(),
           }));
+        const mostFrequentDailyBird = [...dailyBirdRecords]
+          .sort((left, right) => (right.dailySeenCount - left.dailySeenCount) || left.name.localeCompare(right.name))[0] || null;
+        const rarestSeenDailyBird = [...dailyBirdRecords]
+          .sort((left, right) => (left.dailySeenCount - right.dailySeenCount) || left.name.localeCompare(right.name))[0] || null;
 
         return {
           birdRecords,
+          dailyBirdRecords,
           loggedBirdRecords,
           unseenBirdRecords,
           ascMonths,
@@ -537,6 +585,8 @@
           averageBirdsPerDay,
           bigDays,
           topDays,
+          mostFrequentDailyBird,
+          rarestSeenDailyBird,
         };
       };
 
@@ -714,6 +764,16 @@
             label: "Busiest day",
             value: aggregates.busiestDay ? String(aggregates.busiestDay.label || aggregates.busiestDay.dateKey || aggregates.busiestDay.dayId || "Day") : "Waiting",
             note: aggregates.busiestDay ? `${dayBirdCount(aggregates.busiestDay)} unique birds were logged that day.` : "A standout day will appear here after enough daily logs.",
+          },
+          {
+            label: "Best daily feeder",
+            value: aggregates.mostFrequentDailyBird?.name || "Waiting",
+            note: aggregates.mostFrequentDailyBird ? `Seen on ${aggregates.mostFrequentDailyBird.dailySeenCount} logged day${aggregates.mostFrequentDailyBird.dailySeenCount === 1 ? "" : "s"}.` : "A frequent day-by-day feeder will appear here.",
+          },
+          {
+            label: "Rarest seen day bird",
+            value: aggregates.rarestSeenDailyBird?.name || "Waiting",
+            note: aggregates.rarestSeenDailyBird ? `Logged on ${aggregates.rarestSeenDailyBird.dailySeenCount} day${aggregates.rarestSeenDailyBird.dailySeenCount === 1 ? "" : "s"}.` : "A rare day-log visitor will appear here after the first sightings.",
           },
           {
             label: "New in latest month",

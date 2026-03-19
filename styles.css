@@ -1361,10 +1361,30 @@ body[data-page="grandparents-birds-stats"] .site-header {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 0;
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.24), transparent 38%),
     linear-gradient(180deg, rgba(110, 80, 43, 0.08), transparent 3.2rem);
   pointer-events: none;
+}
+
+.bird-window-card > *,
+.bird-logbook-intro > *,
+.bird-ledger-intro > *,
+.bird-summary-panel > *,
+.bird-story-panel > *,
+.bird-chart-panel > *,
+.bird-history-panel > *,
+.bird-logger-card > *,
+.bird-day-panel > *,
+.bird-month-panel > *,
+.bird-master-panel > *,
+.bird-totals-panel > *,
+.bird-history-card > *,
+.bird-overall-card > *,
+.bird-day-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .bird-window-card {
@@ -1510,7 +1530,7 @@ body[data-page="grandparents-birds-stats"] .site-header {
 }
 
 .bird-summary-grid {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .bird-story-grid,
@@ -1562,7 +1582,7 @@ body[data-page="grandparents-birds-stats"] .site-header {
 .bird-summary-panel,
 .bird-story-panel {
   background:
-    radial-gradient(120% 120% at 100% 0%, rgba(205, 220, 182, 0.16), transparent 38%),
+    radial-gradient(72% 92% at 100% 0%, rgba(205, 220, 182, 0.12), transparent 46%),
     linear-gradient(180deg, rgba(255, 250, 242, 0.96), rgba(243, 236, 222, 0.96));
 }
 
