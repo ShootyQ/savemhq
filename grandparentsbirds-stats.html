@@ -68,43 +68,12 @@
       <section class="section section-card bird-ledger-section">
         <div class="container bird-ledger-layout">
           <div class="bird-ledger-intro reveal-item">
-            <p class="section-kicker">Organize The Ledger</p>
-            <h2>Change How The Story Is Sorted</h2>
+            <p class="section-kicker">Browse The Ledger</p>
+            <h2>Read The Porch Story At A Glance</h2>
             <p class="section-intro bird-ledger-copy">
-              Start with the plain-language cards below, then use these controls to reorganize the bird records and month shelf without changing any saved data.
+              Start with the plain-language cards below, then scroll into the bird ledger and month shelf for the fuller story.
             </p>
           </div>
-
-          <section id="bird-stats-controls" class="bird-stats-toolbar reveal-item" aria-label="Bird stats controls">
-            <div class="entry-row bird-select-row">
-              <label for="bird-sort-select">Bird list order</label>
-              <select id="bird-sort-select" class="bird-select">
-                <option value="alpha">Alphabetical</option>
-                <option value="first-seen">First seen month</option>
-                <option value="most-months">Most months seen</option>
-                <option value="recent">Most recently seen</option>
-              </select>
-            </div>
-            <div class="entry-row bird-select-row">
-              <label for="bird-filter-select">Bird filter</label>
-              <select id="bird-filter-select" class="bird-select">
-                <option value="logged">Logged birds only</option>
-                <option value="all">All known birds</option>
-                <option value="regulars">Porch regulars</option>
-                <option value="rare">Seen once</option>
-                <option value="unseen">Not logged yet</option>
-              </select>
-            </div>
-            <div class="entry-row bird-select-row">
-              <label for="bird-month-sort-select">Month shelf order</label>
-              <select id="bird-month-sort-select" class="bird-select">
-                <option value="recent">Newest first</option>
-                <option value="oldest">Oldest first</option>
-                <option value="busiest">Most birds first</option>
-                <option value="alpha">Month name</option>
-              </select>
-            </div>
-          </section>
 
           <section class="bird-summary-panel reveal-item" aria-labelledby="bird-story-heading">
             <div class="bird-card-topline">
@@ -112,7 +81,7 @@
                 <p class="bird-shelf-label">Story Cards</p>
                 <h3 id="bird-story-heading">What The Ledger Says</h3>
               </div>
-              <span id="bird-current-sort-pill" class="bird-chip bird-chip-accent">Logged birds only</span>
+              <span class="bird-chip bird-chip-accent">Plain-language view</span>
             </div>
             <p class="section-intro">
               These cards translate the bird data into quick takeaways before you browse the deeper lists.
@@ -249,7 +218,7 @@
                   <p class="bird-shelf-label">Overview</p>
                   <h3>Family Bird Totals</h3>
                 </div>
-                <span id="bird-month-sort-pill" class="bird-chip bird-chip-accent">Newest first</span>
+                <span class="bird-chip bird-chip-accent">Chronological shelf</span>
               </div>
               <p class="section-intro">
                 A denser totals panel for quick scanning before you browse the full records below.
@@ -266,7 +235,7 @@
                 <span id="bird-list-count-pill" class="bird-chip">0 birds</span>
               </div>
               <p id="bird-filter-summary" class="section-intro">
-                Choose a filter and order above to browse the bird records in the way that feels most useful.
+                All known birds are listed alphabetically, with first and latest sightings shown for each one.
               </p>
               <div id="bird-species-grid" class="bird-species-grid" aria-live="polite"></div>
             </article>
@@ -328,11 +297,6 @@
       const statsMonths = document.getElementById("bird-stats-months");
       const statsBusiest = document.getElementById("bird-stats-busiest");
       const statusNote = document.getElementById("bird-stats-status");
-      const birdSortSelect = document.getElementById("bird-sort-select");
-      const birdFilterSelect = document.getElementById("bird-filter-select");
-      const monthSortSelect = document.getElementById("bird-month-sort-select");
-      const currentSortPill = document.getElementById("bird-current-sort-pill");
-      const monthSortPill = document.getElementById("bird-month-sort-pill");
       const monthsPill = document.getElementById("bird-months-pill");
       const listCountPill = document.getElementById("bird-list-count-pill");
       const latestMonthPill = document.getElementById("bird-latest-month-pill");
@@ -363,9 +327,6 @@
       const dayChart = document.getElementById("bird-day-chart");
 
       const state = {
-        birdSort: "alpha",
-        birdFilter: "logged",
-        monthSort: "recent",
         species: [],
         months: [],
         daysByMonth: {},
@@ -395,6 +356,20 @@
         .flat()
         .filter((day) => dayBirdCount(day) > 0)
         .sort((left, right) => String(left?.dateKey || left?.dayId || "").localeCompare(String(right?.dateKey || right?.dayId || "")));
+
+      const summarizeNames = (records, maxNames = 2) => {
+        const names = records.map((record) => String(record?.name || "").trim()).filter(Boolean);
+        if (names.length === 0) {
+          return "Waiting";
+        }
+        if (names.length === 1) {
+          return names[0];
+        }
+        if (names.length <= maxNames) {
+          return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+        }
+        return `${names.slice(0, maxNames).join(", ")} and ${names.length - maxNames} more`;
+      };
 
       const buildBirdRecords = () => {
         const speciesById = new Map(
@@ -542,6 +517,10 @@
         }));
         const activeDays = activeDaysAscending();
         const dailyBirdRecords = buildDailyBirdRecords();
+        const topDependableBirds = loggedBirdRecords.length
+          ? loggedBirdRecords.filter((record) => record.monthsSeenCount === Math.max(...loggedBirdRecords.map((entry) => entry.monthsSeenCount)))
+            .sort((left, right) => left.name.localeCompare(right.name))
+          : [];
         const busiestDay = [...activeDays].sort((left, right) => dayBirdCount(right) - dayBirdCount(left) || String(right.dateKey || right.dayId || "").localeCompare(String(left.dateKey || left.dayId || "")))[0] || null;
         const latestDay = [...activeDays].reverse()[0] || null;
         const averageBirdsPerDay = activeDays.length
@@ -557,10 +536,14 @@
             count: dayBirdCount(day),
             lastLoggedBirdName: String(day.lastLoggedBirdName || "").trim(),
           }));
-        const mostFrequentDailyBird = [...dailyBirdRecords]
-          .sort((left, right) => (right.dailySeenCount - left.dailySeenCount) || left.name.localeCompare(right.name))[0] || null;
-        const rarestSeenDailyBird = [...dailyBirdRecords]
-          .sort((left, right) => (left.dailySeenCount - right.dailySeenCount) || left.name.localeCompare(right.name))[0] || null;
+        const topDailyBirds = dailyBirdRecords.length
+          ? dailyBirdRecords.filter((record) => record.dailySeenCount === Math.max(...dailyBirdRecords.map((entry) => entry.dailySeenCount)))
+            .sort((left, right) => left.name.localeCompare(right.name))
+          : [];
+        const rarestSeenDailyBirds = dailyBirdRecords.length
+          ? dailyBirdRecords.filter((record) => record.dailySeenCount === Math.min(...dailyBirdRecords.map((entry) => entry.dailySeenCount)))
+            .sort((left, right) => left.name.localeCompare(right.name))
+          : [];
 
         return {
           birdRecords,
@@ -576,6 +559,7 @@
           porchRegulars,
           rareVisitors,
           mostFrequentBird,
+          topDependableBirds,
           newestBird,
           latestNewBirds,
           monthCounts,
@@ -585,8 +569,8 @@
           averageBirdsPerDay,
           bigDays,
           topDays,
-          mostFrequentDailyBird,
-          rarestSeenDailyBird,
+          topDailyBirds,
+          rarestSeenDailyBirds,
         };
       };
 
@@ -627,85 +611,12 @@
         render();
       };
 
-      const applyBirdFilter = (records) => {
-        if (state.birdFilter === "all") {
-          return records;
-        }
-
-        if (state.birdFilter === "regulars") {
-          const threshold = Math.max(2, Math.ceil(Math.max(activeMonthsAscending().length, 1) / 3));
-          return records.filter((record) => record.monthsSeenCount >= threshold);
-        }
-
-        if (state.birdFilter === "rare") {
-          return records.filter((record) => record.monthsSeenCount === 1);
-        }
-
-        if (state.birdFilter === "unseen") {
-          return records.filter((record) => record.monthsSeenCount === 0);
-        }
-
-        return records.filter((record) => record.monthsSeenCount > 0);
-      };
-
       const sortedBirdRecords = () => {
-        const records = applyBirdFilter(buildBirdRecords());
-
-        return records.sort((left, right) => {
-          if (state.birdSort === "first-seen") {
-            if (!left.firstMonthId && !right.firstMonthId) {
-              return left.name.localeCompare(right.name);
-            }
-            if (!left.firstMonthId) {
-              return 1;
-            }
-            if (!right.firstMonthId) {
-              return -1;
-            }
-            return left.firstMonthId.localeCompare(right.firstMonthId) || left.name.localeCompare(right.name);
-          }
-
-          if (state.birdSort === "most-months") {
-            return (right.monthsSeenCount - left.monthsSeenCount) || left.name.localeCompare(right.name);
-          }
-
-          if (state.birdSort === "recent") {
-            if (!left.lastMonthId && !right.lastMonthId) {
-              return left.name.localeCompare(right.name);
-            }
-            if (!left.lastMonthId) {
-              return 1;
-            }
-            if (!right.lastMonthId) {
-              return -1;
-            }
-            return right.lastMonthId.localeCompare(left.lastMonthId) || left.name.localeCompare(right.name);
-          }
-
-          return left.name.localeCompare(right.name);
-        });
+        return buildBirdRecords().sort((left, right) => left.name.localeCompare(right.name));
       };
 
       const sortedMonthRecords = () => {
-        const months = [...state.months];
-
-        months.sort((left, right) => {
-          if (state.monthSort === "oldest") {
-            return monthIdValue(left).localeCompare(monthIdValue(right));
-          }
-
-          if (state.monthSort === "busiest") {
-            return (monthBirdCount(right) - monthBirdCount(left)) || monthIdValue(right).localeCompare(monthIdValue(left));
-          }
-
-          if (state.monthSort === "alpha") {
-            return monthLabelValue(left).localeCompare(monthLabelValue(right));
-          }
-
-          return monthIdValue(right).localeCompare(monthIdValue(left));
-        });
-
-        return months;
+        return [...state.months].sort((left, right) => monthIdValue(left).localeCompare(monthIdValue(right)));
       };
 
       const renderHeroStats = (aggregates) => {
@@ -715,7 +626,7 @@
         statsBusiest.textContent = aggregates.busiestMonth ? monthLabelValue(aggregates.busiestMonth) : "Waiting";
         statusNote.textContent = aggregates.birdRecords.length === 0
           ? "No birds are loaded yet."
-          : "Use the controls below to switch between bird stories, ranked lists, and month views.";
+          : "Scroll for story cards, daily highlights, the bird ledger, and the month shelf.";
       };
 
       const renderSummaryCards = (aggregates) => {
@@ -752,8 +663,10 @@
           },
           {
             label: "Most dependable bird",
-            value: aggregates.mostFrequentBird ? aggregates.mostFrequentBird.name : "Waiting",
-            note: aggregates.mostFrequentBird ? `Seen in ${aggregates.mostFrequentBird.monthsSeenCount} month${aggregates.mostFrequentBird.monthsSeenCount === 1 ? "" : "s"}.` : "A porch regular will appear here.",
+            value: summarizeNames(aggregates.topDependableBirds),
+            note: aggregates.topDependableBirds.length
+              ? `${aggregates.topDependableBirds.length === 1 ? "Seen" : "Tied"} at ${aggregates.topDependableBirds[0].monthsSeenCount} month${aggregates.topDependableBirds[0].monthsSeenCount === 1 ? "" : "s"}.`
+              : "A porch regular will appear here.",
           },
           {
             label: "Newest bird month",
@@ -767,13 +680,17 @@
           },
           {
             label: "Best daily feeder",
-            value: aggregates.mostFrequentDailyBird?.name || "Waiting",
-            note: aggregates.mostFrequentDailyBird ? `Seen on ${aggregates.mostFrequentDailyBird.dailySeenCount} logged day${aggregates.mostFrequentDailyBird.dailySeenCount === 1 ? "" : "s"}.` : "A frequent day-by-day feeder will appear here.",
+            value: summarizeNames(aggregates.topDailyBirds),
+            note: aggregates.topDailyBirds.length
+              ? `${aggregates.topDailyBirds.length === 1 ? "Seen" : "Tied"} at ${aggregates.topDailyBirds[0].dailySeenCount} logged day${aggregates.topDailyBirds[0].dailySeenCount === 1 ? "" : "s"}.`
+              : "A frequent day-by-day feeder will appear here.",
           },
           {
             label: "Rarest seen day bird",
-            value: aggregates.rarestSeenDailyBird?.name || "Waiting",
-            note: aggregates.rarestSeenDailyBird ? `Logged on ${aggregates.rarestSeenDailyBird.dailySeenCount} day${aggregates.rarestSeenDailyBird.dailySeenCount === 1 ? "" : "s"}.` : "A rare day-log visitor will appear here after the first sightings.",
+            value: summarizeNames(aggregates.rarestSeenDailyBirds),
+            note: aggregates.rarestSeenDailyBirds.length
+              ? `${aggregates.rarestSeenDailyBirds.length === 1 ? "Logged" : "Tied"} at ${aggregates.rarestSeenDailyBirds[0].dailySeenCount} day${aggregates.rarestSeenDailyBirds[0].dailySeenCount === 1 ? "" : "s"}.`
+              : "A rare day-log visitor will appear here after the first sightings.",
           },
           {
             label: "New in latest month",
@@ -807,8 +724,8 @@
           const additionsText = aggregates.latestNewBirds.length === 0
             ? "No first-time birds were added in the latest month."
             : `${aggregates.latestNewBirds.length} first-time bird${aggregates.latestNewBirds.length === 1 ? "" : "s"} arrived in ${latestMonthLabel}.`;
-          const dependableText = aggregates.mostFrequentBird
-            ? `${aggregates.mostFrequentBird.name} has been the most dependable porch visitor so far.`
+          const dependableText = aggregates.topDependableBirds.length
+            ? `${summarizeNames(aggregates.topDependableBirds)} ${aggregates.topDependableBirds.length === 1 ? "has" : "have"} been the most dependable porch visitor${aggregates.topDependableBirds.length === 1 ? "" : "s"} so far.`
             : "A dependable porch visitor will appear here once enough data builds up.";
           storyCopy.textContent = `${latestMonthLabel} logged ${monthBirdCount(aggregates.latestMonth)} unique birds. ${additionsText} ${dependableText}`;
           storyHighlights.innerHTML = [
@@ -976,8 +893,6 @@
       };
 
       const renderTotals = (aggregates) => {
-        currentSortPill.textContent = `${birdFilterSelect.options[birdFilterSelect.selectedIndex]?.text || "Logged birds only"}`;
-        monthSortPill.textContent = monthSortSelect.options[monthSortSelect.selectedIndex]?.text || "Newest first";
         monthsPill.textContent = `${state.months.length} month${state.months.length === 1 ? "" : "s"}`;
 
         overallGrid.innerHTML = `
@@ -1018,10 +933,8 @@
 
       const renderBirdRecords = () => {
         const records = sortedBirdRecords();
-        const filterLabel = birdFilterSelect.options[birdFilterSelect.selectedIndex]?.text || "Logged birds only";
-        const sortLabel = birdSortSelect.options[birdSortSelect.selectedIndex]?.text || "Alphabetical";
         listCountPill.textContent = `${records.length} bird${records.length === 1 ? "" : "s"}`;
-        filterSummary.textContent = `${filterLabel} shown, sorted by ${sortLabel.toLowerCase()}.`;
+        filterSummary.textContent = "All known birds are shown in alphabetical order.";
 
         if (!records.length) {
           speciesGrid.innerHTML = '<p class="small-note bird-empty-state">No bird records match the current filter yet.</p>';
@@ -1103,21 +1016,6 @@
         renderBirdRecords();
         renderMonthRecords(aggregates);
       };
-
-      birdSortSelect.addEventListener("change", (event) => {
-        state.birdSort = String(event.target.value || "alpha");
-        render();
-      });
-
-      birdFilterSelect.addEventListener("change", (event) => {
-        state.birdFilter = String(event.target.value || "logged");
-        render();
-      });
-
-      monthSortSelect.addEventListener("change", (event) => {
-        state.monthSort = String(event.target.value || "recent");
-        render();
-      });
 
       initHeaderShell();
       initRevealMotion({
