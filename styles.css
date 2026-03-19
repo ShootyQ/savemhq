@@ -1516,17 +1516,12 @@ body[data-page="grandparents-birds-stats"] .site-header {
   color: rgba(251, 243, 224, 0.78);
 }
 
-.bird-stats-toolbar,
 .bird-summary-grid,
 .bird-story-grid,
 .bird-chart-grid,
 .bird-species-grid {
   display: grid;
   gap: 1rem;
-}
-
-.bird-stats-toolbar {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .bird-summary-grid {
@@ -1536,23 +1531,6 @@ body[data-page="grandparents-birds-stats"] .site-header {
 .bird-story-grid,
 .bird-chart-grid {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-}
-
-.bird-select-row {
-  display: grid;
-  gap: 0.42rem;
-}
-
-.bird-select {
-  width: 100%;
-  min-height: 3rem;
-  border: 1px solid rgba(136, 109, 76, 0.2);
-  border-radius: 0.95rem;
-  background: rgba(255, 250, 241, 0.92);
-  padding: 0.72rem 0.88rem;
-  color: #4f3f2d;
-  font: inherit;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 .bird-species-grid {
@@ -3225,7 +3203,6 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .bird-stats-toolbar,
   .bird-summary-grid,
   .bird-story-grid,
   .bird-chart-grid,
@@ -3558,7 +3535,6 @@ select:focus-visible {
   .bird-day-list,
   .bird-window-stat-grid,
   .bird-overall-grid,
-  .bird-stats-toolbar,
   .bird-summary-grid,
   .bird-story-grid,
   .bird-chart-grid,
@@ -3570,8 +3546,7 @@ select:focus-visible {
   .bird-overall-card,
   .bird-add-panel,
   .bird-checkbox-pill,
-  .bird-option,
-  .bird-select {
+  .bird-option {
     padding: 0.78rem;
   }
 
@@ -3585,8 +3560,7 @@ select:focus-visible {
   }
 
   .bird-search-row input,
-  #bird-date,
-  .bird-select {
+  #bird-date {
     min-height: 3rem;
     font-size: 1rem;
   }

@@ -28,7 +28,7 @@
                 Keep the main bird page focused on typing and logging. Come here when you want to see who shows up the most, which months were busiest, and how the porch bird story has changed over time.
               </p>
               <nav class="bird-page-nav" aria-label="Bird stats sections">
-                <a class="bird-nav-pill" href="grandparentsbirds.html">Back To Logbook</a>
+                label: `Most dependable bird${aggregates.topDependableBirds.length > 1 ? "s" : ""}`,
                 <a class="bird-nav-pill" href="#bird-stats-controls">Organize View</a>
                 <a class="bird-nav-pill" href="#bird-stats-birds">Birds</a>
                 <a class="bird-nav-pill" href="#bird-stats-history">Months</a>
@@ -492,10 +492,9 @@
         const loggedBirdRecords = birdRecords.filter((record) => record.monthsSeenCount > 0);
         const unseenBirdRecords = birdRecords.filter((record) => record.monthsSeenCount === 0);
         const ascMonths = activeMonthsAscending();
-        const descMonths = [...ascMonths].reverse();
         const busiestMonth = [...ascMonths].sort((left, right) => monthBirdCount(right) - monthBirdCount(left))[0] || null;
         const quietestMonth = [...ascMonths].sort((left, right) => monthBirdCount(left) - monthBirdCount(right))[0] || null;
-        const latestMonth = descMonths[0] || null;
+        const latestMonth = ascMonths[ascMonths.length - 1] || null;
         const regularThreshold = Math.max(2, Math.ceil(Math.max(ascMonths.length, 1) / 3));
         const porchRegulars = [...loggedBirdRecords]
           .filter((record) => record.monthsSeenCount >= regularThreshold)
@@ -503,8 +502,6 @@
         const rareVisitors = [...loggedBirdRecords]
           .filter((record) => record.monthsSeenCount === 1)
           .sort((left, right) => left.firstMonthId.localeCompare(right.firstMonthId) || left.name.localeCompare(right.name));
-        const mostFrequentBird = [...loggedBirdRecords]
-          .sort((left, right) => (right.monthsSeenCount - left.monthsSeenCount) || left.name.localeCompare(right.name))[0] || null;
         const newestBird = [...loggedBirdRecords]
           .sort((left, right) => right.firstMonthId.localeCompare(left.firstMonthId) || left.name.localeCompare(right.name))[0] || null;
         const latestNewBirds = latestMonth
@@ -551,14 +548,12 @@
           loggedBirdRecords,
           unseenBirdRecords,
           ascMonths,
-          descMonths,
           busiestMonth,
           quietestMonth,
           latestMonth,
           regularThreshold,
           porchRegulars,
           rareVisitors,
-          mostFrequentBird,
           topDependableBirds,
           newestBird,
           latestNewBirds,
@@ -662,10 +657,10 @@
             note: aggregates.quietestMonth ? `${monthBirdCount(aggregates.quietestMonth)} unique birds were logged.` : "No quiet month yet.",
           },
           {
-            label: "Most dependable bird",
+            label: `Most dependable bird${aggregates.topDependableBirds.length > 1 ? "s" : ""}`,
             value: summarizeNames(aggregates.topDependableBirds),
             note: aggregates.topDependableBirds.length
-              ? `${aggregates.topDependableBirds.length === 1 ? "Seen" : "Tied"} at ${aggregates.topDependableBirds[0].monthsSeenCount} month${aggregates.topDependableBirds[0].monthsSeenCount === 1 ? "" : "s"}.`
+              ? `Seen across ${aggregates.topDependableBirds[0].monthsSeenCount} month${aggregates.topDependableBirds[0].monthsSeenCount === 1 ? "" : "s"}${aggregates.topDependableBirds.length === 1 ? "." : " each."}`
               : "A porch regular will appear here.",
           },
           {
@@ -679,17 +674,17 @@
             note: aggregates.busiestDay ? `${dayBirdCount(aggregates.busiestDay)} unique birds were logged that day.` : "A standout day will appear here after enough daily logs.",
           },
           {
-            label: "Best daily feeder",
+            label: `Best daily feeder${aggregates.topDailyBirds.length > 1 ? "s" : ""}`,
             value: summarizeNames(aggregates.topDailyBirds),
             note: aggregates.topDailyBirds.length
-              ? `${aggregates.topDailyBirds.length === 1 ? "Seen" : "Tied"} at ${aggregates.topDailyBirds[0].dailySeenCount} logged day${aggregates.topDailyBirds[0].dailySeenCount === 1 ? "" : "s"}.`
+              ? `Seen on ${aggregates.topDailyBirds[0].dailySeenCount} logged day${aggregates.topDailyBirds[0].dailySeenCount === 1 ? "" : "s"}${aggregates.topDailyBirds.length === 1 ? "." : " each."}`
               : "A frequent day-by-day feeder will appear here.",
           },
           {
-            label: "Rarest seen day bird",
+            label: `Rarest seen day bird${aggregates.rarestSeenDailyBirds.length > 1 ? "s" : ""}`,
             value: summarizeNames(aggregates.rarestSeenDailyBirds),
             note: aggregates.rarestSeenDailyBirds.length
-              ? `${aggregates.rarestSeenDailyBirds.length === 1 ? "Logged" : "Tied"} at ${aggregates.rarestSeenDailyBirds[0].dailySeenCount} day${aggregates.rarestSeenDailyBirds[0].dailySeenCount === 1 ? "" : "s"}.`
+              ? `Logged on ${aggregates.rarestSeenDailyBirds[0].dailySeenCount} day${aggregates.rarestSeenDailyBirds[0].dailySeenCount === 1 ? "" : "s"}${aggregates.rarestSeenDailyBirds.length === 1 ? "." : " each."}`
               : "A rare day-log visitor will appear here after the first sightings.",
           },
           {
@@ -725,7 +720,7 @@
             ? "No first-time birds were added in the latest month."
             : `${aggregates.latestNewBirds.length} first-time bird${aggregates.latestNewBirds.length === 1 ? "" : "s"} arrived in ${latestMonthLabel}.`;
           const dependableText = aggregates.topDependableBirds.length
-            ? `${summarizeNames(aggregates.topDependableBirds)} ${aggregates.topDependableBirds.length === 1 ? "has" : "have"} been the most dependable porch visitor${aggregates.topDependableBirds.length === 1 ? "" : "s"} so far.`
+            ? `${summarizeNames(aggregates.topDependableBirds)} ${aggregates.topDependableBirds.length === 1 ? "has" : "have"} been seen across ${aggregates.topDependableBirds[0].monthsSeenCount} month${aggregates.topDependableBirds[0].monthsSeenCount === 1 ? "" : "s"}${aggregates.topDependableBirds.length === 1 ? "." : " each."}`
             : "A dependable porch visitor will appear here once enough data builds up.";
           storyCopy.textContent = `${latestMonthLabel} logged ${monthBirdCount(aggregates.latestMonth)} unique birds. ${additionsText} ${dependableText}`;
           storyHighlights.innerHTML = [
