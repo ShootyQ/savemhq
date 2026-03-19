@@ -4,16 +4,38 @@
   --bg: #f6f3eb;
   --surface: #fffdf9;
   --surface-soft: #eef4ef;
-  font-size: 0.9rem;
-  font-weight: 700;
-  padding: 0.32rem 0.58rem;
-  border-radius: 999px;
-  transition:
-    background-color var(--duration-fast) var(--ease),
-    color var(--duration-fast) var(--ease),
-    transform var(--duration-fast) var(--ease);
+  --text: #3c332a;
+  --muted: #6c6257;
+  --border: rgba(121, 107, 90, 0.22);
+  --sea-soft: #dbeef0;
+  --sea: #5d99a3;
+  --sea-deep: #2f6f7d;
+  --accent: #d08a45;
+  --accent-soft: #f3dfc7;
+  --accent-strong: #87562e;
+  --radius-sm: 0.95rem;
+  --radius: 1.35rem;
+  --radius-lg: 1.8rem;
+  --max-width: 84rem;
+  --duration-fast: 180ms;
+  --duration-mid: 320ms;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(44rem 24rem at 0% -2%, rgba(211, 237, 240, 0.78) 0%, transparent 72%),
+    radial-gradient(36rem 20rem at 100% 0%, rgba(248, 225, 197, 0.8) 0%, transparent 68%),
     linear-gradient(180deg, #f1fbfc 0%, #f6f4eb 56%, #f4ecdf 100%);
+  color: var(--text);
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  line-height: 1.6;
 }
 
 body[data-page="home"] .site-header {
