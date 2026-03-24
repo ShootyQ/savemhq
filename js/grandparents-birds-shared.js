@@ -7,6 +7,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { db } from "./auth-shared.js";
 
@@ -326,5 +327,159 @@ export const logBirdSighting = async ({ bird, dateValue, includeDaily = false, u
     birdName,
     monthId,
     dayId,
+  };
+};
+
+const toBirdEntries = ({ birdIds = [], birdNames = [] } = {}) => {
+  const names = Array.isArray(birdNames) ? birdNames : [];
+  const ids = Array.isArray(birdIds) ? birdIds : [];
+
+  return names
+    .map((birdName, index) => {
+      const normalizedName = normalizeBirdName(birdName);
+      const birdId = String(ids[index] || slugifyBirdName(normalizedName)).trim();
+
+      if (!normalizedName || !birdId) {
+        return null;
+      }
+
+      return {
+        id: birdId,
+        name: normalizedName,
+      };
+    })
+    .filter(Boolean);
+};
+
+const lastBirdFieldsForEntries = (entries, fallback = {}) => {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return {
+      lastLoggedBirdId: "",
+      lastLoggedBirdName: "",
+      lastLoggedByUid: "",
+      lastLoggedByLabel: "",
+    };
+  }
+
+  const lastEntry = entries[entries.length - 1];
+  return {
+    lastLoggedBirdId: String(lastEntry.id || "").trim(),
+    lastLoggedBirdName: String(lastEntry.name || "").trim(),
+    lastLoggedByUid: String(fallback.lastLoggedByUid || "").trim(),
+    lastLoggedByLabel: String(fallback.lastLoggedByLabel || "").trim(),
+  };
+};
+
+export const removeBirdSightingFromDay = async ({ bird, dateValue, day, month, siblingDays = [] } = {}) => {
+  const birdName = normalizeBirdName(bird?.name || bird?.label || bird);
+  const birdId = slugifyBirdName(bird?.id || birdName);
+  const date = dateFromValue(dateValue);
+  const monthId = getMonthIdForDate(date);
+  const dayId = getDayIdForDate(date);
+  const monthNumber = date.getMonth() + 1;
+  const year = date.getFullYear();
+  const targetDay = day && String(day.dayId || day.id || "") === dayId
+    ? day
+    : siblingDays.find((entry) => String(entry.dayId || entry.id || "") === dayId);
+
+  if (!targetDay) {
+    throw new Error("missing-day");
+  }
+
+  const targetDayEntries = toBirdEntries({
+    birdIds: targetDay.birdIds,
+    birdNames: targetDay.birdNames,
+  });
+  const nextDayEntries = targetDayEntries.filter((entry) => entry.id !== birdId && entry.name !== birdName);
+
+  if (nextDayEntries.length === targetDayEntries.length) {
+    throw new Error("missing-bird");
+  }
+
+  const updatedSiblingDays = siblingDays.map((entry) => {
+    if (String(entry.dayId || entry.id || "") !== dayId) {
+      return entry;
+    }
+
+    return {
+      ...entry,
+      birdIds: nextDayEntries.map((birdEntry) => birdEntry.id),
+      birdNames: nextDayEntries.map((birdEntry) => birdEntry.name),
+      ...lastBirdFieldsForEntries(nextDayEntries, entry),
+    };
+  });
+
+  const birdStillExistsInMonth = updatedSiblingDays.some((entry) => {
+    const entries = toBirdEntries({
+      birdIds: entry.birdIds,
+      birdNames: entry.birdNames,
+    });
+    return entries.some((birdEntry) => birdEntry.id === birdId || birdEntry.name === birdName);
+  });
+
+  const monthEntries = toBirdEntries({
+    birdIds: month?.birdIds,
+    birdNames: month?.birdNames,
+  });
+  const nextMonthEntries = birdStillExistsInMonth
+    ? monthEntries
+    : monthEntries.filter((entry) => entry.id !== birdId && entry.name !== birdName);
+  const latestDayWithBirds = [...updatedSiblingDays]
+    .filter((entry) => Array.isArray(entry.birdNames) && entry.birdNames.length > 0)
+    .sort((left, right) => String(right.dateKey || right.dayId || right.id || "").localeCompare(String(left.dateKey || left.dayId || left.id || "")))[0] || null;
+  const latestDayEntries = latestDayWithBirds
+    ? toBirdEntries({
+        birdIds: latestDayWithBirds.birdIds,
+        birdNames: latestDayWithBirds.birdNames,
+      })
+    : [];
+  const nextMonthLastFields = latestDayWithBirds
+    ? lastBirdFieldsForEntries(latestDayEntries, latestDayWithBirds)
+    : lastBirdFieldsForEntries([]);
+  const nextDayLastFields = lastBirdFieldsForEntries(nextDayEntries, targetDay);
+  const batch = writeBatch(db);
+
+  batch.set(
+    birdDayDocument(monthId, dayId),
+    {
+      dayId,
+      monthId,
+      dateKey: dayId,
+      label: String(targetDay.label || formatDayLabel(date)).trim(),
+      birdIds: nextDayEntries.map((entry) => entry.id),
+      birdNames: nextDayEntries.map((entry) => entry.name),
+      ...nextDayLastFields,
+      updatedAt: serverTimestamp(),
+      lastLoggedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  batch.set(
+    birdMonthDocument(monthId),
+    {
+      monthId,
+      label: String(month?.label || formatMonthLabel(date)).trim(),
+      year,
+      monthNumber,
+      sortOrder: (year * 100) + monthNumber,
+      birdIds: nextMonthEntries.map((entry) => entry.id),
+      birdNames: nextMonthEntries.map((entry) => entry.name),
+      ...nextMonthLastFields,
+      updatedAt: serverTimestamp(),
+      lastLoggedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  await batch.commit();
+
+  return {
+    birdId,
+    birdName,
+    monthId,
+    dayId,
+    remainingDayCount: nextDayEntries.length,
+    remainingMonthCount: nextMonthEntries.length,
   };
 };

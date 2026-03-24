@@ -185,6 +185,7 @@
         getMonthIdForDate,
         logBirdSighting,
         normalizeBirdName,
+        removeBirdSightingFromDay,
         saveBirdSpecies,
         seedStarterBirdSpecies,
         slugifyBirdName,
@@ -244,6 +245,7 @@
         months: [],
         days: [],
         isBusy: false,
+        removeDayId: "",
       };
 
       let unsubscribeDays = null;
@@ -286,6 +288,28 @@
       };
 
       const currentAddName = () => normalizeBirdName(state.search);
+
+      const dayBirdEntries = (day) => {
+        const birdNames = Array.isArray(day?.birdNames) ? day.birdNames : [];
+        const birdIds = Array.isArray(day?.birdIds) ? day.birdIds : [];
+
+        return birdNames
+          .map((birdName, index) => {
+            const name = String(birdName || "").trim();
+            if (!name) {
+              return null;
+            }
+
+            return {
+              id: String(birdIds[index] || slugifyBirdName(name)).trim(),
+              name,
+            };
+          })
+          .filter(Boolean)
+          .sort((left, right) => left.name.localeCompare(right.name));
+      };
+
+      const visibleDays = () => state.days.filter((day) => dayBirdEntries(day).length > 0);
 
       const hasExactBirdMatch = () => {
         const searchName = currentAddName().toLowerCase();
@@ -480,14 +504,19 @@
       };
 
       const renderDayLogs = () => {
-        if (state.days.length === 0) {
+        const days = visibleDays();
+
+        if (days.length === 0) {
           dayList.innerHTML = '<p class="small-note bird-empty-state">No daily bird logs for this month yet.</p>';
           return;
         }
 
-        dayList.innerHTML = state.days.map((day) => {
-          const birdNames = Array.isArray(day.birdNames) ? [...day.birdNames].sort((left, right) => String(left).localeCompare(String(right))) : [];
+        dayList.innerHTML = days.map((day) => {
+          const birdEntries = dayBirdEntries(day);
+          const birdNames = birdEntries.map((entry) => entry.name);
           const isSelected = String(day.dayId || day.id || "") === getSelectedDayId();
+          const isRemoving = isSelected && state.removeDayId === String(day.dayId || day.id || "");
+          const canRemoveBirds = isSelected && isApprovedWriter() && !state.isBusy && birdEntries.length > 0;
           return `
             <article class="bird-day-card ${isSelected ? "is-selected" : ""}">
               <div class="bird-card-topline">
@@ -496,11 +525,31 @@
                   <h3>${day.label || formatDayLabel(day.dateKey || day.dayId || state.selectedDate)}</h3>
                   <p class="small-note">${birdNames.length} unique bird${birdNames.length === 1 ? "" : "s"}</p>
                 </div>
-                <button class="btn btn-secondary bird-jump-button" type="button" data-day-id="${day.dayId || day.id || ""}">Reopen day</button>
+                <div class="bird-day-actions">
+                  ${canRemoveBirds ? `<button class="btn btn-secondary bird-fix-button" type="button" data-remove-toggle-day-id="${day.dayId || day.id || ""}">${isRemoving ? "Cancel fix" : "Fix wrong bird"}</button>` : ""}
+                  <button class="btn btn-secondary bird-jump-button" type="button" data-day-id="${day.dayId || day.id || ""}">Reopen day</button>
+                </div>
               </div>
               <div class="bird-chip-grid">
                 ${birdNames.map((birdName) => `<span class="bird-chip bird-chip-soft">${birdName}</span>`).join("")}
               </div>
+              ${isRemoving ? `
+                <div class="bird-remove-panel" aria-live="polite">
+                  <p class="small-note bird-remove-copy">Tap the wrong bird below, then confirm the removal. This only changes this day, not the master bird list.</p>
+                  <div class="bird-chip-grid bird-remove-grid">
+                    ${birdEntries.map((birdEntry) => `
+                      <button
+                        class="bird-remove-chip"
+                        type="button"
+                        data-remove-day-id="${day.dayId || day.id || ""}"
+                        data-remove-bird-id="${birdEntry.id}"
+                      >
+                        Remove ${birdEntry.name}
+                      </button>
+                    `).join("")}
+                  </div>
+                </div>
+              ` : ""}
             </article>
           `;
         }).join("");
@@ -606,6 +655,42 @@
         }
       };
 
+      const removeBirdFromDay = async (dayId, birdId) => {
+        if (!isApprovedWriter()) {
+          return;
+        }
+
+        const day = state.days.find((entry) => String(entry.dayId || entry.id || "") === String(dayId || ""));
+        const birdEntry = dayBirdEntries(day).find((entry) => entry.id === String(birdId || ""));
+
+        if (!day || !birdEntry) {
+          return;
+        }
+
+        const confirmed = window.confirm(`Remove ${birdEntry.name} from ${day.label || formatDayLabel(dayId)}?\n\nThis only removes it from that day.`);
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          setBusy(true, `Removing ${birdEntry.name} from ${day.label || formatDayLabel(dayId)}...`);
+          await removeBirdSightingFromDay({
+            bird: birdEntry,
+            dateValue: dayId,
+            day,
+            month: selectedMonthData(),
+            siblingDays: state.days,
+          });
+          state.removeDayId = "";
+          setBusy(false, `Removed ${birdEntry.name} from ${day.label || formatDayLabel(dayId)}.`);
+        } catch (error) {
+          console.error("Could not remove bird sighting", error);
+          const details = error && typeof error === "object" && "message" in error ? String(error.message) : "unknown";
+          state.removeDayId = "";
+          setBusy(false, `Could not remove that bird (${details}).`);
+        }
+      };
+
       const addBirdFromSearch = async () => {
         const name = currentAddName();
         if (!name || !isApprovedWriter()) {
@@ -645,6 +730,7 @@
 
       birdDateInput.addEventListener("change", (event) => {
         state.selectedDate = event.target.value || toLocalDateInputValue(new Date());
+        state.removeDayId = "";
         updateDaySubscription();
         render();
       });
@@ -682,6 +768,30 @@
           return;
         }
 
+        const removeToggleButton = target.closest("[data-remove-toggle-day-id]");
+        if (removeToggleButton instanceof HTMLElement) {
+          const toggleDayId = String(removeToggleButton.dataset.removeToggleDayId || "").trim();
+          if (!toggleDayId || !isApprovedWriter() || state.isBusy) {
+            return;
+          }
+
+          state.removeDayId = state.removeDayId === toggleDayId ? "" : toggleDayId;
+          renderDayLogs();
+          return;
+        }
+
+        const removeBirdButton = target.closest("[data-remove-bird-id]");
+        if (removeBirdButton instanceof HTMLElement) {
+          const removeDayId = String(removeBirdButton.dataset.removeDayId || "").trim();
+          const removeBirdId = String(removeBirdButton.dataset.removeBirdId || "").trim();
+          if (!removeDayId || !removeBirdId || state.isBusy) {
+            return;
+          }
+
+          removeBirdFromDay(removeDayId, removeBirdId);
+          return;
+        }
+
         const button = target.closest("[data-day-id]");
         if (!(button instanceof HTMLElement)) {
           return;
@@ -693,6 +803,7 @@
         }
 
         state.selectedDate = dayId;
+        state.removeDayId = "";
         birdDateInput.value = dayId;
         render();
       });

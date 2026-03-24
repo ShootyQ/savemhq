@@ -1930,6 +1930,58 @@ body[data-page="grandparents-birds-stats"] .site-header {
   min-width: 8rem;
 }
 
+.bird-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.bird-fix-button {
+  min-width: 8.75rem;
+}
+
+.bird-remove-panel {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed rgba(136, 109, 76, 0.24);
+}
+
+.bird-remove-copy {
+  margin: 0 0 0.75rem;
+}
+
+.bird-remove-grid {
+  gap: 0.55rem;
+}
+
+.bird-remove-chip {
+  appearance: none;
+  border: 1px solid rgba(152, 92, 71, 0.28);
+  border-radius: 999px;
+  background: linear-gradient(160deg, rgba(253, 244, 238, 0.98), rgba(248, 231, 223, 0.96));
+  color: #7a3c2f;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0.42rem 0.9rem;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.bird-remove-chip:hover,
+.bird-remove-chip:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(145, 72, 51, 0.42);
+  box-shadow: 0 10px 18px rgba(122, 60, 47, 0.16);
+  outline: none;
+}
+
+.bird-remove-chip:disabled {
+  opacity: 0.68;
+  cursor: not-allowed;
+}
+
 .bird-master-grid {
   margin-top: 0.25rem;
 }
