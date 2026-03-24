@@ -1584,6 +1584,45 @@ body[data-page="grandparents-birds-stats"] .site-header {
   gap: 0.7rem;
 }
 
+.bird-dual-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.bird-dual-section-grid-tight {
+  gap: 0.75rem;
+}
+
+.bird-subsection {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(136, 109, 76, 0.14);
+  background: rgba(255, 249, 239, 0.56);
+}
+
+.bird-subsection-topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.bird-subsection-topline h4 {
+  margin: 0;
+  color: #3f3125;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1rem;
+}
+
+.bird-subsection-note {
+  margin: 0;
+  color: #6e614f;
+}
+
 .bird-story-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -3258,7 +3297,8 @@ select:focus-visible {
   .bird-summary-grid,
   .bird-story-grid,
   .bird-chart-grid,
-  .bird-species-grid {
+  .bird-species-grid,
+  .bird-dual-section-grid {
     grid-template-columns: 1fr;
   }
 

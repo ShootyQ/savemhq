@@ -107,9 +107,26 @@
                   <p class="bird-shelf-label">Porch Regulars</p>
                   <h3>Birds That Keep Coming Back</h3>
                 </div>
-                <span id="bird-regulars-pill" class="bird-chip">0 birds</span>
+                <span id="bird-regulars-pill" class="bird-chip">0 monthly | 0 daily</span>
               </div>
-              <div id="bird-regulars-list" class="bird-story-list" aria-live="polite"></div>
+              <div class="bird-dual-section-grid" aria-live="polite">
+                <section class="bird-subsection">
+                  <div class="bird-subsection-topline">
+                    <h4>Monthly Regulars</h4>
+                    <span id="bird-monthly-regulars-pill" class="bird-chip bird-chip-soft">0 birds</span>
+                  </div>
+                  <p class="small-note bird-subsection-note">Birds that show up across the most separate months.</p>
+                  <div id="bird-monthly-regulars-list" class="bird-story-list"></div>
+                </section>
+                <section class="bird-subsection">
+                  <div class="bird-subsection-topline">
+                    <h4>Daily Regulars</h4>
+                    <span id="bird-daily-regulars-pill" class="bird-chip bird-chip-soft">0 birds</span>
+                  </div>
+                  <p class="small-note bird-subsection-note">Birds that keep appearing on separate logged days.</p>
+                  <div id="bird-daily-regulars-list" class="bird-story-list"></div>
+                </section>
+              </div>
             </article>
 
             <article class="bird-story-panel">
@@ -178,10 +195,25 @@
                   <p class="bird-shelf-label">Trend Strip</p>
                   <h3>Porch Rhythm Over Time</h3>
                 </div>
-                <span id="bird-trend-pill" class="bird-chip bird-chip-outline">Waiting</span>
+                <span id="bird-trend-pill" class="bird-chip bird-chip-outline">0 months | 0 days</span>
               </div>
-              <p class="section-intro">A small line view showing how the month totals rise and fall over the year.</p>
-              <div id="bird-trend-strip" class="bird-sparkline-shell" aria-live="polite"></div>
+              <p class="section-intro">The porch story now shows both the month rhythm and the day-by-day rhythm in the same panel.</p>
+              <div class="bird-dual-section-grid bird-dual-section-grid-tight" aria-live="polite">
+                <section class="bird-subsection">
+                  <div class="bird-subsection-topline">
+                    <h4>Monthly Rhythm</h4>
+                    <span id="bird-month-trend-pill" class="bird-chip bird-chip-soft">Waiting</span>
+                  </div>
+                  <div id="bird-trend-strip" class="bird-sparkline-shell"></div>
+                </section>
+                <section class="bird-subsection">
+                  <div class="bird-subsection-topline">
+                    <h4>Daily Rhythm</h4>
+                    <span id="bird-day-trend-pill" class="bird-chip bird-chip-soft">Waiting</span>
+                  </div>
+                  <div id="bird-day-trend-strip" class="bird-sparkline-shell"></div>
+                </section>
+              </div>
             </article>
           </div>
 
@@ -312,6 +344,8 @@
       const listCountPill = document.getElementById("bird-list-count-pill");
       const latestMonthPill = document.getElementById("bird-latest-month-pill");
       const regularsPill = document.getElementById("bird-regulars-pill");
+      const monthlyRegularsPill = document.getElementById("bird-monthly-regulars-pill");
+      const dailyRegularsPill = document.getElementById("bird-daily-regulars-pill");
       const rarePill = document.getElementById("bird-rare-pill");
       const unseenPill = document.getElementById("bird-unseen-pill");
       const trendPill = document.getElementById("bird-trend-pill");
@@ -320,7 +354,8 @@
       const summaryGrid = document.getElementById("bird-summary-grid");
       const storyCopy = document.getElementById("bird-story-copy");
       const storyHighlights = document.getElementById("bird-story-highlights");
-      const regularsList = document.getElementById("bird-regulars-list");
+      const monthlyRegularsList = document.getElementById("bird-monthly-regulars-list");
+      const dailyRegularsList = document.getElementById("bird-daily-regulars-list");
       const rareList = document.getElementById("bird-rare-list");
       const unseenList = document.getElementById("bird-unseen-list");
       const monthChart = document.getElementById("bird-month-chart");
@@ -328,6 +363,9 @@
       const topDailyBirdsPill = document.getElementById("bird-top-daily-birds-pill");
       const topDailyBirdsChart = document.getElementById("bird-top-daily-birds-chart");
       const trendStrip = document.getElementById("bird-trend-strip");
+      const monthTrendPill = document.getElementById("bird-month-trend-pill");
+      const dayTrendPill = document.getElementById("bird-day-trend-pill");
+      const dayTrendStrip = document.getElementById("bird-day-trend-strip");
       const speciesGrid = document.getElementById("bird-species-grid");
       const historyGrid = document.getElementById("bird-history-grid");
 
@@ -527,10 +565,19 @@
         }));
         const activeDays = activeDaysAscending();
         const dailyBirdRecords = buildDailyBirdRecords();
+        const dayCounts = activeDays.map((day) => ({
+          id: String(day.dateKey || day.dayId || "").trim(),
+          label: String(day.label || day.dateKey || day.dayId || "Day").trim(),
+          count: dayBirdCount(day),
+        }));
         const topDependableBirds = loggedBirdRecords.length
           ? loggedBirdRecords.filter((record) => record.monthsSeenCount === Math.max(...loggedBirdRecords.map((entry) => entry.monthsSeenCount)))
             .sort((left, right) => left.name.localeCompare(right.name))
           : [];
+        const dailyRegularThreshold = Math.max(2, Math.ceil(Math.max(activeDays.length, 1) / 4));
+        const dailyPorchRegulars = [...dailyBirdRecords]
+          .filter((record) => record.dailySeenCount >= dailyRegularThreshold)
+          .sort((left, right) => (right.dailySeenCount - left.dailySeenCount) || left.name.localeCompare(right.name));
         const busiestDay = [...activeDays].sort((left, right) => dayBirdCount(right) - dayBirdCount(left) || String(right.dateKey || right.dayId || "").localeCompare(String(left.dateKey || left.dayId || "")))[0] || null;
         const latestDay = [...activeDays].reverse()[0] || null;
         const averageBirdsPerDay = activeDays.length
@@ -568,9 +615,12 @@
           porchRegulars,
           rareVisitors,
           topDependableBirds,
+          dailyRegularThreshold,
+          dailyPorchRegulars,
           newestBird,
           latestNewBirds,
           monthCounts,
+          dayCounts,
           activeDays,
           busiestDay,
           latestDay,
@@ -721,7 +771,9 @@
       const renderStoryModules = (aggregates) => {
         const latestMonthLabel = aggregates.latestMonth ? monthLabelValue(aggregates.latestMonth) : "Waiting";
         latestMonthPill.textContent = latestMonthLabel;
-        regularsPill.textContent = `${aggregates.porchRegulars.length} bird${aggregates.porchRegulars.length === 1 ? "" : "s"}`;
+        regularsPill.textContent = `${aggregates.porchRegulars.length} monthly | ${aggregates.dailyPorchRegulars.length} daily`;
+        monthlyRegularsPill.textContent = `${aggregates.porchRegulars.length} bird${aggregates.porchRegulars.length === 1 ? "" : "s"}`;
+        dailyRegularsPill.textContent = `${aggregates.dailyPorchRegulars.length} bird${aggregates.dailyPorchRegulars.length === 1 ? "" : "s"}`;
         rarePill.textContent = `${aggregates.rareVisitors.length} bird${aggregates.rareVisitors.length === 1 ? "" : "s"}`;
         unseenPill.textContent = `${aggregates.unseenBirdRecords.length} bird${aggregates.unseenBirdRecords.length === 1 ? "" : "s"}`;
 
@@ -759,10 +811,16 @@
           `).join("");
         };
 
-        regularsList.innerHTML = listMarkup(
+        monthlyRegularsList.innerHTML = listMarkup(
           aggregates.porchRegulars.slice(0, 5),
           "Once a few months are logged, the regular birds will rise to the top here.",
           (item) => `Seen in ${item.monthsSeenCount} months. Last seen ${item.lastMonthLabel}.`
+        );
+
+        dailyRegularsList.innerHTML = listMarkup(
+          aggregates.dailyPorchRegulars.slice(0, 5),
+          "Once enough day logs build up, the daily regular birds will rise to the top here.",
+          (item) => `Seen on ${item.dailySeenCount} logged days. Last seen ${item.lastDayLabel}.`
         );
 
         rareList.innerHTML = listMarkup(
@@ -800,40 +858,69 @@
         }).join("");
       };
 
-      const renderTrendStrip = (aggregates) => {
-        if (aggregates.monthCounts.length < 2) {
-          trendPill.textContent = "Waiting";
-          trendStrip.innerHTML = '<p class="small-note bird-empty-state">The trend strip needs at least two active months to draw a line.</p>';
+      const renderSparklineMarkup = ({
+        container,
+        pill,
+        pointsSource = [],
+        emptyText,
+        ariaLabel,
+        countLabel,
+      }) => {
+        if (pointsSource.length < 2) {
+          pill.textContent = "Waiting";
+          container.innerHTML = `<p class="small-note bird-empty-state">${escapeHtml(emptyText)}</p>`;
           return;
         }
 
         const width = 340;
         const height = 120;
         const padding = 18;
-        const maxCount = Math.max(...aggregates.monthCounts.map((month) => month.count), 1);
-        const xStep = aggregates.monthCounts.length === 1 ? 0 : (width - (padding * 2)) / (aggregates.monthCounts.length - 1);
-        const points = aggregates.monthCounts.map((month, index) => {
+        const maxCount = Math.max(...pointsSource.map((entry) => entry.count), 1);
+        const xStep = pointsSource.length === 1 ? 0 : (width - (padding * 2)) / (pointsSource.length - 1);
+        const points = pointsSource.map((entry, index) => {
           const x = padding + (index * xStep);
-          const y = height - padding - (((month.count || 0) / maxCount) * (height - (padding * 2)));
-          return { ...month, x, y };
+          const y = height - padding - (((entry.count || 0) / maxCount) * (height - (padding * 2)));
+          return { ...entry, x, y };
         });
         const polylinePoints = points.map((point) => `${point.x},${point.y}`).join(" ");
         const areaPoints = `${padding},${height - padding} ${polylinePoints} ${width - padding},${height - padding}`;
-        trendPill.textContent = `${aggregates.monthCounts.length} months`;
-        trendStrip.innerHTML = `
+        pill.textContent = `${pointsSource.length} ${countLabel}`;
+        container.innerHTML = `
           <div class="bird-sparkline-wrap">
-            <svg class="bird-sparkline-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Bird activity trend over time">
+            <svg class="bird-sparkline-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(ariaLabel)}">
               <polygon class="bird-sparkline-area" points="${areaPoints}"></polygon>
               <polyline class="bird-sparkline-line" points="${polylinePoints}"></polyline>
               ${points.map((point) => `<circle class="bird-sparkline-dot" cx="${point.x}" cy="${point.y}" r="3"></circle>`).join("")}
             </svg>
             <div class="bird-sparkline-meta">
-              <span class="small-note">Start: ${escapeHtml(aggregates.monthCounts[0].label)}</span>
-              <span class="small-note">End: ${escapeHtml(aggregates.monthCounts[aggregates.monthCounts.length - 1].label)}</span>
+              <span class="small-note">Start: ${escapeHtml(pointsSource[0].label)}</span>
+              <span class="small-note">End: ${escapeHtml(pointsSource[pointsSource.length - 1].label)}</span>
               <span class="small-note">Peak: ${maxCount} birds</span>
             </div>
           </div>
         `;
+      };
+
+      const renderTrendStrip = (aggregates) => {
+        trendPill.textContent = `${aggregates.monthCounts.length} months | ${aggregates.dayCounts.length} days`;
+
+        renderSparklineMarkup({
+          container: trendStrip,
+          pill: monthTrendPill,
+          pointsSource: aggregates.monthCounts,
+          emptyText: "The monthly rhythm needs at least two active months to draw a line.",
+          ariaLabel: "Monthly bird activity trend over time",
+          countLabel: "months",
+        });
+
+        renderSparklineMarkup({
+          container: dayTrendStrip,
+          pill: dayTrendPill,
+          pointsSource: aggregates.dayCounts.slice(-21),
+          emptyText: "The daily rhythm needs at least two logged days to draw a line.",
+          ariaLabel: "Daily bird activity trend over time",
+          countLabel: "days",
+        });
       };
 
       const renderCharts = (aggregates) => {
