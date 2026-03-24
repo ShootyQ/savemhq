@@ -28,7 +28,6 @@
                 Keep the main bird page focused on typing and logging. Come here when you want to see who shows up the most, which months were busiest, and how the porch bird story has changed over time.
               </p>
               <nav class="bird-page-nav" aria-label="Bird stats sections">
-                label: `Most dependable bird${aggregates.topDependableBirds.length > 1 ? "s" : ""}`,
                 <a class="bird-nav-pill" href="#bird-stats-controls">Organize View</a>
                 <a class="bird-nav-pill" href="#bird-stats-birds">Birds</a>
                 <a class="bird-nav-pill" href="#bird-stats-history">Months</a>
@@ -159,6 +158,18 @@
               </div>
               <p class="section-intro">These are the birds that show up in the most separate months.</p>
               <div id="bird-top-birds-chart" class="bird-bar-chart" aria-live="polite"></div>
+            </article>
+
+            <article class="bird-chart-panel">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Daily Bird Chart</p>
+                  <h3>Top Daily Birds</h3>
+                </div>
+                <span id="bird-top-daily-birds-pill" class="bird-chip bird-chip-soft">Days seen</span>
+              </div>
+              <p class="section-intro">These are the birds that show up on the most separate logged days.</p>
+              <div id="bird-top-daily-birds-chart" class="bird-bar-chart" aria-live="polite"></div>
             </article>
 
             <article class="bird-chart-panel">
@@ -314,6 +325,8 @@
       const unseenList = document.getElementById("bird-unseen-list");
       const monthChart = document.getElementById("bird-month-chart");
       const topBirdsChart = document.getElementById("bird-top-birds-chart");
+      const topDailyBirdsPill = document.getElementById("bird-top-daily-birds-pill");
+      const topDailyBirdsChart = document.getElementById("bird-top-daily-birds-chart");
       const trendStrip = document.getElementById("bird-trend-strip");
       const speciesGrid = document.getElementById("bird-species-grid");
       const historyGrid = document.getElementById("bird-history-grid");
@@ -840,6 +853,20 @@
           "count",
           "Top bird bars will appear once birds are logged."
         );
+
+        renderBarChart(
+          topDailyBirdsChart,
+          [...aggregates.dailyBirdRecords]
+            .sort((left, right) => (right.dailySeenCount - left.dailySeenCount) || left.name.localeCompare(right.name))
+            .slice(0, 8)
+            .map((record) => ({ label: record.name, count: record.dailySeenCount })),
+          "count",
+          "Daily bird bars will appear once multiple day logs are saved."
+        );
+
+        topDailyBirdsPill.textContent = aggregates.dailyBirdRecords.length
+          ? `${aggregates.dailyBirdRecords.length} birds logged daily`
+          : "Days seen";
 
         renderBarChart(
           dayChart,
