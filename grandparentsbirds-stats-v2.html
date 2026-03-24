@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grandparents Bird Stats V2 | SavemHQ</title>
+    <meta
+      name="description"
+      content="A reimagined grandparents bird stats dashboard with monthly and daily bird story lanes tuned for phones and laptops."
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      :root {
+        --v2-card: rgba(255, 252, 246, 0.96);
+        --v2-border: rgba(134, 112, 82, 0.2);
+        --v2-text: #3f3125;
+        --v2-muted: #6d5d4c;
+      }
+
+      body[data-page="grandparents-birds-stats-v2"] {
+        background:
+          radial-gradient(66rem 24rem at -10% -6%, rgba(208, 229, 209, 0.72) 0%, transparent 72%),
+          radial-gradient(54rem 22rem at 108% 0%, rgba(248, 223, 188, 0.72) 0%, transparent 68%),
+          linear-gradient(180deg, #f3f8ef 0%, #f4ecdf 56%, #efe4d2 100%);
+      }
+
+      body[data-page="grandparents-birds-stats-v2"] .site-header {
+        background: rgba(248, 242, 231, 0.92);
+        border-bottom-color: rgba(126, 105, 76, 0.22);
+        box-shadow: 0 12px 30px rgba(92, 69, 40, 0.12);
+      }
+
+      .v2-shell {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .v2-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
+        gap: 1rem;
+      }
+
+      .v2-card,
+      .v2-title,
+      .v2-kpis {
+        border: 1px solid var(--v2-border);
+        border-radius: 1.2rem;
+        box-shadow: 0 16px 26px rgba(99, 72, 40, 0.08);
+      }
+
+      .v2-title,
+      .v2-card {
+        padding: 1rem;
+        display: grid;
+        gap: 0.72rem;
+        background:
+          radial-gradient(120% 120% at 100% 0%, rgba(198, 218, 170, 0.16), transparent 44%),
+          linear-gradient(180deg, rgba(255, 251, 244, 0.97), rgba(244, 236, 221, 0.95));
+      }
+
+      .v2-kicker {
+        width: fit-content;
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid rgba(138, 116, 83, 0.22);
+        border-radius: 999px;
+        padding: 0.2rem 0.62rem;
+        font-size: 0.74rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #6f5638;
+        background: rgba(255, 250, 241, 0.84);
+      }
+
+      .v2-muted {
+        color: var(--v2-muted);
+      }
+
+      .v2-mode,
+      .v2-tab {
+        display: grid;
+        gap: 0.3rem;
+        padding: 0.3rem;
+        border: 1px solid rgba(131, 111, 83, 0.2);
+        border-radius: 999px;
+        background: rgba(255, 251, 244, 0.9);
+      }
+
+      .v2-mode {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .v2-tab {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .v2-mode button,
+      .v2-tab button {
+        border: 0;
+        border-radius: 999px;
+        font: inherit;
+        font-size: 0.77rem;
+        font-weight: 800;
+        color: #5d4a37;
+        background: transparent;
+        padding: 0.44rem 0.62rem;
+        cursor: pointer;
+      }
+
+      .v2-mode button[aria-pressed="true"],
+      .v2-tab button[aria-pressed="true"] {
+        background: linear-gradient(135deg, #f1ddba, #f8efe0);
+        color: #4f371d;
+      }
+
+      .v2-kpis {
+        background:
+          radial-gradient(112% 110% at 100% 0%, rgba(201, 223, 180, 0.3), transparent 38%),
+          linear-gradient(165deg, rgba(86, 108, 67, 0.97), rgba(62, 81, 47, 0.98));
+        color: #f9f1e0;
+        padding: 0.92rem;
+        display: grid;
+        gap: 0.62rem;
+      }
+
+      .v2-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.52rem;
+      }
+
+      .v2-kpi {
+        border: 1px solid rgba(244, 231, 203, 0.18);
+        border-radius: 0.84rem;
+        background: rgba(248, 238, 222, 0.12);
+        padding: 0.6rem 0.66rem;
+        display: grid;
+        gap: 0.2rem;
+      }
+
+      .v2-kpi span {
+        color: rgba(248, 239, 222, 0.85);
+        font-size: 0.74rem;
+      }
+
+      .v2-kpi strong {
+        color: #fff5df;
+        font-family: "Fraunces", Georgia, serif;
+        font-size: clamp(1.05rem, 2.7vw, 1.38rem);
+        line-height: 1.08;
+      }
+
+      .v2-topline {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 0.52rem;
+      }
+
+      .v2-chip,
+      .v2-pill {
+        border: 1px solid rgba(136, 109, 76, 0.18);
+        border-radius: 999px;
+        font-weight: 800;
+      }
+
+      .v2-chip {
+        padding: 0.3rem 0.66rem;
+        font-size: 0.76rem;
+        background: rgba(255, 250, 241, 0.9);
+        color: #5f4932;
+      }
+      .v2-lanes {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .v2-lane,
+      .v2-subgrid,
+      .v2-list,
+      .v2-bars,
+      .v2-grid,
+      .v2-shared {
+        display: grid;
+      }
+
+      .v2-lane {
+        gap: 0.8rem;
+      }
+
+      .v2-subgrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.72rem;
+      }
+
+      .v2-list,
+      .v2-bars,
+      .v2-grid {
+        gap: 0.56rem;
+      }
+
+      .v2-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.62rem;
+        align-items: center;
+        border: 1px solid rgba(136, 109, 76, 0.15);
+        border-radius: 0.92rem;
+        background: rgba(255, 250, 241, 0.76);
+        padding: 0.62rem 0.68rem;
+      }
+
+      .v2-rank {
+        width: 1.8rem;
+        height: 1.8rem;
+        border-radius: 999px;
+        display: inline-grid;
+        place-items: center;
+        font-family: "Fraunces", Georgia, serif;
+        font-weight: 700;
+        color: #614123;
+        background: linear-gradient(145deg, rgba(233, 210, 167, 0.95), rgba(244, 234, 214, 0.96));
+      }
+
+      .v2-main {
+        min-width: 0;
+        display: grid;
+        gap: 0.08rem;
+      }
+
+      .v2-main strong {
+        color: var(--v2-text);
+        line-height: 1.28;
+      }
+
+      .v2-main span,
+      .v2-note,
+      .v2-empty,
+      .v2-bird span {
+        color: var(--v2-muted);
+        font-size: 0.8rem;
+      }
+
+      .v2-value {
+        color: #554332;
+        font-size: 0.84rem;
+        font-weight: 800;
+      }
+
+      .v2-bar-row {
+        display: grid;
+        grid-template-columns: minmax(0, 7rem) minmax(0, 1fr) auto;
+        gap: 0.56rem;
+        align-items: center;
+      }
+
+      .v2-bar-row span {
+        color: #564534;
+        font-size: 0.79rem;
+        font-weight: 700;
+      }
+
+      .v2-track {
+        position: relative;
+        overflow: hidden;
+        min-height: 0.8rem;
+        border-radius: 999px;
+        background: rgba(224, 209, 187, 0.72);
+      }
+
+      .v2-fill {
+        width: var(--fill, 8%);
+        height: 100%;
+        display: block;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #628151, #b58f58 74%, #dec598);
+        transform-origin: left center;
+        animation: v2-grow 650ms var(--ease) both;
+      }
+
+      @keyframes v2-grow {
+        from {
+          transform: scaleX(0.08);
+          opacity: 0.28;
+        }
+        to {
+          transform: scaleX(1);
+          opacity: 1;
+        }
+      }
+
+      .v2-cloud {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .v2-pill {
+        background: rgba(247, 242, 232, 0.95);
+        color: #57442f;
+        padding: 0.24rem 0.54rem;
+        font-size: 0.74rem;
+      }
+
+      .v2-link {
+        min-width: 7.4rem;
+      }
+
+      .v2-shared {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .v2-grid {
+        grid-template-columns: repeat(auto-fit, minmax(194px, 1fr));
+      }
+
+      .v2-bird {
+        border: 1px solid rgba(136, 109, 76, 0.16);
+        border-radius: 0.9rem;
+        background: rgba(255, 251, 243, 0.8);
+        padding: 0.66rem;
+        display: grid;
+        gap: 0.24rem;
+      }
+
+      .v2-bird strong {
+        color: var(--v2-text);
+      }
+
+      body[data-v2-mode="month"] .v2-day,
+      body[data-v2-mode="day"] .v2-month {
+        display: none;
+      }
+
+      body[data-v2-mode="month"] .v2-lanes,
+      body[data-v2-mode="day"] .v2-lanes {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      @media (max-width: 1220px) {
+        .v2-shared {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .v2-shared > :last-child {
+          grid-column: 1 / -1;
+        }
+      }
+
+      @media (max-width: 1040px) {
+        .v2-hero,
+        .v2-lanes,
+        .v2-shared {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .v2-kpi-grid,
+        .v2-subgrid,
+        .v2-grid,
+        .v2-mode {
+          grid-template-columns: 1fr;
+        }
+
+        .v2-topline {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .v2-bar-row {
+          grid-template-columns: 1fr;
+          gap: 0.3rem;
+        }
+
+        .v2-row {
+          grid-template-columns: auto minmax(0, 1fr);
+        }
+
+        .v2-value {
+          grid-column: 2;
+        }
+
+        .v2-link,
+        .v2-mode button,
+        .v2-tab button {
+          width: 100%;
+          text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body data-page="grandparents-birds-stats-v2" data-v2-mode="both">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="section">
+        <div class="container v2-shell">
+          <div class="v2-hero">
+            <article class="v2-title reveal-item">
+              <p class="v2-kicker">Porch Pulse V2</p>
+              <h1>Grandparents Bird Stats</h1>
+              <p class="v2-muted">A full redesign centered on the two lanes your family loves: month-by-month and day-by-day.</p>
+              <div class="v2-mode" aria-label="Choose stats view mode">
+                <button type="button" data-view-mode="both" aria-pressed="true">Both Lanes</button>
+                <button type="button" data-view-mode="month" aria-pressed="false">Month Focus</button>
+                <button type="button" data-view-mode="day" aria-pressed="false">Day Focus</button>
+              </div>
+              <p id="v2-status" class="small-note v2-muted">Loading bird stats...</p>
+            </article>
+
+            <aside class="v2-kpis reveal-item" aria-live="polite" aria-label="Bird snapshot">
+              <div class="v2-kpi-grid">
+                <div class="v2-kpi"><span>Known birds</span><strong id="v2-known">0</strong></div>
+                <div class="v2-kpi"><span>Birds logged</span><strong id="v2-logged">0</strong></div>
+                <div class="v2-kpi"><span>Tracked months</span><strong id="v2-months">0</strong></div>
+                <div class="v2-kpi"><span>Logged days</span><strong id="v2-days">0</strong></div>
+                <div class="v2-kpi"><span>Busiest month</span><strong id="v2-busiest-month">Waiting</strong></div>
+                <div class="v2-kpi"><span>Busiest day</span><strong id="v2-busiest-day">Waiting</strong></div>
+              </div>
+              <p id="v2-storyline" class="small-note">The porch timeline is getting ready...</p>
+            </aside>
+          </div>
+
+          <article class="v2-card reveal-item">
+            <div class="v2-topline">
+              <div>
+                <p class="v2-kicker">At A Glance</p>
+                <h2>What Changed Most Recently</h2>
+              </div>
+              <span id="v2-latest-chip" class="v2-chip">Latest month: Waiting</span>
+            </div>
+            <p id="v2-lede" class="v2-muted">Loading the latest porch update...</p>
+            <div id="v2-highlights" class="v2-list"></div>
+          </article>
+          <div class="v2-lanes">
+            <section class="v2-lane v2-month">
+              <article class="v2-card reveal-item">
+                <div class="v2-topline">
+                  <div><p class="v2-kicker">Month Lane</p><h3>Month-By-Month Story</h3></div>
+                  <span id="v2-month-chip" class="v2-chip">0 months</span>
+                </div>
+                <div id="v2-month-bars" class="v2-bars"></div>
+              </article>
+
+              <div class="v2-subgrid">
+                <article class="v2-card reveal-item">
+                  <div class="v2-topline">
+                    <div><p class="v2-kicker">Returning Birds</p><h4>Top Monthly Regulars</h4></div>
+                    <span id="v2-month-regular-chip" class="v2-chip">0 birds</span>
+                  </div>
+                  <div id="v2-top-month-birds" class="v2-list"></div>
+                </article>
+
+                <article class="v2-card reveal-item">
+                  <div class="v2-topline">
+                    <div><p class="v2-kicker">First-Timers</p><h4>New Birds By Month</h4></div>
+                    <span id="v2-month-new-chip" class="v2-chip">0 months</span>
+                  </div>
+                  <div id="v2-new-by-month" class="v2-list"></div>
+                </article>
+              </div>
+
+              <article class="v2-card reveal-item">
+                <div class="v2-topline">
+                  <div><p class="v2-kicker">Month Shelf</p><h4>Open Any Month In The Logbook</h4></div>
+                  <span id="v2-shelf-chip" class="v2-chip">0 cards</span>
+                </div>
+                <div id="v2-month-shelf" class="v2-list"></div>
+              </article>
+            </section>
+
+            <section class="v2-lane v2-day">
+              <article class="v2-card reveal-item">
+                <div class="v2-topline">
+                  <div><p class="v2-kicker">Day Lane</p><h3>Day-By-Day Rhythm</h3></div>
+                  <span id="v2-day-chip" class="v2-chip">0 days</span>
+                </div>
+                <div id="v2-day-bars" class="v2-bars"></div>
+              </article>
+
+              <div class="v2-subgrid">
+                <article class="v2-card reveal-item">
+                  <div class="v2-topline">
+                    <div><p class="v2-kicker">Daily Birds</p><h4>Top Daily Regulars</h4></div>
+                    <span id="v2-day-regular-chip" class="v2-chip">0 birds</span>
+                  </div>
+                  <div id="v2-top-day-birds" class="v2-list"></div>
+                </article>
+
+                <article class="v2-card reveal-item">
+                  <div class="v2-topline">
+                    <div><p class="v2-kicker">Best Watch Days</p><h4>Top Daily Check-Ins</h4></div>
+                    <span id="v2-top-days-chip" class="v2-chip">0 days</span>
+                  </div>
+                  <div id="v2-top-days" class="v2-list"></div>
+                </article>
+              </div>
+
+              <article class="v2-card reveal-item">
+                <div class="v2-topline">
+                  <div><p class="v2-kicker">Recent Rhythm</p><h4>Latest Logged Days</h4></div>
+                  <span id="v2-recent-chip" class="v2-chip">0 days</span>
+                </div>
+                <div id="v2-recent-days" class="v2-list"></div>
+              </article>
+            </section>
+          </div>
+
+          <div class="v2-shared">
+            <article class="v2-card reveal-item">
+              <div class="v2-topline">
+                <div><p class="v2-kicker">Reliable Birds</p><h3>Most Dependable Visitors</h3></div>
+                <div class="v2-tab">
+                  <button type="button" data-reliable-mode="month" aria-pressed="true">Monthly</button>
+                  <button type="button" data-reliable-mode="day" aria-pressed="false">Daily</button>
+                </div>
+              </div>
+              <div id="v2-reliable" class="v2-list"></div>
+            </article>
+
+            <article class="v2-card reveal-item">
+              <div class="v2-topline">
+                <div><p class="v2-kicker">Rare & Waiting</p><h3>Birds To Celebrate Next</h3></div>
+                <span id="v2-rare-chip" class="v2-chip">0 rare</span>
+              </div>
+              <p class="v2-note">Seen only once</p>
+              <div id="v2-rare-list" class="v2-cloud"></div>
+              <p class="v2-note">Known but not logged yet</p>
+              <div id="v2-unseen-list" class="v2-cloud"></div>
+            </article>
+
+            <article class="v2-card reveal-item">
+              <div class="v2-topline">
+                <div><p class="v2-kicker">Bird Library</p><h3>Month + Day Snapshot</h3></div>
+                <span id="v2-library-chip" class="v2-chip">0 birds</span>
+              </div>
+              <div id="v2-bird-grid" class="v2-grid"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Month arcs, daily rhythm, and one cleaner feeder story.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="grandparentsbirds.html">Bird Log</a></li>
+            <li><a href="grandparentsbirds-stats.html">Stats Classic</a></li>
+            <li><a href="grandparentsbirds-stats-v2.html">Stats V2</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+      import { subscribeToBirdDays, subscribeToBirdMonths, subscribeToBirdSpecies } from "./js/grandparents-birds-shared.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Bird Log", href: "grandparentsbirds.html" },
+          { label: "Stats Classic", href: "grandparentsbirds-stats.html" },
+          { label: "Stats V2", href: "grandparentsbirds-stats-v2.html" },
+        ],
+      });
+
+      const byId = (id) => document.getElementById(id);
+      const state = { species: [], months: [], daysByMonth: {}, viewMode: "both", reliableMode: "month" };
+      let dayUnsubs = [];
+
+      const els = {
+        status: byId("v2-status"), storyline: byId("v2-storyline"), lede: byId("v2-lede"), highlights: byId("v2-highlights"), latestChip: byId("v2-latest-chip"),
+        known: byId("v2-known"), logged: byId("v2-logged"), months: byId("v2-months"), days: byId("v2-days"), busiestMonth: byId("v2-busiest-month"), busiestDay: byId("v2-busiest-day"),
+        monthChip: byId("v2-month-chip"), monthRegularChip: byId("v2-month-regular-chip"), monthNewChip: byId("v2-month-new-chip"), shelfChip: byId("v2-shelf-chip"),
+        dayChip: byId("v2-day-chip"), dayRegularChip: byId("v2-day-regular-chip"), topDaysChip: byId("v2-top-days-chip"), recentChip: byId("v2-recent-chip"),
+        rareChip: byId("v2-rare-chip"), libraryChip: byId("v2-library-chip"),
+        monthBars: byId("v2-month-bars"), dayBars: byId("v2-day-bars"), topMonthBirds: byId("v2-top-month-birds"), newByMonth: byId("v2-new-by-month"), monthShelf: byId("v2-month-shelf"),
+        topDayBirds: byId("v2-top-day-birds"), topDays: byId("v2-top-days"), recentDays: byId("v2-recent-days"), reliable: byId("v2-reliable"),
+        rareList: byId("v2-rare-list"), unseenList: byId("v2-unseen-list"), birdGrid: byId("v2-bird-grid"),
+      };
+
+      const viewButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
+      const reliableButtons = Array.from(document.querySelectorAll("[data-reliable-mode]"));
+
+      const e = (value) => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;");
+
+      const monthId = (month) => String(month?.monthId || month?.id || "").trim();
+      const monthLabel = (month) => String(month?.label || monthId(month) || "Month").trim();
+      const monthIds = (month) => Array.isArray(month?.birdIds) ? month.birdIds.map((id) => String(id)) : [];
+      const monthNames = (month) => Array.isArray(month?.birdNames) ? month.birdNames.map((name) => String(name || "")) : [];
+      const monthCount = (month) => monthIds(month).length;
+
+      const dayId = (day) => String(day?.dateKey || day?.dayId || day?.id || "").trim();
+      const dayLabel = (day) => String(day?.label || dayId(day) || "Day").trim();
+      const dayIds = (day) => Array.isArray(day?.birdIds) ? day.birdIds.map((id) => String(id)) : [];
+      const dayNames = (day) => Array.isArray(day?.birdNames) ? day.birdNames.map((name) => String(name || "")) : [];
+      const dayCount = (day) => dayIds(day).length;
+
+      const fmt = (count, noun) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+      const activeMonths = () => [...state.months].filter((month) => monthCount(month) > 0).sort((a, b) => monthId(a).localeCompare(monthId(b)));
+      const activeDays = () => Object.values(state.daysByMonth).flat().filter((day) => dayCount(day) > 0).sort((a, b) => dayId(a).localeCompare(dayId(b)));
+      const buildBirdRecords = () => {
+        const bySpecies = new Map(state.species.map((bird) => [String(bird.slug || bird.id || "").trim(), bird]));
+        const usage = new Map();
+
+        activeMonths().forEach((month) => {
+          const mId = monthId(month);
+          const mLabel = monthLabel(month);
+          const ids = monthIds(month);
+          const names = monthNames(month);
+
+          ids.forEach((birdId, index) => {
+            if (!birdId) {
+              return;
+            }
+            const fallback = bySpecies.get(birdId);
+            const name = String(names[index] || fallback?.name || birdId).trim();
+            const existing = usage.get(birdId) || { id: birdId, name, monthsSeenCount: 0, firstMonthId: "", firstMonthLabel: "", lastMonthId: "", lastMonthLabel: "" };
+            existing.name = name || existing.name;
+            existing.monthsSeenCount += 1;
+            if (!existing.firstMonthId) {
+              existing.firstMonthId = mId;
+              existing.firstMonthLabel = mLabel;
+            }
+            existing.lastMonthId = mId;
+            existing.lastMonthLabel = mLabel;
+            usage.set(birdId, existing);
+          });
+        });
+
+        const seen = new Set();
+        const all = [];
+        state.species.forEach((bird) => {
+          const id = String(bird.slug || bird.id || "").trim();
+          if (!id) {
+            return;
+          }
+          seen.add(id);
+          const found = usage.get(id);
+          all.push({ id, name: String(bird.name || id).trim(), monthsSeenCount: found?.monthsSeenCount || 0, firstMonthId: found?.firstMonthId || "", firstMonthLabel: found?.firstMonthLabel || "Not logged yet", lastMonthId: found?.lastMonthId || "", lastMonthLabel: found?.lastMonthLabel || "Not logged yet" });
+        });
+
+        usage.forEach((record, id) => {
+          if (!seen.has(id)) {
+            all.push(record);
+          }
+        });
+        return all;
+      };
+
+      const buildDailyBirdRecords = () => {
+        const usage = new Map();
+        activeDays().forEach((day) => {
+          const dId = dayId(day);
+          const dLabel = dayLabel(day);
+          const ids = dayIds(day);
+          const names = dayNames(day);
+
+          ids.forEach((birdId, index) => {
+            if (!birdId) {
+              return;
+            }
+            const name = String(names[index] || birdId).trim();
+            const existing = usage.get(birdId) || { id: birdId, name, dailySeenCount: 0, firstDayId: "", firstDayLabel: "", lastDayId: "", lastDayLabel: "" };
+            existing.name = name || existing.name;
+            existing.dailySeenCount += 1;
+            if (!existing.firstDayId) {
+              existing.firstDayId = dId;
+              existing.firstDayLabel = dLabel;
+            }
+            existing.lastDayId = dId;
+            existing.lastDayLabel = dLabel;
+            usage.set(birdId, existing);
+          });
+        });
+        return [...usage.values()];
+      };
+
+      const aggregate = () => {
+        const birds = buildBirdRecords();
+        const dailyBirds = buildDailyBirdRecords();
+        const logged = birds.filter((record) => record.monthsSeenCount > 0);
+        const unseen = birds.filter((record) => record.monthsSeenCount === 0);
+        const monthsAsc = activeMonths();
+        const monthsDesc = [...monthsAsc].reverse();
+        const daysAsc = activeDays();
+        const daysDesc = [...daysAsc].reverse();
+
+        const monthCounts = monthsAsc.map((month) => ({ id: monthId(month), label: monthLabel(month), count: monthCount(month) }));
+        const dayCounts = daysAsc.map((day) => ({ id: dayId(day), label: dayLabel(day), count: dayCount(day) }));
+
+        const busiestMonth = [...monthsAsc].sort((a, b) => monthCount(b) - monthCount(a) || monthId(b).localeCompare(monthId(a)))[0] || null;
+        const busiestDay = [...daysAsc].sort((a, b) => dayCount(b) - dayCount(a) || dayId(b).localeCompare(dayId(a)))[0] || null;
+        const latestMonth = monthsAsc[monthsAsc.length - 1] || null;
+
+        const regularThreshold = Math.max(2, Math.ceil(Math.max(monthsAsc.length, 1) / 3));
+        const dailyThreshold = Math.max(2, Math.ceil(Math.max(daysAsc.length, 1) / 4));
+
+        const regularMonthBirds = [...logged].filter((record) => record.monthsSeenCount >= regularThreshold).sort((a, b) => (b.monthsSeenCount - a.monthsSeenCount) || a.name.localeCompare(b.name));
+        const regularDayBirds = [...dailyBirds].filter((record) => record.dailySeenCount >= dailyThreshold).sort((a, b) => (b.dailySeenCount - a.dailySeenCount) || a.name.localeCompare(b.name));
+
+        const rare = [...logged].filter((record) => record.monthsSeenCount === 1).sort((a, b) => a.firstMonthId.localeCompare(b.firstMonthId) || a.name.localeCompare(b.name));
+
+        const topMonthBirds = [...logged].sort((a, b) => (b.monthsSeenCount - a.monthsSeenCount) || a.name.localeCompare(b.name)).slice(0, 6);
+        const topDayBirds = [...dailyBirds].sort((a, b) => (b.dailySeenCount - a.dailySeenCount) || a.name.localeCompare(b.name)).slice(0, 6);
+
+        const topDays = [...daysAsc].sort((a, b) => dayCount(b) - dayCount(a) || dayId(b).localeCompare(dayId(a))).slice(0, 6).map((day) => ({ id: dayId(day), name: dayLabel(day), count: dayCount(day), last: String(day.lastLoggedBirdName || "").trim() }));
+
+        const recentDays = daysDesc.slice(0, 8).map((day) => ({ id: dayId(day), name: dayLabel(day), count: dayCount(day), last: String(day.lastLoggedBirdName || "").trim() }));
+
+        const firstSeen = new Map();
+        logged.forEach((record) => {
+          if (!record.firstMonthId) {
+            return;
+          }
+          firstSeen.set(record.firstMonthId, (firstSeen.get(record.firstMonthId) || 0) + 1);
+        });
+
+        const newByMonth = monthCounts.map((month) => ({ ...month, count: firstSeen.get(month.id) || 0, name: month.label })).sort((a, b) => b.count - a.count || b.id.localeCompare(a.id)).slice(0, 6);
+        const latestNew = latestMonth ? logged.filter((record) => record.firstMonthId === monthId(latestMonth)) : [];
+
+        const prevMonth = monthCounts.length > 1 ? monthCounts[monthCounts.length - 2].count : null;
+        const currMonth = monthCounts.length ? monthCounts[monthCounts.length - 1].count : null;
+        const monthMomentum = prevMonth != null && currMonth != null ? currMonth - prevMonth : null;
+
+        const avg = (items) => items.length ? (items.reduce((sum, item) => sum + item.count, 0) / items.length) : null;
+        const dayMomentum = dayCounts.length >= 14 ? Math.round((avg(dayCounts.slice(-7)) - avg(dayCounts.slice(-14, -7))) * 10) / 10 : null;
+
+        const avgMonth = monthCounts.length ? Math.round((monthCounts.reduce((sum, entry) => sum + entry.count, 0) / monthCounts.length) * 10) / 10 : 0;
+        const avgDay = dayCounts.length ? Math.round((dayCounts.reduce((sum, entry) => sum + entry.count, 0) / dayCounts.length) * 10) / 10 : 0;
+
+        return { birds, dailyBirds, logged, unseen, monthsAsc, monthsDesc, daysAsc, monthCounts, dayCounts, busiestMonth, busiestDay, latestMonth, latestNew, regularThreshold, dailyThreshold, regularMonthBirds, regularDayBirds, rare, topMonthBirds, topDayBirds, topDays, recentDays, firstSeen, newByMonth, monthMomentum, dayMomentum, avgMonth, avgDay };
+      };
+
+      const renderBars = (container, entries, emptyText) => {
+        if (!entries.length) {
+          container.innerHTML = `<p class="v2-empty">${e(emptyText)}</p>`;
+          return;
+        }
+        const max = Math.max(...entries.map((entry) => Number(entry.count || 0)), 1);
+        container.innerHTML = entries.map((entry) => {
+          const fill = `${Math.max(7, (Number(entry.count || 0) / max) * 100)}%`;
+          return `<div class="v2-bar-row"><span>${e(entry.label || entry.name || "Item")}</span><div class="v2-track"><span class="v2-fill" style="--fill:${fill};"></span></div><span>${Number(entry.count || 0)}</span></div>`;
+        }).join("");
+      };
+
+      const renderRows = (container, entries, emptyText, sub, value) => {
+        if (!entries.length) {
+          container.innerHTML = `<p class="v2-empty">${e(emptyText)}</p>`;
+          return;
+        }
+        container.innerHTML = entries.map((entry, index) => `<div class="v2-row"><span class="v2-rank">${index + 1}</span><div class="v2-main"><strong>${e(entry.name || entry.label || "Item")}</strong><span>${e(sub(entry))}</span></div><span class="v2-value">${e(value(entry))}</span></div>`).join("");
+      };
+
+      const renderCloud = (container, entries, emptyText) => {
+        if (!entries.length) {
+          container.innerHTML = `<p class="v2-empty">${e(emptyText)}</p>`;
+          return;
+        }
+        container.innerHTML = entries.map((entry) => `<span class="v2-pill">${e(entry)}</span>`).join("");
+      };
+      const render = () => {
+        const a = aggregate();
+        els.known.textContent = String(a.birds.length);
+        els.logged.textContent = String(a.logged.length);
+        els.months.textContent = String(a.monthsAsc.length);
+        els.days.textContent = String(a.daysAsc.length);
+        els.busiestMonth.textContent = a.busiestMonth ? monthLabel(a.busiestMonth) : "Waiting";
+        els.busiestDay.textContent = a.busiestDay ? dayLabel(a.busiestDay) : "Waiting";
+
+        if (!a.monthsAsc.length) {
+          els.storyline.textContent = "Once month logs start coming in, this dashboard will narrate both month and day rhythm.";
+          els.status.textContent = a.birds.length ? "Bird field guide loaded. Month and day logs are waiting for first entries." : "No bird species loaded yet.";
+          els.latestChip.textContent = "Latest month: Waiting";
+          els.lede.textContent = "No active month is logged yet. As soon as the first month is saved, this section will summarize what changed.";
+          els.highlights.innerHTML = "";
+        } else {
+          const monthLead = a.topMonthBirds[0]?.name || "Waiting";
+          const dayLead = a.topDayBirds[0]?.name || "Waiting";
+          els.storyline.textContent = `Monthly leader: ${monthLead}. Daily leader: ${dayLead}. Avg ${a.avgMonth} birds per month and ${a.avgDay} per logged day.`;
+          els.status.textContent = `Loaded ${fmt(a.logged.length, "logged bird")}, ${fmt(a.monthsAsc.length, "active month")}, and ${fmt(a.daysAsc.length, "logged day")}.`;
+
+          const latestLabel = monthLabel(a.latestMonth);
+          const latestCount = monthCount(a.latestMonth);
+          els.latestChip.textContent = `Latest month: ${latestLabel}`;
+
+          const monthMomentum = a.monthMomentum == null ? "Month momentum needs two months to compare." : a.monthMomentum === 0 ? "Month momentum is flat versus the prior month." : a.monthMomentum > 0 ? `Month momentum is up by ${a.monthMomentum} bird${a.monthMomentum === 1 ? "" : "s"}.` : `Month momentum is down by ${Math.abs(a.monthMomentum)} bird${Math.abs(a.monthMomentum) === 1 ? "" : "s"}.`;
+          const dayMomentum = a.dayMomentum == null ? "Day momentum needs two 7-day windows to compare." : a.dayMomentum === 0 ? "Day momentum is steady across the last two windows." : a.dayMomentum > 0 ? `Day momentum is up by ${a.dayMomentum} birds/day.` : `Day momentum is down by ${Math.abs(a.dayMomentum)} birds/day.`;
+          const latestNew = a.latestNew.length ? `${fmt(a.latestNew.length, "new bird")} arrived in ${latestLabel}.` : `No first-time birds arrived in ${latestLabel}.`;
+
+          els.lede.textContent = `${latestLabel} logged ${latestCount} unique birds. ${latestNew} ${monthMomentum}`;
+          const bullets = [`Month regular threshold: ${fmt(a.regularThreshold, "month")}.`, `Day regular threshold: ${fmt(a.dailyThreshold, "day")}.`, dayMomentum];
+          els.highlights.innerHTML = bullets.map((line, index) => `<div class="v2-row"><span class="v2-rank">${index + 1}</span><div class="v2-main"><strong>${e(line)}</strong></div><span></span></div>`).join("");
+        }
+
+        els.monthChip.textContent = fmt(a.monthsAsc.length, "month");
+        els.monthRegularChip.textContent = fmt(a.regularMonthBirds.length, "bird");
+        els.monthNewChip.textContent = fmt(a.newByMonth.filter((entry) => entry.count > 0).length, "month");
+        els.shelfChip.textContent = fmt(a.monthsDesc.length, "card");
+        renderBars(els.monthBars, a.monthCounts.slice(-10), "Month bars appear after the first active month.");
+        renderRows(els.topMonthBirds, a.topMonthBirds, "Monthly regulars appear after birds are logged across months.", (entry) => `Last seen ${entry.lastMonthLabel}.`, (entry) => `${entry.monthsSeenCount}m`);
+        renderRows(els.newByMonth, a.newByMonth.filter((entry) => entry.count > 0), "First-time bird months will appear here once arrivals are logged.", (entry) => entry.count === 1 ? "One first-time bird added." : `${entry.count} first-time birds added.`, (entry) => `${entry.count} new`);
+
+        if (!a.monthsDesc.length) {
+          els.monthShelf.innerHTML = '<p class="v2-empty">Month cards will appear once month logs exist.</p>';
+        } else {
+          els.monthShelf.innerHTML = a.monthsDesc.map((month) => {
+            const mId = monthId(month);
+            const birds = monthNames(month).slice(0, 8);
+            const newCount = a.firstSeen.get(mId) || 0;
+            return `<article class="v2-row"><span class="v2-rank">M</span><div class="v2-main"><strong>${e(monthLabel(month))}</strong><span>${monthCount(month)} unique birds • ${newCount} first-time ${newCount === 1 ? "arrival" : "arrivals"}</span><span>${birds.map((name) => e(name)).join(" • ")}${birds.length < monthNames(month).length ? ` • +${monthNames(month).length - birds.length} more` : ""}</span></div><a class="btn btn-secondary v2-link" href="grandparentsbirds.html?date=${e(`${mId}-01`)}#bird-logbook">Open</a></article>`;
+          }).join("");
+          refreshRevealMotion({ scope: els.monthShelf, selector: ".v2-row" });
+        }
+
+        els.dayChip.textContent = fmt(a.daysAsc.length, "day");
+        els.dayRegularChip.textContent = fmt(a.regularDayBirds.length, "bird");
+        els.topDaysChip.textContent = fmt(a.topDays.length, "day");
+        els.recentChip.textContent = fmt(a.recentDays.length, "day");
+        renderBars(els.dayBars, a.dayCounts.slice(-14), "Day bars appear after daily logs are saved.");
+        renderRows(els.topDayBirds, a.topDayBirds, "Daily regulars appear after multiple day logs.", (entry) => `Last seen ${entry.lastDayLabel}.`, (entry) => `${entry.dailySeenCount}d`);
+        renderRows(els.topDays, a.topDays, "Top watch days appear after daily check-ins are logged.", (entry) => entry.last ? `Last added ${entry.last}.` : "Logged bird day.", (entry) => `${entry.count} birds`);
+
+        if (!a.recentDays.length) {
+          els.recentDays.innerHTML = '<p class="v2-empty">Recent day cards appear after daily logs are saved.</p>';
+        } else {
+          els.recentDays.innerHTML = a.recentDays.map((entry) => `<article class="v2-row"><span class="v2-rank">D</span><div class="v2-main"><strong>${e(entry.name)}</strong><span>${entry.count} unique birds${entry.last ? ` • Last added ${e(entry.last)}` : ""}</span></div><a class="btn btn-secondary v2-link" href="grandparentsbirds.html?date=${e(entry.id)}#bird-logbook">Open</a></article>`).join("");
+          refreshRevealMotion({ scope: els.recentDays, selector: ".v2-row" });
+        }
+
+        const dependable = state.reliableMode === "month" ? a.regularMonthBirds : a.regularDayBirds;
+        renderRows(els.reliable, dependable.slice(0, 8), state.reliableMode === "month" ? "Monthly reliable birds will appear after enough months are logged." : "Daily reliable birds will appear after enough day logs are saved.", (entry) => state.reliableMode === "month" ? `Seen across ${entry.monthsSeenCount} months.` : `Seen across ${entry.dailySeenCount} logged days.`, (entry) => state.reliableMode === "month" ? `${entry.monthsSeenCount}m` : `${entry.dailySeenCount}d`);
+
+        els.rareChip.textContent = `${a.rare.length} rare • ${a.unseen.length} waiting`;
+        renderCloud(els.rareList, a.rare.slice(0, 12).map((entry) => `${entry.name} (${entry.firstMonthLabel})`), "No one-time visitors yet.");
+        renderCloud(els.unseenList, a.unseen.slice(0, 16).map((entry) => entry.name), "Every known bird has been logged at least once.");
+
+        const dailyById = new Map(a.dailyBirds.map((entry) => [entry.id, entry]));
+        const libraryRows = [...a.birds].sort((left, right) => {
+          const monthGap = right.monthsSeenCount - left.monthsSeenCount;
+          if (monthGap !== 0) {
+            return monthGap;
+          }
+          const dayGap = (dailyById.get(right.id)?.dailySeenCount || 0) - (dailyById.get(left.id)?.dailySeenCount || 0);
+          if (dayGap !== 0) {
+            return dayGap;
+          }
+          return left.name.localeCompare(right.name);
+        }).slice(0, 24);
+
+        els.libraryChip.textContent = fmt(libraryRows.length, "bird");
+        if (!libraryRows.length) {
+          els.birdGrid.innerHTML = '<p class="v2-empty">Bird cards will appear after species load.</p>';
+        } else {
+          els.birdGrid.innerHTML = libraryRows.map((entry) => {
+            const daily = dailyById.get(entry.id);
+            const daySeen = daily?.dailySeenCount || 0;
+            return `<article class="v2-bird"><strong>${e(entry.name)}</strong><span>${entry.monthsSeenCount} month${entry.monthsSeenCount === 1 ? "" : "s"} • ${daySeen} day${daySeen === 1 ? "" : "s"}</span><span>First: ${e(entry.firstMonthLabel)}</span><span>Latest: ${e(entry.lastMonthLabel)}</span></article>`;
+          }).join("");
+          refreshRevealMotion({ scope: els.birdGrid, selector: ".v2-bird" });
+        }
+      };
+
+      const syncDaySubs = () => {
+        dayUnsubs.forEach((fn) => fn?.());
+        dayUnsubs = [];
+        state.daysByMonth = {};
+
+        state.months.forEach((month) => {
+          const mId = monthId(month);
+          if (!mId) {
+            return;
+          }
+          const stop = subscribeToBirdDays(mId, {
+            onData: (days) => {
+              state.daysByMonth = { ...state.daysByMonth, [mId]: days };
+              render();
+            },
+            onError: (error) => {
+              console.error("Could not load bird day stats", error);
+              const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+              els.status.textContent = `Could not load daily bird stats (${details}).`;
+              state.daysByMonth = { ...state.daysByMonth, [mId]: [] };
+              render();
+            },
+          });
+          dayUnsubs.push(stop);
+        });
+
+        render();
+      };
+
+      const applyViewMode = () => {
+        document.body.dataset.v2Mode = state.viewMode;
+        viewButtons.forEach((button) => {
+          const active = button.dataset.viewMode === state.viewMode;
+          button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+      };
+
+      const applyReliableMode = () => {
+        reliableButtons.forEach((button) => {
+          const active = button.dataset.reliableMode === state.reliableMode;
+          button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+      };
+
+      viewButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const next = String(button.dataset.viewMode || "both");
+          if (!["both", "month", "day"].includes(next)) {
+            return;
+          }
+          state.viewMode = next;
+          applyViewMode();
+        });
+      });
+
+      reliableButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const next = String(button.dataset.reliableMode || "month");
+          if (!["month", "day"].includes(next)) {
+            return;
+          }
+          state.reliableMode = next;
+          applyReliableMode();
+          render();
+        });
+      });
+
+      initHeaderShell();
+      initRevealMotion({ selector: [".section", ".v2-hero > *", ".v2-shell > *", ".v2-lane > *", ".v2-shared > *"].join(", ") });
+
+      subscribeToBirdSpecies({
+        onData: (species) => {
+          state.species = species;
+          render();
+        },
+        onError: (error) => {
+          console.error("Could not load bird species", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          els.status.textContent = `Could not load bird species (${details}).`;
+          state.species = [];
+          render();
+        },
+      });
+
+      subscribeToBirdMonths({
+        onData: (months) => {
+          state.months = months;
+          syncDaySubs();
+          render();
+        },
+        onError: (error) => {
+          console.error("Could not load bird months", error);
+          const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+          els.status.textContent = `Could not load bird months (${details}).`;
+          state.months = [];
+          syncDaySubs();
+          render();
+        },
+      });
+
+      window.addEventListener("beforeunload", () => {
+        dayUnsubs.forEach((fn) => fn?.());
+      });
+
+      initHeaderAuth();
+      applyViewMode();
+      applyReliableMode();
+      render();
+    </script>
+  </body>
+</html>
