@@ -1533,9 +1533,31 @@ body[data-page="grandparents-birds-stats"] .site-header {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 }
 
-.bird-story-panel-wide,
-.bird-chart-panel-wide {
-  grid-column: span 2;
+body[data-page="grandparents-birds-stats"] .bird-story-grid,
+body[data-page="grandparents-birds-stats"] .bird-chart-grid {
+  align-items: start;
+}
+
+body[data-page="grandparents-birds-stats"] .bird-story-grid-featured {
+  grid-template-columns: minmax(0, 1.5fr) minmax(20rem, 1fr);
+}
+
+body[data-page="grandparents-birds-stats"] .bird-story-grid-supporting,
+body[data-page="grandparents-birds-stats"] .bird-chart-grid-supporting {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body[data-page="grandparents-birds-stats"] .bird-chart-grid-featured {
+  grid-template-columns: minmax(17rem, 0.95fr) minmax(0, 1.45fr);
+}
+
+body[data-page="grandparents-birds-stats"] .bird-story-grid-daily {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body[data-page="grandparents-birds-stats"] .bird-story-panel,
+body[data-page="grandparents-birds-stats"] .bird-chart-panel {
+  align-self: start;
 }
 
 .bird-species-grid {
@@ -1582,6 +1604,7 @@ body[data-page="grandparents-birds-stats"] .site-header {
 .bird-story-copy {
   margin: 0;
   color: #534433;
+  max-width: 60ch;
 }
 
 .bird-story-list {
@@ -1598,6 +1621,11 @@ body[data-page="grandparents-birds-stats"] .site-header {
 
 .bird-dual-section-grid-tight {
   gap: 0.75rem;
+}
+
+body[data-page="grandparents-birds-stats"] .bird-story-panel-compact,
+body[data-page="grandparents-birds-stats"] .bird-chart-panel-rhythm {
+  gap: 1rem;
 }
 
 .bird-subsection {
@@ -1628,7 +1656,7 @@ body[data-page="grandparents-birds-stats"] .site-header {
 .bird-subsection-note {
   margin: 0;
   color: #6e614f;
-  max-width: 34ch;
+  max-width: 30ch;
   line-height: 1.45;
 }
 
@@ -1670,6 +1698,7 @@ body[data-page="grandparents-birds-stats"] .site-header {
 
 .bird-story-row-copy strong {
   color: #3e3226;
+  line-height: 1.28;
 }
 
 .bird-bar-chart {
@@ -3318,11 +3347,6 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .bird-story-panel-wide,
-  .bird-chart-panel-wide {
-    grid-column: auto;
-  }
-
   .bird-bar-row {
     grid-template-columns: 1fr;
     gap: 0.45rem;
@@ -3458,6 +3482,25 @@ select:focus-visible {
   body[data-page="competition"] .month-states-wrap .state-pill {
     font-size: 0.8rem;
     padding: 0.31rem 0.64rem;
+  }
+}
+
+@media (max-width: 1100px) {
+  body[data-page="grandparents-birds-stats"] .bird-story-grid-featured,
+  body[data-page="grandparents-birds-stats"] .bird-chart-grid-featured {
+    grid-template-columns: 1fr;
+  }
+
+  body[data-page="grandparents-birds-stats"] .bird-story-grid-daily {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body[data-page="grandparents-birds-stats"] .bird-story-grid-daily > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  body[data-page="grandparents-birds-stats"] .bird-dual-section-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -3614,6 +3657,16 @@ select:focus-visible {
 
   #header-auth-status {
     max-width: 100%;
+  }
+
+  body[data-page="grandparents-birds-stats"] .bird-story-grid-supporting,
+  body[data-page="grandparents-birds-stats"] .bird-chart-grid-supporting,
+  body[data-page="grandparents-birds-stats"] .bird-story-grid-daily {
+    grid-template-columns: 1fr;
+  }
+
+  body[data-page="grandparents-birds-stats"] .bird-story-grid-daily > :first-child {
+    grid-column: auto;
   }
 }
 

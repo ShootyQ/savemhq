@@ -74,7 +74,7 @@
             </p>
           </div>
 
-          <section class="bird-summary-panel reveal-item" aria-labelledby="bird-story-heading">
+          <section id="bird-stats-controls" class="bird-summary-panel reveal-item" aria-labelledby="bird-story-heading">
             <div class="bird-card-topline">
               <div>
                 <p class="bird-shelf-label">Story Cards</p>
@@ -88,8 +88,8 @@
             <div id="bird-summary-grid" class="bird-summary-grid" aria-live="polite"></div>
           </section>
 
-          <div class="bird-story-grid reveal-item">
-            <article class="bird-story-panel bird-story-panel-wide">
+          <div class="bird-story-grid bird-story-grid-featured reveal-item">
+            <article class="bird-story-panel">
               <div class="bird-card-topline">
                 <div>
                   <p class="bird-shelf-label">Season Snapshot</p>
@@ -127,38 +127,40 @@
                   <div id="bird-daily-regulars-list" class="bird-story-list"></div>
                 </section>
               </div>
+
+              <article class="bird-story-panel bird-story-panel-compact">
+                <div class="bird-card-topline">
+                  <div>
+                    <p class="bird-shelf-label">Porch Regulars</p>
+                    <h3>Birds That Keep Coming Back</h3>
+                  </div>
+                  <span id="bird-regulars-pill" class="bird-chip">0 monthly | 0 daily</span>
+                </div>
+                <div class="bird-dual-section-grid" aria-live="polite">
+                  <section class="bird-subsection">
+                    <div class="bird-subsection-topline">
+                      <h4>Monthly Regulars</h4>
+                      <span id="bird-monthly-regulars-pill" class="bird-chip bird-chip-soft">0 birds</span>
+                    </div>
+                    <p class="small-note bird-subsection-note">Birds that show up across the most separate months.</p>
+                    <div id="bird-monthly-regulars-list" class="bird-story-list"></div>
+                  </section>
+                  <section class="bird-subsection">
+                    <div class="bird-subsection-topline">
+                      <h4>Daily Regulars</h4>
+                      <span id="bird-daily-regulars-pill" class="bird-chip bird-chip-soft">0 birds</span>
+                    </div>
+                    <p class="small-note bird-subsection-note">Birds that keep appearing on separate logged days.</p>
+                    <div id="bird-daily-regulars-list" class="bird-story-list"></div>
+                  </section>
+                </div>
+              </article>
+            </div>
             </article>
+            <div class="bird-story-grid bird-story-grid-supporting reveal-item">
 
             <article class="bird-story-panel">
               <div class="bird-card-topline">
-                <div>
-                  <p class="bird-shelf-label">Rare Visitors</p>
-                  <h3>Birds Seen Only Once</h3>
-                </div>
-                <span id="bird-rare-pill" class="bird-chip bird-chip-outline">0 birds</span>
-              </div>
-              <div id="bird-rare-list" class="bird-story-list" aria-live="polite"></div>
-            </article>
-
-            <article class="bird-story-panel">
-              <div class="bird-card-topline">
-                <div>
-                  <p class="bird-shelf-label">Still Waiting</p>
-                  <h3>Known But Not Logged Yet</h3>
-                </div>
-                <span id="bird-unseen-pill" class="bird-chip">0 birds</span>
-              </div>
-              <div id="bird-unseen-list" class="bird-chip-grid" aria-live="polite"></div>
-            </article>
-          </div>
-
-          <div class="bird-chart-grid reveal-item">
-            <article class="bird-chart-panel bird-chart-panel-wide">
-              <div class="bird-card-topline">
-                <div>
-                  <p class="bird-shelf-label">Month Chart</p>
-                  <h3>Bird Activity By Month</h3>
-                </div>
                 <span class="bird-chip bird-chip-soft">Recent shelf</span>
               </div>
               <p class="section-intro">A simple bar view of how many unique birds were logged each month.</p>
@@ -269,8 +271,8 @@
               <div id="bird-overall-grid" class="bird-overall-grid" aria-live="polite"></div>
             </aside>
 
-            <article id="bird-stats-birds" class="bird-master-panel reveal-item">
-              <div class="bird-card-topline">
+          <div class="bird-chart-grid bird-chart-grid-featured reveal-item">
+            <article class="bird-chart-panel">
                 <div>
                   <p class="bird-shelf-label">Bird Explorer</p>
                   <h3>Browse Bird Records</h3>
@@ -284,6 +286,35 @@
             </article>
           </div>
 
+            <article class="bird-chart-panel bird-chart-panel-rhythm">
+              <div class="bird-card-topline">
+                <div>
+                  <p class="bird-shelf-label">Trend Strip</p>
+                  <h3>Porch Rhythm Over Time</h3>
+                </div>
+                <span id="bird-trend-pill" class="bird-chip bird-chip-outline">0 months | 0 days</span>
+              </div>
+              <p class="section-intro">The porch story now shows both the month rhythm and the day-by-day rhythm in the same panel.</p>
+              <div class="bird-dual-section-grid bird-dual-section-grid-tight" aria-live="polite">
+                <section class="bird-subsection">
+                  <div class="bird-subsection-topline">
+                    <h4>Monthly Rhythm</h4>
+                    <span id="bird-month-trend-pill" class="bird-chip bird-chip-soft">Waiting</span>
+                  </div>
+                  <div id="bird-trend-strip" class="bird-sparkline-shell"></div>
+                </section>
+                <section class="bird-subsection">
+                  <div class="bird-subsection-topline">
+                    <h4>Daily Rhythm</h4>
+                    <span id="bird-day-trend-pill" class="bird-chip bird-chip-soft">Waiting</span>
+                  </div>
+                  <div id="bird-day-trend-strip" class="bird-sparkline-shell"></div>
+                </section>
+              </div>
+            </article>
+          </div>
+
+          <div class="bird-chart-grid bird-chart-grid-supporting reveal-item">
           <article id="bird-stats-history" class="bird-history-panel reveal-item">
             <div class="bird-card-topline">
               <div>
@@ -382,36 +413,9 @@
         months: [],
         daysByMonth: {},
       };
-
-      let unsubscribeDaySnapshots = [];
-
-      const escapeHtml = (value) => String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-
-      const monthIdValue = (month) => String(month?.monthId || month?.id || "").trim();
-      const monthLabelValue = (month) => String(month?.label || monthIdValue(month) || "Month").trim();
-      const monthBirdIds = (month) => Array.isArray(month?.birdIds) ? month.birdIds.map((birdId) => String(birdId)) : [];
-      const monthBirdNames = (month) => Array.isArray(month?.birdNames) ? month.birdNames : [];
-      const monthBirdCount = (month) => monthBirdIds(month).length;
-      const dayBirdIds = (day) => Array.isArray(day?.birdIds) ? day.birdIds.map((birdId) => String(birdId)) : [];
-      const dayBirdNames = (day) => Array.isArray(day?.birdNames) ? day.birdNames : [];
-      const dayBirdCount = (day) => dayBirdIds(day).length;
-      const sortMonthsAscending = (months) => [...months].sort((left, right) => monthIdValue(left).localeCompare(monthIdValue(right)));
-      const activeMonthsAscending = () => sortMonthsAscending(state.months).filter((month) => monthBirdCount(month) > 0);
-      const activeMonthsDescending = () => [...activeMonthsAscending()].reverse();
-      const activeDaysAscending = () => Object.values(state.daysByMonth)
-        .flat()
-        .filter((day) => dayBirdCount(day) > 0)
-        .sort((left, right) => String(left?.dateKey || left?.dayId || "").localeCompare(String(right?.dateKey || right?.dayId || "")));
-
-      const summarizeNames = (records, maxNames = 2) => {
         const names = records.map((record) => String(record?.name || "").trim()).filter(Boolean);
         if (names.length === 0) {
-          return "Waiting";
+          <div class="bird-story-grid bird-story-grid-daily reveal-item">
         }
         if (names.length === 1) {
           return names[0];
