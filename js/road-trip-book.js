@@ -51,6 +51,11 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 });
 
+const shortDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+});
+
 const escapeHtml = (value) =>
   String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -62,6 +67,22 @@ const escapeHtml = (value) =>
 const parseQueryBoolean = (value) => ["1", "true", "yes"].includes(String(value || "").trim().toLowerCase());
 
 const unique = (items) => items.filter((item, index) => items.indexOf(item) === index);
+
+const formatShortDate = (value) => (value instanceof Date && !Number.isNaN(value.getTime()) ? shortDateFormatter.format(value) : "Undated");
+
+const themeForMomentType = (eventType = "") => {
+  const normalized = String(eventType || "").trim().toLowerCase();
+
+  if (normalized === "kid-said") {
+    return "quote";
+  }
+
+  if (normalized === "song") {
+    return "song";
+  }
+
+  return "activity";
+};
 
 const normalizeRoadTripEvent = (eventDoc) => {
   const data = eventDoc.data();
@@ -84,12 +105,14 @@ const normalizeRoadTripEvent = (eventDoc) => {
     sortTime: createdAt?.getTime?.() || 0,
     createdAt,
     kind: "moment",
+    theme: themeForMomentType(data.eventType),
     kicker: eventMeta.label,
     title: subjectMeta.label || eventMeta.label,
     subtitle: String(data.personLabel || "").trim(),
     caption: String(data.content || "").trim(),
     meta: unique(metaParts),
     photos: normalizedPhotoUrls.slice(0, 3),
+    dateOnlyLabel: formatShortDate(createdAt),
     pageLabel: createdAt ? dateTimeFormatter.format(createdAt) : "Undated",
   };
 };
@@ -109,12 +132,14 @@ const normalizePhotoProofEntry = (entryDoc) => {
     sortTime: createdAt?.getTime?.() || 0,
     createdAt,
     kind: "photo-proof",
+    theme: "photo-proof",
     kicker,
     title,
     subtitle,
     caption: caption || "Challenge upload",
     meta: unique(meta),
     photos: [String(data.photoUrl || "").trim()].filter(Boolean),
+    dateOnlyLabel: formatShortDate(createdAt),
     pageLabel: createdAt ? dateTimeFormatter.format(createdAt) : "Undated",
   };
 };
@@ -133,21 +158,91 @@ const formatDate = (value) => (value instanceof Date && !Number.isNaN(value.getT
 
 const collectHeroPhoto = (items) => items.find((item) => item.photos.length)?.photos[0] || "";
 
+const collectCoverPhotos = (items, count = 3) => unique(
+  items.flatMap((item) => item.photos || []).filter(Boolean)
+).slice(0, count);
+
+const pickCoverQuote = (items) => items.find((item) => item.caption && item.caption.length >= 18)?.caption || "The good stuff was already in the timeline. This just gives it a proper home.";
+
+const pageVariantForIndex = (pageIndex, itemsPerPage) => {
+  const dense = itemsPerPage >= 12;
+
+  if (dense) {
+    return ["variant-journal", "variant-film", "variant-feature"][pageIndex % 3];
+  }
+
+  return ["variant-feature", "variant-journal", "variant-film", "variant-mosaic"][pageIndex % 4];
+};
+
+const summarizePageItems = (pageItems) => {
+  const counts = pageItems.reduce((accumulator, item) => {
+    const key = String(item.kicker || "Moment").trim();
+    accumulator.set(key, (accumulator.get(key) || 0) + 1);
+    return accumulator;
+  }, new Map());
+
+  const topLabels = [...counts.entries()]
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 2)
+    .map(([label]) => label);
+
+  return topLabels.length ? `${topLabels.join(" + ")} in sequence` : "Chronological trip moments";
+};
+
+const pageDateRangeLabel = (pageItems) => {
+  const start = pageItems[0]?.createdAt || null;
+  const end = pageItems[pageItems.length - 1]?.createdAt || null;
+
+  if (!start && !end) {
+    return "Undated";
+  }
+
+  if (formatShortDate(start) === formatShortDate(end)) {
+    return formatShortDate(start);
+  }
+
+  return `${formatShortDate(start)} -> ${formatShortDate(end)}`;
+};
+
+const pageTitleForItems = (pageItems) => {
+  const featuredItem = pageItems.find((item) => item.photos.length) || pageItems[0];
+  return featuredItem ? featuredItem.title : "Road Trip Timeline";
+};
+
+const pageDekForItems = (pageItems) => {
+  const featuredItem = pageItems.find((item) => item.caption) || pageItems[0];
+  return featuredItem ? featuredItem.caption : "Snapshots, one-liners, and stop-by-stop moments from the road.";
+};
+
+const pageToneForItems = (pageItems) => {
+  const counts = pageItems.reduce((accumulator, item) => {
+    const key = String(item.theme || "activity");
+    accumulator.set(key, (accumulator.get(key) || 0) + 1);
+    return accumulator;
+  }, new Map());
+
+  return [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] || "activity";
+};
+
 const createCoverPage = ({ bookTitle, items, itemsPerPage }) => {
   const firstDate = items[0]?.createdAt || null;
   const lastDate = items[items.length - 1]?.createdAt || null;
   const photoCount = items.reduce((total, item) => total + item.photos.length, 0);
   const pageEstimate = Math.max(1, Math.ceil(items.length / itemsPerPage) + 1);
   const heroPhoto = collectHeroPhoto(items);
+  const coverPhotos = collectCoverPhotos(items, 3);
+  const coverQuote = pickCoverQuote(items);
 
   return `
     <article class="book-page book-cover">
-      <section>
-        <p class="book-toolbar-kicker">Road Trip Book</p>
+      <section class="book-cover-copy">
+        <div>
+          <p class="book-toolbar-kicker">Road Trip Book</p>
         <h1 class="book-cover-title">${escapeHtml(bookTitle || ROAD_TRIP_TITLE)}</h1>
         <p class="book-cover-subtitle">
           A compact scrapbook built automatically from the live road-trip timeline, kept in timestamp order with small photos, challenge uploads, and the best quick captions.
         </p>
+        </div>
         <div class="book-cover-meta">
           <div class="book-cover-stat-grid">
             <div class="book-cover-stat">
@@ -176,20 +271,46 @@ const createCoverPage = ({ bookTitle, items, itemsPerPage }) => {
           <p class="book-cover-note">
             Default layout is ${itemsPerPage} entries per page. If the book feels too dense, switch to 8. If it still feels too long, switch to 12.
           </p>
+          <div class="book-cover-quote">
+            <p>${escapeHtml(coverQuote)}</p>
+          </div>
         </div>
       </section>
-      <aside>
-        ${heroPhoto ? `<div class="book-cover-photo"><img src="${escapeHtml(heroPhoto)}" alt="Road trip cover collage" crossorigin="anonymous" referrerpolicy="no-referrer" /></div>` : ""}
+      <aside class="book-cover-photo-stack">
+        <div class="book-cover-photo-grid">
+          ${heroPhoto ? `<div class="book-cover-photo"><img src="${escapeHtml(heroPhoto)}" alt="Road trip cover collage" crossorigin="anonymous" referrerpolicy="no-referrer" /></div>` : ""}
+          <div class="book-cover-photo-column">
+            ${coverPhotos.slice(1).map((photoUrl, photoIndex) => `
+              <div class="book-cover-photo-small">
+                <img src="${escapeHtml(photoUrl)}" alt="Road trip detail ${photoIndex + 1}" crossorigin="anonymous" referrerpolicy="no-referrer" />
+              </div>
+            `).join("")}
+          </div>
+        </div>
       </aside>
       <div class="book-footer">Cover</div>
     </article>
   `;
 };
 
-const createEntryCard = (item, indexOffset) => {
+const createEntryCard = (item, indexOffset, { cardRole = "standard" } = {}) => {
+  const classNames = [
+    "book-entry-card",
+    `theme-${String(item.theme || "activity")}`,
+    item.photos.length ? `has-${Math.min(item.photos.length, 3)}-photos` : "is-text-only",
+  ];
+
+  if (cardRole === "featured") {
+    classNames.push("is-featured");
+  }
+
+  if (cardRole === "secondary") {
+    classNames.push("is-secondary");
+  }
+
   const photoMarkup = item.photos.length
     ? `
-      <div class="book-entry-photos">
+      <div class="book-entry-photos photo-count-${Math.min(item.photos.length, 3)}">
         ${item.photos.map((photoUrl, photoIndex) => `
           <figure class="book-entry-photo">
             <img
@@ -205,19 +326,30 @@ const createEntryCard = (item, indexOffset) => {
     `
     : "";
 
+  const tagMarkup = item.meta.length
+    ? `
+      <div class="book-entry-tags">
+        ${item.meta.slice(0, 3).map((tag) => `<span class="book-entry-tag">${escapeHtml(tag)}</span>`).join("")}
+      </div>
+    `
+    : "";
+
   return `
-    <article class="book-entry-card">
+    <article class="${classNames.join(" ")}">
       <div class="book-entry-topline">
-        <span class="book-entry-kicker">${escapeHtml(item.kicker)}</span>
+        <span class="book-entry-topline-left">
+          <span class="book-entry-pill">${indexOffset}</span>
+          <span class="book-entry-kicker">${escapeHtml(item.kicker)}</span>
+        </span>
         <span>${escapeHtml(item.pageLabel)}</span>
       </div>
-      <div>
-        <h3 class="book-entry-title">${escapeHtml(`${indexOffset}. ${item.title}`)}</h3>
+      <div class="book-entry-copy">
+        <h3 class="book-entry-title">${escapeHtml(item.title)}</h3>
         ${item.subtitle ? `<p class="book-entry-meta">${escapeHtml(item.subtitle)}</p>` : ""}
+        <p class="book-entry-caption">${escapeHtml(item.caption || item.title)}</p>
       </div>
       ${photoMarkup}
-      <p class="book-entry-caption">${escapeHtml(item.caption || item.title)}</p>
-      ${item.meta.length ? `<p class="book-entry-meta">${escapeHtml(item.meta.join(" • "))}</p>` : ""}
+      ${tagMarkup}
     </article>
   `;
 };
@@ -229,21 +361,42 @@ const pageGridTemplate = (itemsPerPage) => {
   return `grid-template-columns: repeat(${columns}, minmax(0, 1fr)); grid-template-rows: repeat(${rows}, minmax(0, 1fr));`;
 };
 
-const createContentPage = ({ pageIndex, pageItems, itemsPerPage, totalPages }) => `
-  <article class="book-page">
+const createContentPage = ({ pageIndex, pageItems, itemsPerPage, totalPages }) => {
+  const variant = pageVariantForIndex(pageIndex, itemsPerPage);
+  const tone = pageToneForItems(pageItems);
+  const pageTitle = pageTitleForItems(pageItems);
+  const pageDek = pageDekForItems(pageItems);
+  const pageSummary = summarizePageItems(pageItems);
+  const dateRangeLabel = pageDateRangeLabel(pageItems);
+
+  return `
+  <article class="book-page ${variant} density-${itemsPerPage} tone-${tone}">
     <header class="book-page-header">
-      <div>
-        <p class="book-toolbar-kicker">Road Trip Timeline</p>
-        <h2 class="book-page-title">Page ${pageIndex} of ${totalPages}</h2>
+      <div class="book-page-title-wrap">
+        <p class="book-page-pretitle">Road Trip Timeline • Page ${pageIndex} of ${totalPages}</p>
+        <h2 class="book-page-title">${escapeHtml(pageTitle)}</h2>
+        <div class="book-page-dek">${escapeHtml(pageDek)}</div>
       </div>
-      <p class="book-page-count">${escapeHtml(`${pageItems[0]?.pageLabel || ""} ${pageItems.length ? "->" : ""} ${pageItems[pageItems.length - 1]?.pageLabel || ""}`)}</p>
+      <div>
+        <p class="book-page-count">${escapeHtml(dateRangeLabel)}</p>
+        <p class="book-page-summary">${escapeHtml(pageSummary)}</p>
+      </div>
     </header>
     <section class="book-page-grid" style="${pageGridTemplate(itemsPerPage)}">
-      ${pageItems.map((item, itemIndex) => createEntryCard(item, ((pageIndex - 2) * itemsPerPage) + itemIndex + 1)).join("")}
+      ${pageItems.map((item, itemIndex) => {
+        const absoluteIndex = ((pageIndex - 2) * itemsPerPage) + itemIndex + 1;
+        const isFeatured = itemIndex === 0 && item.photos.length;
+        const isSecondary = ["variant-film", "variant-mosaic"].includes(variant) && itemIndex === 1 && item.photos.length;
+
+        return createEntryCard(item, absoluteIndex, {
+          cardRole: isFeatured ? "featured" : (isSecondary ? "secondary" : "standard"),
+        });
+      }).join("")}
     </section>
     <div class="book-footer">${pageIndex}</div>
   </article>
 `;
+};
 
 const waitForImages = async (root) => {
   const imageElements = Array.from(root.querySelectorAll("img"));
