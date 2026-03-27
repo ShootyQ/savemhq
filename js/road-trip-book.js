@@ -224,6 +224,42 @@ const pageToneForItems = (pageItems) => {
   return [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] || "activity";
 };
 
+const splitPageItems = (pageItems) => {
+  const featuredIndex = Math.max(0, pageItems.findIndex((item) => item.photos.length));
+  const featuredItem = pageItems[featuredIndex] || pageItems[0] || null;
+  const remainder = pageItems.filter((_, index) => index !== featuredIndex);
+  const quoteItem = remainder.find((item) => !item.photos.length && item.caption);
+  const visualItems = remainder.filter((item) => item !== quoteItem && item.photos.length);
+  const noteItems = remainder.filter((item) => item !== quoteItem && !item.photos.length);
+  const mixedItems = remainder.filter((item) => item !== quoteItem && !visualItems.includes(item) && !noteItems.includes(item));
+
+  return {
+    featuredItem,
+    quoteItem,
+    visualItems,
+    noteItems,
+    mixedItems,
+    remainder,
+  };
+};
+
+const createQuoteBand = (item, indexOffset) => {
+  if (!item) {
+    return "";
+  }
+
+  return `
+    <aside class="book-quote-band theme-${escapeHtml(item.theme || "activity")}">
+      <div class="book-quote-band-mark">${indexOffset}</div>
+      <div class="book-quote-band-copy">
+        <p class="book-quote-band-kicker">${escapeHtml(item.kicker)}</p>
+        <blockquote>${escapeHtml(item.caption || item.title)}</blockquote>
+        <p class="book-quote-band-meta">${escapeHtml([item.subtitle, item.dateOnlyLabel].filter(Boolean).join(" • "))}</p>
+      </div>
+    </aside>
+  `;
+};
+
 const createCoverPage = ({ bookTitle, items, itemsPerPage }) => {
   const firstDate = items[0]?.createdAt || null;
   const lastDate = items[items.length - 1]?.createdAt || null;
@@ -293,11 +329,12 @@ const createCoverPage = ({ bookTitle, items, itemsPerPage }) => {
   `;
 };
 
-const createEntryCard = (item, indexOffset, { cardRole = "standard" } = {}) => {
+const createEntryCard = (item, indexOffset, { cardRole = "standard", styleVariant = "standard" } = {}) => {
   const classNames = [
     "book-entry-card",
     `theme-${String(item.theme || "activity")}`,
     item.photos.length ? `has-${Math.min(item.photos.length, 3)}-photos` : "is-text-only",
+    `style-${styleVariant}`,
   ];
 
   if (cardRole === "featured") {
@@ -361,6 +398,79 @@ const pageGridTemplate = (itemsPerPage) => {
   return `grid-template-columns: repeat(${columns}, minmax(0, 1fr)); grid-template-rows: repeat(${rows}, minmax(0, 1fr));`;
 };
 
+const createFeatureLayout = ({ pageItems, pageIndex, itemsPerPage }) => {
+  const { featuredItem, quoteItem, visualItems, noteItems, mixedItems } = splitPageItems(pageItems);
+  const supportingVisuals = [...visualItems, ...mixedItems].slice(0, 2);
+  const supportNotes = [...noteItems, ...visualItems.slice(2), ...mixedItems.slice(2)].slice(0, Math.max(2, itemsPerPage - 3));
+
+  return `
+    <section class="book-spread book-spread-feature">
+      <div class="book-spread-main">
+        ${featuredItem ? createEntryCard(featuredItem, ((pageIndex - 2) * itemsPerPage) + 1, { cardRole: "featured", styleVariant: "hero" }) : ""}
+      </div>
+      <aside class="book-spread-side">
+        ${supportingVisuals.map((item, index) => createEntryCard(item, ((pageIndex - 2) * itemsPerPage) + index + 2, { cardRole: "secondary", styleVariant: "panel" })).join("")}
+      </aside>
+      ${quoteItem ? createQuoteBand(quoteItem, ((pageIndex - 2) * itemsPerPage) + pageItems.indexOf(quoteItem) + 1) : ""}
+      <div class="book-spread-strip">
+        ${supportNotes.map((item) => createEntryCard(item, ((pageIndex - 2) * itemsPerPage) + pageItems.indexOf(item) + 1, { styleVariant: "mini" })).join("")}
+      </div>
+    </section>
+  `;
+};
+
+const createJournalLayout = ({ pageItems, pageIndex, itemsPerPage }) => {
+  const { featuredItem, quoteItem, visualItems, noteItems, mixedItems } = splitPageItems(pageItems);
+  const noteColumnItems = [...visualItems.slice(0, 1), ...noteItems, ...mixedItems].slice(0, itemsPerPage - 1);
+
+  return `
+    <section class="book-spread book-spread-journal">
+      <div class="book-journal-main">
+        ${featuredItem ? createEntryCard(featuredItem, ((pageIndex - 2) * itemsPerPage) + 1, { cardRole: "featured", styleVariant: "essay" }) : ""}
+        ${quoteItem ? createQuoteBand(quoteItem, ((pageIndex - 2) * itemsPerPage) + pageItems.indexOf(quoteItem) + 1) : ""}
+      </div>
+      <aside class="book-journal-notes">
+        ${noteColumnItems.map((item) => createEntryCard(item, ((pageIndex - 2) * itemsPerPage) + pageItems.indexOf(item) + 1, { styleVariant: "compact" })).join("")}
+      </aside>
+    </section>
+  `;
+};
+
+const createFilmLayout = ({ pageItems, pageIndex, itemsPerPage }) => {
+  const { featuredItem, quoteItem, visualItems, noteItems, mixedItems } = splitPageItems(pageItems);
+  const topRowItems = [featuredItem, ...visualItems.slice(0, 2)].filter(Boolean).slice(0, 3);
+  const bottomItems = [...noteItems, ...mixedItems, ...visualItems.slice(2)].slice(0, itemsPerPage - topRowItems.length);
+
+  return `
+    <section class="book-spread book-spread-film">
+      <div class="book-film-top">
+        ${topRowItems.map((item, index) => createEntryCard(item, ((pageIndex - 2) * itemsPerPage) + pageItems.indexOf(item) + 1, {
+          cardRole: index === 0 ? "featured" : "secondary",
+          styleVariant: index === 0 ? "wide" : "panel",
+        })).join("")}
+      </div>
+      ${quoteItem ? createQuoteBand(quoteItem, ((pageIndex - 2) * itemsPerPage) + pageItems.indexOf(quoteItem) + 1) : ""}
+      <div class="book-film-bottom">
+        ${bottomItems.map((item) => createEntryCard(item, ((pageIndex - 2) * itemsPerPage) + pageItems.indexOf(item) + 1, { styleVariant: "mini" })).join("")}
+      </div>
+    </section>
+  `;
+};
+
+const createMosaicLayout = ({ pageItems, pageIndex, itemsPerPage }) => {
+  const orderedItems = [...pageItems];
+
+  return `
+    <section class="book-spread book-spread-mosaic">
+      ${orderedItems.slice(0, Math.min(orderedItems.length, 6)).map((item, index) => createEntryCard(item, ((pageIndex - 2) * itemsPerPage) + pageItems.indexOf(item) + 1, {
+        cardRole: index === 0 ? "featured" : (index < 3 ? "secondary" : "standard"),
+        styleVariant: index === 0 ? "hero" : (index < 3 ? "panel" : "compact"),
+      })).join("")}
+      ${orderedItems.slice(6).map((item) => createEntryCard(item, ((pageIndex - 2) * itemsPerPage) + pageItems.indexOf(item) + 1, { styleVariant: "mini" })).join("")}
+    </section>
+  `;
+};
+
 const createContentPage = ({ pageIndex, pageItems, itemsPerPage, totalPages }) => {
   const variant = pageVariantForIndex(pageIndex, itemsPerPage);
   const tone = pageToneForItems(pageItems);
@@ -368,6 +478,14 @@ const createContentPage = ({ pageIndex, pageItems, itemsPerPage, totalPages }) =
   const pageDek = pageDekForItems(pageItems);
   const pageSummary = summarizePageItems(pageItems);
   const dateRangeLabel = pageDateRangeLabel(pageItems);
+
+  const spreadMarkup = variant === "variant-feature"
+    ? createFeatureLayout({ pageItems, pageIndex, itemsPerPage })
+    : variant === "variant-journal"
+      ? createJournalLayout({ pageItems, pageIndex, itemsPerPage })
+      : variant === "variant-film"
+        ? createFilmLayout({ pageItems, pageIndex, itemsPerPage })
+        : createMosaicLayout({ pageItems, pageIndex, itemsPerPage });
 
   return `
   <article class="book-page ${variant} density-${itemsPerPage} tone-${tone}">
@@ -382,17 +500,7 @@ const createContentPage = ({ pageIndex, pageItems, itemsPerPage, totalPages }) =
         <p class="book-page-summary">${escapeHtml(pageSummary)}</p>
       </div>
     </header>
-    <section class="book-page-grid" style="${pageGridTemplate(itemsPerPage)}">
-      ${pageItems.map((item, itemIndex) => {
-        const absoluteIndex = ((pageIndex - 2) * itemsPerPage) + itemIndex + 1;
-        const isFeatured = itemIndex === 0 && item.photos.length;
-        const isSecondary = ["variant-film", "variant-mosaic"].includes(variant) && itemIndex === 1 && item.photos.length;
-
-        return createEntryCard(item, absoluteIndex, {
-          cardRole: isFeatured ? "featured" : (isSecondary ? "secondary" : "standard"),
-        });
-      }).join("")}
-    </section>
+    ${spreadMarkup}
     <div class="book-footer">${pageIndex}</div>
   </article>
 `;
