@@ -459,6 +459,41 @@ service cloud.firestore {
         && request.resource.data.lastLoggedByLabel is string;
     }
 
+    function backyardBirdSightingKeysAreAllowed(trackerId, dayId, sightingId) {
+      return request.resource.data.keys().hasAll([
+        "trackerId",
+        "birdId",
+        "birdName",
+        "monthId",
+        "dayId",
+        "dateKey",
+        "loggedByUid",
+        "loggedByLabel",
+        "seenAt",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "trackerId",
+        "birdId",
+        "birdName",
+        "monthId",
+        "dayId",
+        "dateKey",
+        "loggedByUid",
+        "loggedByLabel",
+        "seenAt",
+        "updatedAt"
+      ])
+        && request.resource.data.trackerId == trackerId
+        && request.resource.data.dayId == dayId
+        && request.resource.data.dateKey == dayId
+        && request.resource.data.birdId is string
+        && request.resource.data.birdName is string
+        && request.resource.data.monthId is string
+        && request.resource.data.loggedByUid is string
+        && request.resource.data.loggedByLabel is string
+        && sightingId == (dayId + "__" + request.resource.data.birdId);
+    }
+
     match /competitions/{year}/months/{month} {
       allow read: if true;
       allow create: if isAdmin() || (
@@ -657,6 +692,13 @@ service cloud.firestore {
       allow create, update: if isApprovedForSection("birds")
         && backyardBirdDayKeysAreAllowed(monthId, dayId);
       allow delete: if isAdmin();
+    }
+
+    match /backyardBirds/{trackerId}/sightings/{sightingId} {
+      allow read: if true;
+      allow create, update: if isApprovedForSection("birds")
+        && backyardBirdSightingKeysAreAllowed(trackerId, request.resource.data.dayId, sightingId);
+      allow delete: if isAdmin() || isApprovedForSection("birds");
     }
   }
 }

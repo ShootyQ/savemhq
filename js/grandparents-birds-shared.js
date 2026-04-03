@@ -16,10 +16,15 @@ export const GRANDPARENTS_BIRD_TRACKER_TITLE = "Grandparents Bird Window";
 
 const birdTrackerCollection = collection(db, "backyardBirds", GRANDPARENTS_BIRD_TRACKER_ID, "species");
 const birdMonthsCollection = collection(db, "backyardBirds", GRANDPARENTS_BIRD_TRACKER_ID, "months");
+const birdSightingsCollection = collection(db, "backyardBirds", GRANDPARENTS_BIRD_TRACKER_ID, "sightings");
 const birdSpeciesDocument = (birdId) => doc(birdTrackerCollection, String(birdId || "").trim());
 const birdMonthDocument = (monthId) => doc(birdMonthsCollection, String(monthId || "").trim());
 const birdDaysCollection = (monthId) => collection(birdMonthDocument(monthId), "days");
 const birdDayDocument = (monthId, dayId) => doc(birdDaysCollection(monthId), String(dayId || "").trim());
+const birdSightingDocument = (dayId, birdId) => doc(
+  birdSightingsCollection,
+  `${String(dayId || "").trim()}__${String(birdId || "").trim()}`
+);
 
 const titleCaseSegment = (segment) => {
   const value = String(segment || "").trim();
@@ -280,8 +285,9 @@ export const logBirdSighting = async ({ bird, dateValue, includeDaily = false, u
   const actorLabel = String(user?.displayName || user?.email || "Family watcher").trim();
   const monthNumber = date.getMonth() + 1;
   const year = date.getFullYear();
+  const batch = writeBatch(db);
 
-  await setDoc(
+  batch.set(
     birdMonthDocument(monthId),
     {
       monthId,
@@ -302,7 +308,7 @@ export const logBirdSighting = async ({ bird, dateValue, includeDaily = false, u
   );
 
   if (includeDaily) {
-    await setDoc(
+    batch.set(
       birdDayDocument(monthId, dayId),
       {
         dayId,
@@ -321,6 +327,25 @@ export const logBirdSighting = async ({ bird, dateValue, includeDaily = false, u
       { merge: true }
     );
   }
+
+  batch.set(
+    birdSightingDocument(dayId, birdId),
+    {
+      trackerId: GRANDPARENTS_BIRD_TRACKER_ID,
+      birdId,
+      birdName,
+      monthId,
+      dayId,
+      dateKey: dayId,
+      loggedByUid: String(user?.uid || ""),
+      loggedByLabel: actorLabel,
+      seenAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  await batch.commit();
 
   return {
     birdId,
@@ -471,6 +496,8 @@ export const removeBirdSightingFromDay = async ({ bird, dateValue, day, month, s
     },
     { merge: true }
   );
+
+  batch.delete(birdSightingDocument(dayId, birdId));
 
   await batch.commit();
 
