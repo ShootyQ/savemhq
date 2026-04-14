@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aftercare Check-In | SavemHQ</title>
+    <meta
+      name="description"
+      content="Private aftercare check-in page with a large student roster for simple tap-to-log attendance."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="aftercare">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="section aftercare-hero">
+        <div class="container aftercare-hero-inner">
+          <p class="tagline">Private Staff Page</p>
+          <h1>Aftercare Check-In</h1>
+          <p class="subheadline">Search a student, tap once to check in, tap again to log out.</p>
+        </div>
+      </section>
+
+      <section class="section section-card">
+        <div class="container">
+          <div id="aftercare-app" class="hidden">
+            <article class="project-card aftercare-shell">
+              <div class="aftercare-toolbar">
+                <label class="aftercare-search-label" for="aftercare-search">Find student</label>
+                <div class="aftercare-search-row">
+                  <input
+                    id="aftercare-search"
+                    type="search"
+                    inputmode="search"
+                    autocomplete="off"
+                    placeholder="Type a first or last name"
+                  />
+                  <button id="aftercare-search-clear" class="btn btn-secondary" type="button">Clear</button>
+                </div>
+                <div class="aftercare-stats" aria-live="polite">
+                  <div class="aftercare-stat-pill">
+                    <strong id="aftercare-active-count">0</strong>
+                    <span>Active students</span>
+                  </div>
+                  <div class="aftercare-stat-pill is-checked-in">
+                    <strong id="aftercare-checked-in-count">0</strong>
+                    <span>Checked in</span>
+                  </div>
+                  <div class="aftercare-stat-pill">
+                    <strong id="aftercare-visible-count">0</strong>
+                    <span>Showing</span>
+                  </div>
+                </div>
+              </div>
+
+              <p id="aftercare-status" class="aftercare-status-banner" aria-live="polite">
+                Sign in with Google to open the roster.
+              </p>
+
+              <div id="aftercare-student-grid" class="aftercare-student-grid" aria-live="polite"></div>
+            </article>
+          </div>
+
+          <div id="aftercare-locked" class="project-card aftercare-locked-card">
+            <h2>Access Required</h2>
+            <p id="aftercare-locked-text" class="small-note">
+              Sign in with Google. Your account must be approved for the Aftercare section before the roster appears.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>SavemHQ aftercare tools.</p>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
+      import {
+        formatAftercareTime,
+        isStudentCheckedIn,
+        subscribeToAftercareStudents,
+        toggleAftercareAttendance,
+      } from "./js/aftercare-shared.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Admin", href: "admin.html" },
+        ],
+      });
+
+      const appPanel = document.getElementById("aftercare-app");
+      const lockedPanel = document.getElementById("aftercare-locked");
+      const lockedText = document.getElementById("aftercare-locked-text");
+      const searchInput = document.getElementById("aftercare-search");
+      const clearSearchButton = document.getElementById("aftercare-search-clear");
+      const statusBanner = document.getElementById("aftercare-status");
+      const studentGrid = document.getElementById("aftercare-student-grid");
+      const activeCount = document.getElementById("aftercare-active-count");
+      const checkedInCount = document.getElementById("aftercare-checked-in-count");
+      const visibleCount = document.getElementById("aftercare-visible-count");
+
+      const state = {
+        user: null,
+        isAdmin: false,
+        approvalStatus: "signed-out",
+        approvalSections: [],
+        students: [],
+        filterText: "",
+        pendingIds: new Set(),
+        unsubscribeStudents: null,
+      };
+
+      const escapeHtml = (value) => String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+      const canAccessAftercare = () => Boolean(state.user) && hasSectionAccess({
+        isAdmin: state.isAdmin,
+        approvalStatus: state.approvalStatus,
+        approvalSections: state.approvalSections,
+        userEmail: state.user?.email,
+      }, "aftercare");
+
+      const updateStatCounts = (visibleStudents) => {
+        const activeStudents = state.students.filter((student) => student.isActive !== false);
+        const currentlyCheckedIn = activeStudents.filter((student) => isStudentCheckedIn(student));
+        activeCount.textContent = String(activeStudents.length);
+        checkedInCount.textContent = String(currentlyCheckedIn.length);
+        visibleCount.textContent = String(visibleStudents.length);
+      };
+
+      const studentMatchesFilter = (student, filterText) => {
+        if (!filterText) {
+          return true;
+        }
+
+        const haystack = [student.displayName, student.normalizedName, student.group]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(filterText);
+      };
+
+      const renderStudents = () => {
+        const filterText = String(state.filterText || "").trim().toLowerCase();
+        const students = [...state.students]
+          .filter((student) => student.isActive !== false)
+          .filter((student) => studentMatchesFilter(student, filterText))
+          .sort((left, right) => {
+            const statusDelta = Number(isStudentCheckedIn(right)) - Number(isStudentCheckedIn(left));
+            if (statusDelta !== 0) {
+              return statusDelta;
+            }
+            return String(left.normalizedName || left.displayName || "").localeCompare(String(right.normalizedName || right.displayName || ""));
+          });
+
+        updateStatCounts(students);
+
+        if (!students.length) {
+          studentGrid.innerHTML = `<p class="small-note">${filterText ? "No students match that search." : "No active students yet. Add them on the admin page."}</p>`;
+          return;
+        }
+
+        studentGrid.innerHTML = students
+          .map((student) => {
+            const isCheckedIn = isStudentCheckedIn(student);
+            const pending = state.pendingIds.has(student.id);
+            const timeLabel = isCheckedIn
+              ? (student.currentCheckInAt ? `Checked in at ${formatAftercareTime(student.currentCheckInAt)}` : "Checked in")
+              : (student.lastActionAt ? `Logged out at ${formatAftercareTime(student.lastActionAt)}` : "Tap to check in");
+            const groupLabel = student.group ? `<span class="aftercare-student-meta">${escapeHtml(student.group)}</span>` : "";
+            const actionLabel = isCheckedIn ? "Tap to log out" : "Tap to check in";
+            return `
+              <button
+                class="aftercare-student-button ${isCheckedIn ? "is-checked-in" : "is-checked-out"} ${pending ? "is-pending" : ""}"
+                type="button"
+                data-student-id="${student.id}"
+                aria-pressed="${isCheckedIn ? "true" : "false"}"
+                ${pending ? "disabled" : ""}
+              >
+                <span class="aftercare-student-name">${escapeHtml(student.displayName || "Student")}</span>
+                ${groupLabel}
+                <span class="aftercare-student-status">${isCheckedIn ? "Checked In" : "Logged Out"}</span>
+                <span class="aftercare-student-time">${escapeHtml(timeLabel)}</span>
+                <span class="aftercare-student-action">${actionLabel}</span>
+              </button>
+            `;
+          })
+          .join("");
+        refreshRevealMotion({ scope: studentGrid });
+      };
+
+      const setLockedState = (message) => {
+        appPanel.classList.add("hidden");
+        lockedPanel.classList.remove("hidden");
+        lockedText.textContent = message;
+      };
+
+      const setActiveState = () => {
+        appPanel.classList.remove("hidden");
+        lockedPanel.classList.add("hidden");
+      };
+
+      const startStudentSubscription = () => {
+        if (state.unsubscribeStudents) {
+          state.unsubscribeStudents();
+        }
+
+        state.unsubscribeStudents = subscribeToAftercareStudents({
+          onData: (students) => {
+            state.students = students;
+            renderStudents();
+          },
+          onError: () => {
+            statusBanner.textContent = "Could not load students. Check Firestore rules.";
+          },
+        });
+      };
+
+      const stopStudentSubscription = () => {
+        if (state.unsubscribeStudents) {
+          state.unsubscribeStudents();
+          state.unsubscribeStudents = null;
+        }
+        state.students = [];
+        renderStudents();
+      };
+
+      searchInput.addEventListener("input", () => {
+        state.filterText = String(searchInput.value || "").trim();
+        renderStudents();
+      });
+
+      clearSearchButton.addEventListener("click", () => {
+        searchInput.value = "";
+        state.filterText = "";
+        searchInput.focus();
+        renderStudents();
+      });
+
+      studentGrid.addEventListener("click", async (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const button = target.closest("[data-student-id]");
+        if (!(button instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        const studentId = String(button.dataset.studentId || "");
+        const student = state.students.find((entry) => entry.id === studentId);
+        if (!student || !state.user) {
+          return;
+        }
+
+        state.pendingIds.add(studentId);
+        renderStudents();
+
+        try {
+          const result = await toggleAftercareAttendance({ student, user: state.user });
+          statusBanner.textContent = result.action === "checked-in"
+            ? `${result.studentName} checked in.`
+            : `${result.studentName} logged out.`;
+        } catch (error) {
+          console.error("Could not toggle aftercare attendance", error);
+          statusBanner.textContent = error instanceof Error ? error.message : "Could not update attendance.";
+        } finally {
+          state.pendingIds.delete(studentId);
+          renderStudents();
+        }
+      });
+
+      initHeaderShell();
+      initRevealMotion();
+      initHeaderAuth({
+        onStateChange: ({ user, isAdmin, approvalStatus, approvalSections }) => {
+          state.user = user;
+          state.isAdmin = isAdmin;
+          state.approvalStatus = approvalStatus || "signed-out";
+          state.approvalSections = approvalSections || [];
+
+          if (!user) {
+            stopStudentSubscription();
+            statusBanner.textContent = "Sign in with Google to open the roster.";
+            setLockedState("Sign in with Google. Your account must be approved for the Aftercare section before the roster appears.");
+            return;
+          }
+
+          if (!canAccessAftercare()) {
+            stopStudentSubscription();
+            if (approvalStatus === "denied") {
+              setLockedState("This account is denied for aftercare access.");
+            } else if (approvalStatus === "error") {
+              setLockedState("Could not verify access. Check Firestore rules.");
+            } else if (approvalStatus === "approved") {
+              setLockedState("Your login is approved, but the Aftercare section has not been assigned yet.");
+            } else {
+              setLockedState("Your account is still pending approval for aftercare access.");
+            }
+            return;
+          }
+
+          setActiveState();
+          statusBanner.textContent = "Ready. Search a student or tap a name to record attendance.";
+          startStudentSubscription();
+        },
+      });
+
+      renderStudents();
+    </script>
+  </body>
+</html>

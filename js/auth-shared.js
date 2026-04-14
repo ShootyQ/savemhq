@@ -36,6 +36,11 @@ export const ACCESS_SECTIONS = [
     description: "Use the private plate entry page and competition editing tools.",
   },
   {
+    id: "aftercare",
+    label: "Aftercare",
+    description: "Use the student check-in page for aftercare attendance.",
+  },
+  {
     id: "birds",
     label: "Grandparents Birds",
     description: "Add birds and log sightings in the bird tracker.",

@@ -45,6 +45,66 @@
               <p class="small-note">Sign in as admin to manage month locks.</p>
             </div>
           </article>
+
+          <article class="project-card">
+            <h2>Aftercare Roster</h2>
+            <p class="small-note">Add students, edit names or groups, and hide inactive students from the check-in screen.</p>
+            <form id="aftercare-student-form" class="stack-form">
+              <div class="entry-grid aftercare-admin-form-grid">
+                <div class="entry-row">
+                  <label for="aftercare-student-name">Student name</label>
+                  <input id="aftercare-student-name" name="studentName" type="text" autocomplete="off" placeholder="Add a student name" required />
+                </div>
+                <div class="entry-row">
+                  <label for="aftercare-student-group">Group / Teacher</label>
+                  <input id="aftercare-student-group" name="studentGroup" type="text" autocomplete="off" placeholder="Optional" />
+                </div>
+              </div>
+              <div class="form-actions">
+                <button id="aftercare-student-submit" class="btn btn-primary" type="submit">Add Student</button>
+                <button id="aftercare-student-reset" class="btn btn-secondary hidden" type="button">Cancel Edit</button>
+              </div>
+            </form>
+            <p id="aftercare-admin-status" class="small-note" aria-live="polite">Sign in as admin to manage students.</p>
+            <div id="aftercare-students-list" class="stack-form" aria-live="polite">
+              <p class="small-note">Sign in as admin to load students.</p>
+            </div>
+          </article>
+
+          <article class="project-card">
+            <h2>Aftercare Attendance</h2>
+            <p class="small-note">Filter by date or student, then export a CSV you can open in Excel or Google Sheets.</p>
+            <div class="entry-grid aftercare-admin-form-grid">
+              <div class="entry-row">
+                <label for="aftercare-filter-start">From</label>
+                <input id="aftercare-filter-start" type="date" />
+              </div>
+              <div class="entry-row">
+                <label for="aftercare-filter-end">To</label>
+                <input id="aftercare-filter-end" type="date" />
+              </div>
+              <div class="entry-row">
+                <label for="aftercare-filter-status">Status</label>
+                <select id="aftercare-filter-status">
+                  <option value="all">All entries</option>
+                  <option value="checked-in">Still checked in</option>
+                  <option value="checked-out">Checked out</option>
+                </select>
+              </div>
+              <div class="entry-row">
+                <label for="aftercare-filter-search">Search</label>
+                <input id="aftercare-filter-search" type="search" autocomplete="off" placeholder="Student or group" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button id="aftercare-export-filtered" class="btn btn-primary" type="button">Export Filtered CSV</button>
+              <button id="aftercare-export-today" class="btn btn-secondary" type="button">Export Today</button>
+            </div>
+            <p id="aftercare-export-status" class="small-note" aria-live="polite">Sign in as admin to load attendance.</p>
+            <div id="aftercare-attendance-list" class="stack-form" aria-live="polite">
+              <p class="small-note">Sign in as admin to load attendance.</p>
+            </div>
+          </article>
         </div>
       </section>
     </main>
@@ -66,6 +126,17 @@
         serverTimestamp,
         setDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+      import {
+        createAftercareStudent,
+        formatAftercareDateTime,
+        formatAftercareTime,
+        isStudentCheckedIn,
+        saveAftercareStudent,
+        setAftercareStudentActive,
+        subscribeToAftercareAttendance,
+        subscribeToAftercareStudents,
+        toLocalDateKey,
+      } from "./js/aftercare-shared.js";
       import { ACCESS_SECTIONS, ADMIN_EMAIL, db, initHeaderAuth, normalizeAccessSections } from "./js/auth-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
       import { mountSiteHeader } from "./js/header-component.js";
@@ -109,13 +180,33 @@
       const approvalsList = document.getElementById("approvals-list");
       const applyJanuaryLockBtn = document.getElementById("apply-january-lock");
       const monthLocksList = document.getElementById("month-locks-list");
+      const aftercareStudentForm = document.getElementById("aftercare-student-form");
+      const aftercareStudentNameInput = document.getElementById("aftercare-student-name");
+      const aftercareStudentGroupInput = document.getElementById("aftercare-student-group");
+      const aftercareStudentSubmit = document.getElementById("aftercare-student-submit");
+      const aftercareStudentReset = document.getElementById("aftercare-student-reset");
+      const aftercareAdminStatus = document.getElementById("aftercare-admin-status");
+      const aftercareStudentsList = document.getElementById("aftercare-students-list");
+      const aftercareFilterStart = document.getElementById("aftercare-filter-start");
+      const aftercareFilterEnd = document.getElementById("aftercare-filter-end");
+      const aftercareFilterStatus = document.getElementById("aftercare-filter-status");
+      const aftercareFilterSearch = document.getElementById("aftercare-filter-search");
+      const aftercareExportFiltered = document.getElementById("aftercare-export-filtered");
+      const aftercareExportToday = document.getElementById("aftercare-export-today");
+      const aftercareExportStatus = document.getElementById("aftercare-export-status");
+      const aftercareAttendanceList = document.getElementById("aftercare-attendance-list");
       initHeaderShell();
 
       let unsubscribeApprovals = null;
       let unsubscribeMonths = null;
+      let unsubscribeAftercareStudents = null;
+      let unsubscribeAftercareAttendance = null;
       let currentUserEmail = "";
       let currentIsAdmin = false;
       let januaryPresetApplied = false;
+      let editingAftercareStudentId = "";
+      let aftercareStudents = [];
+      let aftercareAttendance = [];
 
       const slugifyMonth = (monthName) =>
         String(monthName || "")
@@ -139,6 +230,13 @@
 
         return value.toDate().toLocaleString();
       };
+
+      const escapeHtml = (value) => String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 
       const personLabel = (personValue) => PERSON_OPTIONS.find((option) => option.value === personValue)?.label || "Unassigned";
       const accessLabels = (sectionIds = []) => {
@@ -335,6 +433,196 @@
         );
       };
 
+      const resetAftercareStudentForm = () => {
+        editingAftercareStudentId = "";
+        aftercareStudentForm.reset();
+        aftercareStudentSubmit.textContent = "Add Student";
+        aftercareStudentReset.classList.add("hidden");
+      };
+
+      const filteredAftercareAttendance = () => {
+        const start = String(aftercareFilterStart.value || "").trim();
+        const end = String(aftercareFilterEnd.value || "").trim();
+        const status = String(aftercareFilterStatus.value || "all").trim();
+        const search = String(aftercareFilterSearch.value || "").trim().toLowerCase();
+
+        return aftercareAttendance.filter((entry) => {
+          const entryDateKey = String(entry.dateKey || "").trim();
+          if (start && entryDateKey < start) {
+            return false;
+          }
+          if (end && entryDateKey > end) {
+            return false;
+          }
+          if (status !== "all" && String(entry.status || "") !== status) {
+            return false;
+          }
+          if (!search) {
+            return true;
+          }
+
+          const haystack = [entry.studentName, entry.studentGroup, entry.checkedInByLabel, entry.checkedOutByLabel]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(search);
+        });
+      };
+
+      const renderAftercareStudents = () => {
+        if (!aftercareStudents.length) {
+          aftercareStudentsList.innerHTML = '<p class="small-note">No students added yet.</p>';
+          return;
+        }
+
+        aftercareStudentsList.innerHTML = [...aftercareStudents]
+          .sort((left, right) => String(left.normalizedName || left.displayName || "").localeCompare(String(right.normalizedName || right.displayName || "")))
+          .map((student) => {
+            const checkedIn = isStudentCheckedIn(student);
+            const groupLabel = student.group ? `<p><strong>Group:</strong> ${escapeHtml(student.group)}</p>` : "";
+            const currentTime = checkedIn && student.currentCheckInAt
+              ? `<p><strong>Current check-in:</strong> ${escapeHtml(formatAftercareTime(student.currentCheckInAt))}</p>`
+              : "";
+            return `
+              <article class="project-card aftercare-admin-card ${student.isActive === false ? "is-inactive" : ""}">
+                <h3>${escapeHtml(student.displayName || "Student")}</h3>
+                ${groupLabel}
+                <p><strong>Roster status:</strong> ${student.isActive === false ? "Inactive" : "Active"}</p>
+                <p><strong>Attendance status:</strong> ${checkedIn ? "Checked in" : "Logged out"}</p>
+                ${currentTime}
+                <div class="form-actions">
+                  <button class="btn btn-primary" type="button" data-aftercare-student-action="edit" data-student-id="${student.id}">Edit</button>
+                  <button class="btn btn-secondary" type="button" data-aftercare-student-action="toggle-active" data-student-id="${student.id}">
+                    ${student.isActive === false ? "Set Active" : "Set Inactive"}
+                  </button>
+                </div>
+              </article>
+            `;
+          })
+          .join("");
+        refreshRevealMotion({ scope: aftercareStudentsList });
+      };
+
+      const renderAftercareAttendance = () => {
+        const filtered = filteredAftercareAttendance();
+        aftercareExportStatus.textContent = `Showing ${filtered.length} of ${aftercareAttendance.length} attendance entries.`;
+
+        if (!filtered.length) {
+          aftercareAttendanceList.innerHTML = '<p class="small-note">No attendance entries match the current filters.</p>';
+          return;
+        }
+
+        aftercareAttendanceList.innerHTML = filtered
+          .map((entry) => {
+            const checkInText = formatAftercareDateTime(entry.checkedInAt) || "Pending";
+            const checkOutText = entry.checkedOutAt ? formatAftercareDateTime(entry.checkedOutAt) : "Still checked in";
+            const groupLine = entry.studentGroup ? `<p><strong>Group:</strong> ${escapeHtml(entry.studentGroup)}</p>` : "";
+            return `
+              <article class="project-card aftercare-admin-card ${entry.status === "checked-in" ? "is-checked-in" : ""}">
+                <h3>${escapeHtml(entry.studentName || "Student")}</h3>
+                ${groupLine}
+                <p><strong>Date:</strong> ${escapeHtml(entry.dateKey || "")}</p>
+                <p><strong>Status:</strong> ${entry.status === "checked-in" ? "Still checked in" : "Checked out"}</p>
+                <p><strong>Checked in:</strong> ${escapeHtml(checkInText)}</p>
+                <p><strong>Checked out:</strong> ${escapeHtml(checkOutText)}</p>
+                <p><strong>Logged by:</strong> ${escapeHtml(entry.checkedInByLabel || "")}${entry.checkedOutByLabel ? ` / ${escapeHtml(entry.checkedOutByLabel)}` : ""}</p>
+              </article>
+            `;
+          })
+          .join("");
+        refreshRevealMotion({ scope: aftercareAttendanceList });
+      };
+
+      const startAftercareSubscriptions = () => {
+        if (unsubscribeAftercareStudents) {
+          unsubscribeAftercareStudents();
+        }
+        if (unsubscribeAftercareAttendance) {
+          unsubscribeAftercareAttendance();
+        }
+
+        unsubscribeAftercareStudents = subscribeToAftercareStudents({
+          onData: (students) => {
+            aftercareStudents = students;
+            renderAftercareStudents();
+          },
+          onError: () => {
+            aftercareAdminStatus.textContent = "Could not load aftercare students.";
+          },
+        });
+
+        unsubscribeAftercareAttendance = subscribeToAftercareAttendance({
+          onData: (entries) => {
+            aftercareAttendance = entries;
+            renderAftercareAttendance();
+          },
+          onError: () => {
+            aftercareExportStatus.textContent = "Could not load attendance entries.";
+          },
+        });
+      };
+
+      const stopAftercareSubscriptions = () => {
+        if (unsubscribeAftercareStudents) {
+          unsubscribeAftercareStudents();
+          unsubscribeAftercareStudents = null;
+        }
+        if (unsubscribeAftercareAttendance) {
+          unsubscribeAftercareAttendance();
+          unsubscribeAftercareAttendance = null;
+        }
+        aftercareStudents = [];
+        aftercareAttendance = [];
+        resetAftercareStudentForm();
+        aftercareStudentsList.innerHTML = '<p class="small-note">Sign in as admin to load students.</p>';
+        aftercareAttendanceList.innerHTML = '<p class="small-note">Sign in as admin to load attendance.</p>';
+      };
+
+      const downloadCsv = (rows, fileName) => {
+        const escapeCsv = (value) => {
+          const text = String(value ?? "");
+          if (!/[",\n]/.test(text)) {
+            return text;
+          }
+          return `"${text.replace(/"/g, '""')}"`;
+        };
+
+        const csvText = rows.map((row) => row.map(escapeCsv).join(",")).join("\n");
+        const blob = new Blob([csvText], { type: "text/csv;charset=utf-8" });
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+      };
+
+      const exportAttendanceRows = (entries, fileName) => {
+        if (!entries.length) {
+          aftercareExportStatus.textContent = "No attendance entries to export.";
+          return;
+        }
+
+        const rows = [
+          ["Student Name", "Group", "Date", "Status", "Checked In", "Checked Out", "Checked In By", "Checked Out By"],
+          ...entries.map((entry) => [
+            entry.studentName || "",
+            entry.studentGroup || "",
+            entry.dateKey || "",
+            entry.status || "",
+            formatAftercareDateTime(entry.checkedInAt) || "",
+            formatAftercareDateTime(entry.checkedOutAt) || "",
+            entry.checkedInByLabel || "",
+            entry.checkedOutByLabel || "",
+          ]),
+        ];
+
+        downloadCsv(rows, fileName);
+        aftercareExportStatus.textContent = `Exported ${entries.length} attendance rows.`;
+      };
+
       const applyJanuaryPresetLock = async () => {
         if (!currentIsAdmin || currentUserEmail !== ADMIN_EMAIL) {
           adminStatus.textContent = "Only admin can apply January lock preset.";
@@ -494,6 +782,125 @@
         applyJanuaryPresetLock();
       });
 
+      aftercareStudentForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        if (!currentIsAdmin || currentUserEmail !== ADMIN_EMAIL) {
+          aftercareAdminStatus.textContent = "Only admin can manage students.";
+          return;
+        }
+
+        const displayName = String(aftercareStudentNameInput.value || "").trim();
+        const group = String(aftercareStudentGroupInput.value || "").trim();
+        if (!displayName) {
+          aftercareAdminStatus.textContent = "Student name is required.";
+          return;
+        }
+
+        aftercareStudentSubmit.disabled = true;
+        try {
+          if (editingAftercareStudentId) {
+            const existingStudent = aftercareStudents.find((student) => student.id === editingAftercareStudentId);
+            await saveAftercareStudent({
+              studentId: editingAftercareStudentId,
+              existingStudent,
+              displayName,
+              group,
+              isActive: existingStudent?.isActive !== false,
+            });
+            aftercareAdminStatus.textContent = `${displayName} updated.`;
+          } else {
+            await createAftercareStudent({ displayName, group, isActive: true });
+            aftercareAdminStatus.textContent = `${displayName} added to the roster.`;
+          }
+          resetAftercareStudentForm();
+        } catch (error) {
+          console.error("Could not save aftercare student", error);
+          aftercareAdminStatus.textContent = error instanceof Error ? error.message : "Could not save student.";
+        } finally {
+          aftercareStudentSubmit.disabled = false;
+        }
+      });
+
+      aftercareStudentReset.addEventListener("click", () => {
+        resetAftercareStudentForm();
+        aftercareAdminStatus.textContent = "Edit canceled.";
+      });
+
+      aftercareStudentsList.addEventListener("click", async (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const button = target.closest("[data-aftercare-student-action]");
+        if (!(button instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        if (!currentIsAdmin || currentUserEmail !== ADMIN_EMAIL) {
+          aftercareAdminStatus.textContent = "Only admin can manage students.";
+          return;
+        }
+
+        const action = String(button.dataset.aftercareStudentAction || "");
+        const studentId = String(button.dataset.studentId || "");
+        const student = aftercareStudents.find((entry) => entry.id === studentId);
+        if (!student) {
+          return;
+        }
+
+        if (action === "edit") {
+          editingAftercareStudentId = student.id;
+          aftercareStudentNameInput.value = student.displayName || "";
+          aftercareStudentGroupInput.value = student.group || "";
+          aftercareStudentSubmit.textContent = "Save Student";
+          aftercareStudentReset.classList.remove("hidden");
+          aftercareStudentNameInput.focus();
+          aftercareAdminStatus.textContent = `Editing ${student.displayName}.`;
+          return;
+        }
+
+        if (action !== "toggle-active") {
+          return;
+        }
+
+        button.disabled = true;
+        try {
+          await setAftercareStudentActive({ studentId: student.id, isActive: student.isActive === false });
+          aftercareAdminStatus.textContent = student.isActive === false
+            ? `${student.displayName} is active again.`
+            : `${student.displayName} was hidden from the check-in list.`;
+        } catch (error) {
+          console.error("Could not update student active state", error);
+          aftercareAdminStatus.textContent = "Could not update student status.";
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      [aftercareFilterStart, aftercareFilterEnd, aftercareFilterStatus, aftercareFilterSearch].forEach((element) => {
+        element.addEventListener("input", () => {
+          renderAftercareAttendance();
+        });
+        element.addEventListener("change", () => {
+          renderAftercareAttendance();
+        });
+      });
+
+      aftercareExportFiltered.addEventListener("click", () => {
+        exportAttendanceRows(filteredAftercareAttendance(), `aftercare-attendance-${toLocalDateKey()}.csv`);
+      });
+
+      aftercareExportToday.addEventListener("click", () => {
+        const todayKey = toLocalDateKey();
+        const todayEntries = aftercareAttendance.filter((entry) => String(entry.dateKey || "") === todayKey);
+        exportAttendanceRows(todayEntries, `aftercare-attendance-${todayKey}.csv`);
+      });
+
+      aftercareFilterStart.value = toLocalDateKey();
+      aftercareFilterEnd.value = toLocalDateKey();
+
       initHeaderAuth({
         onStateChange: ({ user, isAdmin, approvalStatus }) => {
         if (!user) {
@@ -509,6 +916,7 @@
             unsubscribeMonths();
             unsubscribeMonths = null;
           }
+          stopAftercareSubscriptions();
           monthLocksList.innerHTML = '<p class="small-note">Sign in as admin to manage month locks.</p>';
           return;
         }
@@ -532,12 +940,16 @@
               unsubscribeMonths();
               unsubscribeMonths = null;
             }
+            stopAftercareSubscriptions();
             monthLocksList.innerHTML = '<p class="small-note">Only admin can manage month locks.</p>';
+            aftercareAdminStatus.textContent = "Only admin can manage students.";
+            aftercareExportStatus.textContent = "Only admin can view attendance exports.";
             return;
         }
         adminStatus.textContent = `Signed in as ${user.email}.`;
         startApprovalSubscription();
         startMonthSubscription();
+        startAftercareSubscriptions();
         if (!januaryPresetApplied) {
           januaryPresetApplied = true;
           applyJanuaryPresetLock();

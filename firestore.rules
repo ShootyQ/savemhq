@@ -459,6 +459,81 @@ service cloud.firestore {
         && request.resource.data.lastLoggedByLabel is string;
     }
 
+    function aftercareStatusIsValid(value) {
+      return ["checked-in", "checked-out"].hasAny([value]);
+    }
+
+    function aftercareStudentKeysAreAllowed() {
+      return request.resource.data.keys().hasAll([
+        "displayName",
+        "normalizedName",
+        "group",
+        "isActive",
+        "currentStatus",
+        "currentAttendanceId",
+        "currentCheckInAt",
+        "lastActionAt",
+        "createdAt",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "displayName",
+        "normalizedName",
+        "group",
+        "isActive",
+        "currentStatus",
+        "currentAttendanceId",
+        "currentCheckInAt",
+        "lastActionAt",
+        "createdAt",
+        "updatedAt"
+      ])
+        && request.resource.data.displayName is string
+        && request.resource.data.normalizedName is string
+        && (request.resource.data.group == null || request.resource.data.group is string)
+        && request.resource.data.isActive is bool
+        && aftercareStatusIsValid(request.resource.data.currentStatus)
+        && (request.resource.data.currentAttendanceId == null || request.resource.data.currentAttendanceId is string);
+    }
+
+    function aftercareAttendanceKeysAreAllowed(studentId) {
+      return request.resource.data.keys().hasAll([
+        "studentId",
+        "studentName",
+        "studentGroup",
+        "dateKey",
+        "status",
+        "checkedInAt",
+        "checkedOutAt",
+        "checkedInByUid",
+        "checkedInByLabel",
+        "checkedOutByUid",
+        "checkedOutByLabel",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "studentId",
+        "studentName",
+        "studentGroup",
+        "dateKey",
+        "status",
+        "checkedInAt",
+        "checkedOutAt",
+        "checkedInByUid",
+        "checkedInByLabel",
+        "checkedOutByUid",
+        "checkedOutByLabel",
+        "updatedAt"
+      ])
+        && request.resource.data.studentId == studentId
+        && request.resource.data.studentName is string
+        && (request.resource.data.studentGroup == null || request.resource.data.studentGroup is string)
+        && request.resource.data.dateKey is string
+        && aftercareStatusIsValid(request.resource.data.status)
+        && request.resource.data.checkedInByUid is string
+        && request.resource.data.checkedInByLabel is string
+        && (request.resource.data.checkedOutByUid == null || request.resource.data.checkedOutByUid is string)
+        && (request.resource.data.checkedOutByLabel == null || request.resource.data.checkedOutByLabel is string);
+    }
+
     match /competitions/{year}/months/{month} {
       allow read: if true;
       allow create: if isAdmin() || (
@@ -656,6 +731,66 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isApprovedForSection("birds")
         && backyardBirdDayKeysAreAllowed(monthId, dayId);
+      allow delete: if isAdmin();
+    }
+
+    match /aftercarePrograms/{programId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /aftercarePrograms/{programId}/students/{studentId} {
+      allow read: if isAdmin() || isApprovedForSection("aftercare");
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isApprovedForSection("aftercare")
+        && aftercareStudentKeysAreAllowed()
+        && request.resource.data.displayName == resource.data.displayName
+        && request.resource.data.normalizedName == resource.data.normalizedName
+        && request.resource.data.group == resource.data.group
+        && request.resource.data.isActive == resource.data.isActive
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "currentStatus",
+          "currentAttendanceId",
+          "currentCheckInAt",
+          "lastActionAt",
+          "updatedAt"
+        ])
+      );
+    }
+
+    match /aftercarePrograms/{programId}/attendance/{attendanceId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() || (
+        isApprovedForSection("aftercare")
+        && aftercareAttendanceKeysAreAllowed(request.resource.data.studentId)
+        && request.resource.data.status == "checked-in"
+        && request.resource.data.checkedOutAt == null
+        && request.resource.data.checkedOutByUid == null
+        && request.resource.data.checkedOutByLabel == null
+      );
+      allow update: if isAdmin() || (
+        isApprovedForSection("aftercare")
+        && aftercareAttendanceKeysAreAllowed(resource.data.studentId)
+        && request.resource.data.studentId == resource.data.studentId
+        && request.resource.data.studentName == resource.data.studentName
+        && request.resource.data.studentGroup == resource.data.studentGroup
+        && request.resource.data.dateKey == resource.data.dateKey
+        && request.resource.data.checkedInAt == resource.data.checkedInAt
+        && request.resource.data.checkedInByUid == resource.data.checkedInByUid
+        && request.resource.data.checkedInByLabel == resource.data.checkedInByLabel
+        && resource.data.status == "checked-in"
+        && resource.data.checkedOutAt == null
+        && request.resource.data.status == "checked-out"
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "status",
+          "checkedOutAt",
+          "checkedOutByUid",
+          "checkedOutByLabel",
+          "updatedAt"
+        ])
+      );
       allow delete: if isAdmin();
     }
   }
