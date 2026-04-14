@@ -459,6 +459,7 @@ service cloud.firestore {
         && request.resource.data.lastLoggedByLabel is string;
     }
 
+<<<<<<< HEAD
     function aftercareStatusIsValid(value) {
       return ["checked-in", "checked-out"].hasAny([value]);
     }
@@ -532,6 +533,41 @@ service cloud.firestore {
         && request.resource.data.checkedInByLabel is string
         && (request.resource.data.checkedOutByUid == null || request.resource.data.checkedOutByUid is string)
         && (request.resource.data.checkedOutByLabel == null || request.resource.data.checkedOutByLabel is string);
+=======
+    function backyardBirdSightingKeysAreAllowed(trackerId, dayId, sightingId) {
+      return request.resource.data.keys().hasAll([
+        "trackerId",
+        "birdId",
+        "birdName",
+        "monthId",
+        "dayId",
+        "dateKey",
+        "loggedByUid",
+        "loggedByLabel",
+        "seenAt",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "trackerId",
+        "birdId",
+        "birdName",
+        "monthId",
+        "dayId",
+        "dateKey",
+        "loggedByUid",
+        "loggedByLabel",
+        "seenAt",
+        "updatedAt"
+      ])
+        && request.resource.data.trackerId == trackerId
+        && request.resource.data.dayId == dayId
+        && request.resource.data.dateKey == dayId
+        && request.resource.data.birdId is string
+        && request.resource.data.birdName is string
+        && request.resource.data.monthId is string
+        && request.resource.data.loggedByUid is string
+        && request.resource.data.loggedByLabel is string
+        && sightingId == (dayId + "__" + request.resource.data.birdId);
+>>>>>>> 2800a6ae20bd92109cc6958f71e6ddfe8a793d73
     }
 
     match /competitions/{year}/months/{month} {
@@ -734,6 +770,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+<<<<<<< HEAD
     match /aftercarePrograms/{programId} {
       allow read: if isAdmin();
       allow create, update, delete: if isAdmin();
@@ -792,6 +829,13 @@ service cloud.firestore {
         ])
       );
       allow delete: if isAdmin();
+=======
+    match /backyardBirds/{trackerId}/sightings/{sightingId} {
+      allow read: if true;
+      allow create, update: if isApprovedForSection("birds")
+        && backyardBirdSightingKeysAreAllowed(trackerId, request.resource.data.dayId, sightingId);
+      allow delete: if isAdmin() || isApprovedForSection("birds");
+>>>>>>> 2800a6ae20bd92109cc6958f71e6ddfe8a793d73
     }
   }
 }
