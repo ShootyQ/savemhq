@@ -39,6 +39,13 @@
                   />
                   <button id="aftercare-search-clear" class="btn btn-secondary" type="button">Clear</button>
                 </div>
+                <div class="aftercare-sort-row">
+                  <label class="aftercare-search-label" for="aftercare-sort">Sort roster</label>
+                  <select id="aftercare-sort">
+                    <option value="first-name">First name</option>
+                    <option value="last-name">Last name</option>
+                  </select>
+                </div>
                 <div class="aftercare-stats" aria-live="polite">
                   <div class="aftercare-stat-pill">
                     <strong id="aftercare-active-count">0</strong>
@@ -84,6 +91,7 @@
       import {
         formatAftercareTime,
         isStudentCheckedIn,
+        studentSortValue,
         subscribeToAftercareStudents,
         toggleAftercareAttendance,
       } from "./js/aftercare-shared.js";
@@ -104,6 +112,7 @@
       const lockedText = document.getElementById("aftercare-locked-text");
       const searchInput = document.getElementById("aftercare-search");
       const clearSearchButton = document.getElementById("aftercare-search-clear");
+      const sortSelect = document.getElementById("aftercare-sort");
       const statusBanner = document.getElementById("aftercare-status");
       const studentGrid = document.getElementById("aftercare-student-grid");
       const activeCount = document.getElementById("aftercare-active-count");
@@ -117,6 +126,7 @@
         approvalSections: [],
         students: [],
         filterText: "",
+        sortMode: "first-name",
         pendingIds: new Set(),
         unsubscribeStudents: null,
       };
@@ -148,7 +158,7 @@
           return true;
         }
 
-        const haystack = [student.displayName, student.normalizedName, student.group]
+        const haystack = [student.displayName, student.normalizedName, student.firstName, student.lastName, student.group]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
@@ -165,7 +175,7 @@
             if (statusDelta !== 0) {
               return statusDelta;
             }
-            return String(left.normalizedName || left.displayName || "").localeCompare(String(right.normalizedName || right.displayName || ""));
+            return studentSortValue(left, state.sortMode).localeCompare(studentSortValue(right, state.sortMode));
           });
 
         updateStatCounts(students);
@@ -249,6 +259,11 @@
         searchInput.value = "";
         state.filterText = "";
         searchInput.focus();
+        renderStudents();
+      });
+
+      sortSelect.addEventListener("change", () => {
+        state.sortMode = String(sortSelect.value || "first-name");
         renderStudents();
       });
 

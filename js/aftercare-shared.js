@@ -26,6 +26,94 @@ export const normalizeStudentName = (value = "") => String(value || "").replace(
 
 export const normalizeStudentSearch = (value = "") => normalizeStudentName(value).toLowerCase();
 
+export const parseStudentNameParts = ({ firstName = "", lastName = "", displayName = "" } = {}) => {
+  const normalizedFirstName = normalizeStudentName(firstName);
+  const normalizedLastName = normalizeStudentName(lastName);
+  const normalizedDisplayName = normalizeStudentName(displayName);
+
+  if (normalizedFirstName || normalizedLastName) {
+    const builtDisplayName = [normalizedFirstName, normalizedLastName].filter(Boolean).join(" ");
+    return {
+      firstName: normalizedFirstName,
+      lastName: normalizedLastName,
+      displayName: builtDisplayName || normalizedDisplayName,
+      normalizedName: normalizeStudentSearch(builtDisplayName || normalizedDisplayName),
+    };
+  }
+
+  if (!normalizedDisplayName) {
+    return {
+      firstName: "",
+      lastName: "",
+      displayName: "",
+      normalizedName: "",
+    };
+  }
+
+  const commaParts = normalizedDisplayName.split(",").map((part) => normalizeStudentName(part)).filter(Boolean);
+  if (commaParts.length >= 2) {
+    const parsedLastName = commaParts[0];
+    const parsedFirstName = commaParts.slice(1).join(" ");
+    const rebuiltDisplayName = [parsedFirstName, parsedLastName].filter(Boolean).join(" ");
+    return {
+      firstName: parsedFirstName,
+      lastName: parsedLastName,
+      displayName: rebuiltDisplayName,
+      normalizedName: normalizeStudentSearch(rebuiltDisplayName),
+    };
+  }
+
+  const nameParts = normalizedDisplayName.split(" ").filter(Boolean);
+  if (nameParts.length === 1) {
+    return {
+      firstName: nameParts[0],
+      lastName: "",
+      displayName: normalizedDisplayName,
+      normalizedName: normalizeStudentSearch(normalizedDisplayName),
+    };
+  }
+
+  const parsedLastName = nameParts.pop() || "";
+  const parsedFirstName = nameParts.join(" ");
+  return {
+    firstName: parsedFirstName,
+    lastName: parsedLastName,
+    displayName: normalizedDisplayName,
+    normalizedName: normalizeStudentSearch(normalizedDisplayName),
+  };
+};
+
+export const studentSortValue = (student = {}, sortMode = "first-name") => {
+  const parsedName = parseStudentNameParts(student);
+  if (sortMode === "last-name") {
+    return [parsedName.lastName, parsedName.firstName, parsedName.displayName].filter(Boolean).join(" ").toLowerCase();
+  }
+
+  return [parsedName.firstName, parsedName.lastName, parsedName.displayName].filter(Boolean).join(" ").toLowerCase();
+};
+
+const buildAftercareStudentPayload = ({ firstName = "", lastName = "", displayName = "", group = "", isActive = true, existingStudent = null, updatedAt = serverTimestamp(), createdAt = null } = {}) => {
+  const parsedName = parseStudentNameParts({ firstName, lastName, displayName });
+  if (!parsedName.displayName) {
+    throw new Error("Student first and last name are required.");
+  }
+
+  return {
+    firstName: parsedName.firstName || null,
+    lastName: parsedName.lastName || null,
+    displayName: parsedName.displayName,
+    normalizedName: parsedName.normalizedName,
+    group: normalizeStudentName(group) || null,
+    isActive: Boolean(isActive),
+    currentStatus: String(existingStudent?.currentStatus || AFTERCARE_STATUS.checkedOut),
+    currentAttendanceId: existingStudent?.currentAttendanceId || null,
+    currentCheckInAt: existingStudent?.currentCheckInAt || null,
+    lastActionAt: existingStudent?.lastActionAt || null,
+    createdAt: existingStudent?.createdAt || createdAt || serverTimestamp(),
+    updatedAt,
+  };
+};
+
 export const toLocalDateKey = (value = new Date()) => {
   const date = value instanceof Date ? value : new Date(value);
   const year = date.getFullYear();
@@ -110,50 +198,61 @@ export const subscribeToAftercareAttendance = ({ onData, onError } = {}) => onSn
   onError
 );
 
-export const createAftercareStudent = async ({ displayName = "", group = "", isActive = true } = {}) => {
-  const normalizedDisplayName = normalizeStudentName(displayName);
-  if (!normalizedDisplayName) {
-    throw new Error("Student name is required.");
-  }
-
+export const createAftercareStudent = async ({ displayName = "", firstName = "", lastName = "", group = "", isActive = true } = {}) => {
   const studentRef = doc(aftercareStudentsCollection);
-  await setDoc(studentRef, {
-    displayName: normalizedDisplayName,
-    normalizedName: normalizeStudentSearch(normalizedDisplayName),
-    group: normalizeStudentName(group) || null,
-    isActive: Boolean(isActive),
-    currentStatus: AFTERCARE_STATUS.checkedOut,
-    currentAttendanceId: null,
-    currentCheckInAt: null,
-    lastActionAt: null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(studentRef, buildAftercareStudentPayload({ displayName, firstName, lastName, group, isActive }));
   return studentRef.id;
 };
 
-export const saveAftercareStudent = async ({ studentId = "", existingStudent = null, displayName = "", group = "", isActive = true } = {}) => {
-  const normalizedDisplayName = normalizeStudentName(displayName);
+export const saveAftercareStudent = async ({ studentId = "", existingStudent = null, displayName = "", firstName = "", lastName = "", group = "", isActive = true } = {}) => {
   if (!studentId) {
     throw new Error("Student id is required.");
   }
 
-  if (!normalizedDisplayName) {
-    throw new Error("Student name is required.");
+  await setDoc(doc(aftercareStudentsCollection, studentId), buildAftercareStudentPayload({
+    existingStudent,
+    displayName,
+    firstName,
+    lastName,
+    group,
+    isActive,
+  }));
+};
+
+export const importAftercareStudents = async ({ students = [], existingStudents = [] } = {}) => {
+  const batch = writeBatch(db);
+  const existingKeys = new Set(
+    existingStudents
+      .map((student) => {
+        const parsedName = parseStudentNameParts(student);
+        return [parsedName.lastName, parsedName.firstName].filter(Boolean).join("|").toLowerCase();
+      })
+      .filter(Boolean)
+  );
+
+  let createdCount = 0;
+  let skippedCount = 0;
+
+  students.forEach((student) => {
+    const payload = buildAftercareStudentPayload(student);
+    const dedupeKey = [payload.lastName, payload.firstName].filter(Boolean).join("|").toLowerCase();
+    if (dedupeKey && existingKeys.has(dedupeKey)) {
+      skippedCount += 1;
+      return;
+    }
+
+    if (dedupeKey) {
+      existingKeys.add(dedupeKey);
+    }
+    batch.set(doc(aftercareStudentsCollection), payload);
+    createdCount += 1;
+  });
+
+  if (createdCount > 0) {
+    await batch.commit();
   }
 
-  await setDoc(doc(aftercareStudentsCollection, studentId), {
-    displayName: normalizedDisplayName,
-    normalizedName: normalizeStudentSearch(normalizedDisplayName),
-    group: normalizeStudentName(group) || null,
-    isActive: Boolean(isActive),
-    currentStatus: String(existingStudent?.currentStatus || AFTERCARE_STATUS.checkedOut),
-    currentAttendanceId: existingStudent?.currentAttendanceId || null,
-    currentCheckInAt: existingStudent?.currentCheckInAt || null,
-    lastActionAt: existingStudent?.lastActionAt || null,
-    createdAt: existingStudent?.createdAt || serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  return { createdCount, skippedCount };
 };
 
 export const setAftercareStudentActive = async ({ studentId = "", isActive = true } = {}) => {

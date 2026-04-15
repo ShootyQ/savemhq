@@ -48,12 +48,16 @@
 
           <article class="project-card">
             <h2>Aftercare Roster</h2>
-            <p class="small-note">Add students, edit names or groups, and hide inactive students from the check-in screen.</p>
+            <p class="small-note">Add students, import a CSV with last and first names, and hide inactive students from the check-in screen.</p>
             <form id="aftercare-student-form" class="stack-form">
               <div class="entry-grid aftercare-admin-form-grid">
                 <div class="entry-row">
-                  <label for="aftercare-student-name">Student name</label>
-                  <input id="aftercare-student-name" name="studentName" type="text" autocomplete="off" placeholder="Add a student name" required />
+                  <label for="aftercare-student-last-name">Last name</label>
+                  <input id="aftercare-student-last-name" name="studentLastName" type="text" autocomplete="off" placeholder="Add a last name" required />
+                </div>
+                <div class="entry-row">
+                  <label for="aftercare-student-first-name">First name</label>
+                  <input id="aftercare-student-first-name" name="studentFirstName" type="text" autocomplete="off" placeholder="Add a first name" required />
                 </div>
                 <div class="entry-row">
                   <label for="aftercare-student-group">Group / Teacher</label>
@@ -65,6 +69,14 @@
                 <button id="aftercare-student-reset" class="btn btn-secondary hidden" type="button">Cancel Edit</button>
               </div>
             </form>
+            <div class="aftercare-import-panel">
+              <label for="aftercare-student-csv">Upload student CSV</label>
+              <input id="aftercare-student-csv" type="file" accept=".csv,text/csv" />
+              <p class="small-note aftercare-import-note">CSV columns: last name, first name. Header row is optional.</p>
+              <div class="form-actions">
+                <button id="aftercare-student-import" class="btn btn-secondary" type="button">Import CSV</button>
+              </div>
+            </div>
             <p id="aftercare-admin-status" class="small-note" aria-live="polite">Sign in as admin to manage students.</p>
             <div id="aftercare-students-list" class="stack-form" aria-live="polite">
               <p class="small-note">Sign in as admin to load students.</p>
@@ -130,9 +142,12 @@
         createAftercareStudent,
         formatAftercareDateTime,
         formatAftercareTime,
+        importAftercareStudents,
         isStudentCheckedIn,
+        parseStudentNameParts,
         saveAftercareStudent,
         setAftercareStudentActive,
+        studentSortValue,
         subscribeToAftercareAttendance,
         subscribeToAftercareStudents,
         toLocalDateKey,
@@ -181,10 +196,13 @@
       const applyJanuaryLockBtn = document.getElementById("apply-january-lock");
       const monthLocksList = document.getElementById("month-locks-list");
       const aftercareStudentForm = document.getElementById("aftercare-student-form");
-      const aftercareStudentNameInput = document.getElementById("aftercare-student-name");
+      const aftercareStudentLastNameInput = document.getElementById("aftercare-student-last-name");
+      const aftercareStudentFirstNameInput = document.getElementById("aftercare-student-first-name");
       const aftercareStudentGroupInput = document.getElementById("aftercare-student-group");
       const aftercareStudentSubmit = document.getElementById("aftercare-student-submit");
       const aftercareStudentReset = document.getElementById("aftercare-student-reset");
+      const aftercareStudentCsvInput = document.getElementById("aftercare-student-csv");
+      const aftercareStudentImport = document.getElementById("aftercare-student-import");
       const aftercareAdminStatus = document.getElementById("aftercare-admin-status");
       const aftercareStudentsList = document.getElementById("aftercare-students-list");
       const aftercareFilterStart = document.getElementById("aftercare-filter-start");
@@ -440,6 +458,99 @@
         aftercareStudentReset.classList.add("hidden");
       };
 
+      const parseCsvRows = (csvText) => {
+        const rows = [];
+        let currentRow = [];
+        let currentValue = "";
+        let inQuotes = false;
+
+        for (let index = 0; index < csvText.length; index += 1) {
+          const character = csvText[index];
+          const nextCharacter = csvText[index + 1];
+
+          if (character === '"') {
+            if (inQuotes && nextCharacter === '"') {
+              currentValue += '"';
+              index += 1;
+            } else {
+              inQuotes = !inQuotes;
+            }
+            continue;
+          }
+
+          if (character === "," && !inQuotes) {
+            currentRow.push(currentValue);
+            currentValue = "";
+            continue;
+          }
+
+          if ((character === "\n" || character === "\r") && !inQuotes) {
+            if (character === "\r" && nextCharacter === "\n") {
+              index += 1;
+            }
+            currentRow.push(currentValue);
+            if (currentRow.some((value) => String(value || "").trim())) {
+              rows.push(currentRow);
+            }
+            currentRow = [];
+            currentValue = "";
+            continue;
+          }
+
+          currentValue += character;
+        }
+
+        if (currentValue || currentRow.length) {
+          currentRow.push(currentValue);
+          if (currentRow.some((value) => String(value || "").trim())) {
+            rows.push(currentRow);
+          }
+        }
+
+        return rows;
+      };
+
+      const parseAftercareCsv = (csvText) => {
+        const rows = parseCsvRows(csvText).map((row) => row.map((value) => String(value || "").trim()));
+        if (!rows.length) {
+          throw new Error("The CSV file is empty.");
+        }
+
+        let firstNameIndex = 1;
+        let lastNameIndex = 0;
+        let startIndex = 0;
+        const headerRow = rows[0].map((value) => value.toLowerCase());
+        const headerHasFirst = headerRow.some((value) => value.includes("first"));
+        const headerHasLast = headerRow.some((value) => value.includes("last"));
+        if (headerHasFirst && headerHasLast) {
+          firstNameIndex = headerRow.findIndex((value) => value.includes("first"));
+          lastNameIndex = headerRow.findIndex((value) => value.includes("last"));
+          startIndex = 1;
+        }
+
+        const students = [];
+        let invalidRowCount = 0;
+        for (let index = startIndex; index < rows.length; index += 1) {
+          const row = rows[index];
+          const firstName = String(row[firstNameIndex] || "").trim();
+          const lastName = String(row[lastNameIndex] || "").trim();
+          if (!firstName && !lastName) {
+            continue;
+          }
+          if (!firstName || !lastName) {
+            invalidRowCount += 1;
+            continue;
+          }
+          students.push({ firstName, lastName, group: "", isActive: true });
+        }
+
+        if (!students.length) {
+          throw new Error("No valid student rows were found. Use last name and first name columns.");
+        }
+
+        return { students, invalidRowCount };
+      };
+
       const filteredAftercareAttendance = () => {
         const start = String(aftercareFilterStart.value || "").trim();
         const end = String(aftercareFilterEnd.value || "").trim();
@@ -476,16 +587,21 @@
         }
 
         aftercareStudentsList.innerHTML = [...aftercareStudents]
-          .sort((left, right) => String(left.normalizedName || left.displayName || "").localeCompare(String(right.normalizedName || right.displayName || "")))
+          .sort((left, right) => studentSortValue(left, "last-name").localeCompare(studentSortValue(right, "last-name")))
           .map((student) => {
             const checkedIn = isStudentCheckedIn(student);
+            const parsedName = parseStudentNameParts(student);
             const groupLabel = student.group ? `<p><strong>Group:</strong> ${escapeHtml(student.group)}</p>` : "";
             const currentTime = checkedIn && student.currentCheckInAt
               ? `<p><strong>Current check-in:</strong> ${escapeHtml(formatAftercareTime(student.currentCheckInAt))}</p>`
               : "";
+            const sortLabel = parsedName.lastName && parsedName.firstName
+              ? `<p class="small-note">${escapeHtml(parsedName.lastName)}, ${escapeHtml(parsedName.firstName)}</p>`
+              : "";
             return `
               <article class="project-card aftercare-admin-card ${student.isActive === false ? "is-inactive" : ""}">
                 <h3>${escapeHtml(student.displayName || "Student")}</h3>
+                ${sortLabel}
                 ${groupLabel}
                 <p><strong>Roster status:</strong> ${student.isActive === false ? "Inactive" : "Active"}</p>
                 <p><strong>Attendance status:</strong> ${checkedIn ? "Checked in" : "Logged out"}</p>
@@ -790,12 +906,15 @@
           return;
         }
 
-        const displayName = String(aftercareStudentNameInput.value || "").trim();
+        const firstName = String(aftercareStudentFirstNameInput.value || "").trim();
+        const lastName = String(aftercareStudentLastNameInput.value || "").trim();
         const group = String(aftercareStudentGroupInput.value || "").trim();
-        if (!displayName) {
-          aftercareAdminStatus.textContent = "Student name is required.";
+        if (!firstName || !lastName) {
+          aftercareAdminStatus.textContent = "Student first and last name are required.";
           return;
         }
+
+        const displayName = `${firstName} ${lastName}`.trim();
 
         aftercareStudentSubmit.disabled = true;
         try {
@@ -805,12 +924,14 @@
               studentId: editingAftercareStudentId,
               existingStudent,
               displayName,
+              firstName,
+              lastName,
               group,
               isActive: existingStudent?.isActive !== false,
             });
             aftercareAdminStatus.textContent = `${displayName} updated.`;
           } else {
-            await createAftercareStudent({ displayName, group, isActive: true });
+            await createAftercareStudent({ displayName, firstName, lastName, group, isActive: true });
             aftercareAdminStatus.textContent = `${displayName} added to the roster.`;
           }
           resetAftercareStudentForm();
@@ -825,6 +946,35 @@
       aftercareStudentReset.addEventListener("click", () => {
         resetAftercareStudentForm();
         aftercareAdminStatus.textContent = "Edit canceled.";
+      });
+
+      aftercareStudentImport.addEventListener("click", async () => {
+        if (!currentIsAdmin || currentUserEmail !== ADMIN_EMAIL) {
+          aftercareAdminStatus.textContent = "Only admin can import students.";
+          return;
+        }
+
+        const csvFile = aftercareStudentCsvInput.files?.[0];
+        if (!csvFile) {
+          aftercareAdminStatus.textContent = "Choose a CSV file first.";
+          return;
+        }
+
+        aftercareStudentImport.disabled = true;
+        try {
+          const csvText = await csvFile.text();
+          const { students, invalidRowCount } = parseAftercareCsv(csvText);
+          const result = await importAftercareStudents({ students, existingStudents: aftercareStudents });
+          const skippedText = result.skippedCount ? ` Skipped ${result.skippedCount} duplicate row${result.skippedCount === 1 ? "" : "s"}.` : "";
+          const invalidText = invalidRowCount ? ` Ignored ${invalidRowCount} incomplete row${invalidRowCount === 1 ? "" : "s"}.` : "";
+          aftercareAdminStatus.textContent = `Imported ${result.createdCount} student${result.createdCount === 1 ? "" : "s"}.${skippedText}${invalidText}`;
+          aftercareStudentCsvInput.value = "";
+        } catch (error) {
+          console.error("Could not import aftercare students", error);
+          aftercareAdminStatus.textContent = error instanceof Error ? error.message : "Could not import students.";
+        } finally {
+          aftercareStudentImport.disabled = false;
+        }
       });
 
       aftercareStudentsList.addEventListener("click", async (event) => {
@@ -851,12 +1001,14 @@
         }
 
         if (action === "edit") {
+          const parsedName = parseStudentNameParts(student);
           editingAftercareStudentId = student.id;
-          aftercareStudentNameInput.value = student.displayName || "";
+          aftercareStudentLastNameInput.value = parsedName.lastName || "";
+          aftercareStudentFirstNameInput.value = parsedName.firstName || "";
           aftercareStudentGroupInput.value = student.group || "";
           aftercareStudentSubmit.textContent = "Save Student";
           aftercareStudentReset.classList.remove("hidden");
-          aftercareStudentNameInput.focus();
+          aftercareStudentLastNameInput.focus();
           aftercareAdminStatus.textContent = `Editing ${student.displayName}.`;
           return;
         }
