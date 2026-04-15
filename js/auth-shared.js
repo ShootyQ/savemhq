@@ -333,14 +333,26 @@ export const initHeaderAuth = ({ onStateChange, signedOutText = "Signed out." } 
       onStateChange?.({ user, isAdmin, approvalStatus, approvalPerson, approvalSections });
     } catch (error) {
       const details = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
-      addPlatesLink?.classList.add("hidden");
-      adminLink?.classList.add("hidden");
+      const fallbackProfile = getKnownUserProfile(user.email);
+      const fallbackIsAdmin = Boolean(fallbackProfile?.isAdmin);
+      const userEmail = String(user.email || "").toLowerCase();
+
+      adminLink?.classList.toggle("hidden", !fallbackIsAdmin);
+      addPlatesLink?.classList.toggle("hidden", !hasSectionAccess({
+        isAdmin: fallbackIsAdmin,
+        approvalStatus: fallbackIsAdmin ? "approved" : "error",
+        approvalSections: [],
+        userEmail,
+      }, "plates"));
+
       if (headerAuthStatus) {
-        headerAuthStatus.textContent = `Approval check failed (${details}). Verify Firestore rules.`;
+        headerAuthStatus.textContent = fallbackIsAdmin
+          ? `Signed in as ${signedInLabelForUser(user)}. Approval check failed (${details}), but admin access is active.`
+          : `Approval check failed (${details}). Verify Firestore rules.`;
       }
       onStateChange?.({
         user,
-        isAdmin: false,
+        isAdmin: fallbackIsAdmin,
         approvalStatus: "error",
         approvalPerson: "",
         approvalSections: [],
