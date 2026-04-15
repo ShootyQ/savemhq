@@ -3958,11 +3958,70 @@ body[data-page="aftercare"] .reveal-item {
   border-color: rgba(58, 132, 88, 0.26);
 }
 
+.aftercare-stat-pill.is-checked-out {
+  background: linear-gradient(160deg, rgba(250, 235, 222, 0.95), rgba(255, 246, 238, 0.97));
+  border-color: rgba(180, 108, 54, 0.22);
+}
+
 .aftercare-status-banner {
   padding: 0.9rem 1rem;
   border-radius: 1rem;
   background: rgba(255, 248, 234, 0.88);
   border: 1px solid rgba(208, 138, 69, 0.18);
+}
+
+.aftercare-reset-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.aftercare-student-sections {
+  display: grid;
+  gap: 1rem;
+}
+
+.aftercare-student-section {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(119, 104, 90, 0.14);
+  background: linear-gradient(160deg, rgba(255, 252, 245, 0.84), rgba(245, 241, 232, 0.78));
+}
+
+.aftercare-student-section.is-checked-in-section {
+  background: linear-gradient(160deg, rgba(234, 247, 238, 0.88), rgba(247, 252, 248, 0.92));
+  border-color: rgba(68, 135, 92, 0.22);
+}
+
+.aftercare-student-section.is-checked-out-section {
+  background: linear-gradient(160deg, rgba(253, 242, 230, 0.88), rgba(255, 248, 241, 0.92));
+  border-color: rgba(180, 108, 54, 0.18);
+}
+
+.aftercare-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.aftercare-section-title {
+  margin: 0;
+}
+
+.aftercare-section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.05rem;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(119, 104, 90, 0.15);
 }
 
 .aftercare-student-grid {
@@ -4007,13 +4066,22 @@ body[data-page="aftercare"] .reveal-item {
   border-color: rgba(68, 135, 92, 0.34);
 }
 
+.aftercare-student-button.is-checked-out-today {
+  background: linear-gradient(165deg, rgba(251, 236, 223, 0.98), rgba(244, 218, 193, 0.96));
+  border-color: rgba(186, 109, 57, 0.3);
+}
+
+.aftercare-student-button.is-not-checked-in {
+  background: linear-gradient(165deg, rgba(250, 248, 243, 0.99), rgba(239, 234, 224, 0.97));
+}
+
 .aftercare-student-button.is-pending {
   opacity: 0.72;
 }
 
 .aftercare-student-name {
   font-family: "Fraunces", Georgia, serif;
-  font-size: clamp(1.3rem, 2.3vw, 1.7rem);
+  font-size: clamp(0.8rem, 1.15vw, 0.98rem);
   line-height: 1.12;
   color: #2f2924;
 }
@@ -4073,11 +4141,47 @@ body[data-page="aftercare"] .reveal-item {
   background: linear-gradient(165deg, rgba(238, 250, 241, 0.97), rgba(247, 252, 248, 0.96));
 }
 
+.aftercare-admin-card.is-checked-out {
+  border-color: rgba(186, 109, 57, 0.26);
+  background: linear-gradient(165deg, rgba(253, 243, 234, 0.97), rgba(255, 249, 243, 0.96));
+}
+
+.aftercare-admin-card.is-not-checked-in {
+  border-color: rgba(119, 104, 90, 0.14);
+  background: linear-gradient(165deg, rgba(247, 244, 239, 0.97), rgba(255, 252, 248, 0.96));
+}
+
+.aftercare-admin-stats {
+  margin-top: 0.15rem;
+}
+
+.aftercare-filter-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.aftercare-filter-chip {
+  min-width: 0;
+}
+
+.aftercare-filter-chip.is-active {
+  border-color: rgba(93, 153, 163, 0.4);
+  background: linear-gradient(160deg, rgba(217, 240, 242, 0.98), rgba(237, 248, 249, 0.96));
+  color: #24474c;
+}
+
 @media (max-width: 700px) {
   .aftercare-search-row,
   .aftercare-sort-row,
   .aftercare-stats {
     grid-template-columns: 1fr;
+  }
+
+  .aftercare-section-header,
+  .aftercare-reset-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .aftercare-student-grid {
@@ -4096,7 +4200,7 @@ body[data-page="aftercare"] .reveal-item {
   }
 
   .aftercare-student-name {
-    font-size: clamp(1.18rem, 6vw, 1.45rem);
+    font-size: clamp(0.82rem, 3.7vw, 1rem);
   }
 
   .aftercare-student-button {

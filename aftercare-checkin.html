@@ -55,10 +55,13 @@
                     <strong id="aftercare-checked-in-count">0</strong>
                     <span>Checked in</span>
                   </div>
-                  <div class="aftercare-stat-pill">
-                    <strong id="aftercare-visible-count">0</strong>
-                    <span>Showing</span>
+                  <div class="aftercare-stat-pill is-checked-out">
+                    <strong id="aftercare-checked-out-count">0</strong>
+                    <span>Checked out today</span>
                   </div>
+                </div>
+                <div class="aftercare-reset-row">
+                  <button id="aftercare-reset-day" class="btn btn-secondary" type="button">Reset Day</button>
                 </div>
               </div>
 
@@ -66,7 +69,7 @@
                 Sign in with Google to open the roster.
               </p>
 
-              <div id="aftercare-student-grid" class="aftercare-student-grid" aria-live="polite"></div>
+              <div id="aftercare-student-sections" class="aftercare-student-sections" aria-live="polite"></div>
             </article>
           </div>
 
@@ -89,10 +92,15 @@
     <script type="module">
       import { hasSectionAccess, initHeaderAuth } from "./js/auth-shared.js";
       import {
+        AFTERCARE_STATUS,
+        latestAftercareAttendanceByStudent,
         formatAftercareTime,
         isStudentCheckedIn,
+        resetAftercareDay,
         studentSortValue,
+        subscribeToAftercareAttendance,
         subscribeToAftercareStudents,
+        toLocalDateKey,
         toggleAftercareAttendance,
       } from "./js/aftercare-shared.js";
       import { initHeaderShell } from "./js/header-shell.js";
@@ -113,11 +121,12 @@
       const searchInput = document.getElementById("aftercare-search");
       const clearSearchButton = document.getElementById("aftercare-search-clear");
       const sortSelect = document.getElementById("aftercare-sort");
+      const resetDayButton = document.getElementById("aftercare-reset-day");
       const statusBanner = document.getElementById("aftercare-status");
-      const studentGrid = document.getElementById("aftercare-student-grid");
+      const studentSections = document.getElementById("aftercare-student-sections");
       const activeCount = document.getElementById("aftercare-active-count");
       const checkedInCount = document.getElementById("aftercare-checked-in-count");
-      const visibleCount = document.getElementById("aftercare-visible-count");
+      const checkedOutCount = document.getElementById("aftercare-checked-out-count");
 
       const state = {
         user: null,
@@ -125,10 +134,12 @@
         approvalStatus: "signed-out",
         approvalSections: [],
         students: [],
+        attendanceEntries: [],
         filterText: "",
         sortMode: "first-name",
         pendingIds: new Set(),
         unsubscribeStudents: null,
+        unsubscribeAttendance: null,
       };
 
       const escapeHtml = (value) => String(value || "")
@@ -145,12 +156,21 @@
         userEmail: state.user?.email,
       }, "aftercare");
 
-      const updateStatCounts = (visibleStudents) => {
+      const updateStatCounts = () => {
         const activeStudents = state.students.filter((student) => student.isActive !== false);
+        const todayEntries = latestAftercareAttendanceByStudent({
+          entries: state.attendanceEntries,
+          dateKey: toLocalDateKey(),
+        });
         const currentlyCheckedIn = activeStudents.filter((student) => isStudentCheckedIn(student));
+        const checkedOutToday = activeStudents.filter((student) => {
+          const todayEntry = todayEntries.get(student.id);
+          return todayEntry && String(todayEntry.status || "") === AFTERCARE_STATUS.checkedOut;
+        });
         activeCount.textContent = String(activeStudents.length);
         checkedInCount.textContent = String(currentlyCheckedIn.length);
-        visibleCount.textContent = String(visibleStudents.length);
+        checkedOutCount.textContent = String(checkedOutToday.length);
+        resetDayButton.disabled = currentlyCheckedIn.length === 0 || state.pendingIds.size > 0;
       };
 
       const studentMatchesFilter = (student, filterText) => {
@@ -167,51 +187,118 @@
 
       const renderStudents = () => {
         const filterText = String(state.filterText || "").trim().toLowerCase();
+        const todayKey = toLocalDateKey();
+        const todayEntries = latestAftercareAttendanceByStudent({
+          entries: state.attendanceEntries,
+          dateKey: todayKey,
+        });
         const students = [...state.students]
           .filter((student) => student.isActive !== false)
           .filter((student) => studentMatchesFilter(student, filterText))
-          .sort((left, right) => {
-            const statusDelta = Number(isStudentCheckedIn(right)) - Number(isStudentCheckedIn(left));
-            if (statusDelta !== 0) {
-              return statusDelta;
-            }
-            return studentSortValue(left, state.sortMode).localeCompare(studentSortValue(right, state.sortMode));
-          });
+          .sort((left, right) => studentSortValue(left, state.sortMode).localeCompare(studentSortValue(right, state.sortMode)));
 
-        updateStatCounts(students);
+        updateStatCounts();
 
         if (!students.length) {
-          studentGrid.innerHTML = `<p class="small-note">${filterText ? "No students match that search." : "No active students yet. Add them on the admin page."}</p>`;
+          studentSections.innerHTML = `<p class="small-note">${filterText ? "No students match that search." : "No active students yet. Add them on the admin page."}</p>`;
           return;
         }
 
-        studentGrid.innerHTML = students
-          .map((student) => {
-            const isCheckedIn = isStudentCheckedIn(student);
-            const pending = state.pendingIds.has(student.id);
-            const timeLabel = isCheckedIn
-              ? (student.currentCheckInAt ? `Checked in at ${formatAftercareTime(student.currentCheckInAt)}` : "Checked in")
-              : (student.lastActionAt ? `Logged out at ${formatAftercareTime(student.lastActionAt)}` : "Tap to check in");
-            const groupLabel = student.group ? `<span class="aftercare-student-meta">${escapeHtml(student.group)}</span>` : "";
-            const actionLabel = isCheckedIn ? "Tap to log out" : "Tap to check in";
+        const studentsBySection = {
+          "checked-in": [],
+          "checked-out": [],
+          "not-checked-in": [],
+        };
+
+        students.forEach((student) => {
+          const todayEntry = todayEntries.get(student.id);
+          if (isStudentCheckedIn(student)) {
+            studentsBySection["checked-in"].push({ student, todayEntry });
+            return;
+          }
+
+          if (todayEntry && String(todayEntry.status || "") === AFTERCARE_STATUS.checkedOut) {
+            studentsBySection["checked-out"].push({ student, todayEntry });
+            return;
+          }
+
+          studentsBySection["not-checked-in"].push({ student, todayEntry: null });
+        });
+
+        const sectionConfig = [
+          {
+            id: "checked-in",
+            title: "Checked In",
+            subtitle: `Open attendance for ${todayKey}`,
+            emptyText: "Nobody is currently checked in.",
+          },
+          {
+            id: "checked-out",
+            title: "Checked Out",
+            subtitle: `Already signed out for ${todayKey}`,
+            emptyText: "Nobody has checked out yet today.",
+          },
+          {
+            id: "not-checked-in",
+            title: "Not Checked In",
+            subtitle: `Ready to log for ${todayKey}`,
+            emptyText: "Everyone in this search has already been logged today.",
+          },
+        ];
+
+        const renderStudentButton = ({ student, todayEntry }, sectionId) => {
+          const isCheckedIn = sectionId === "checked-in";
+          const isCheckedOut = sectionId === "checked-out";
+          const pending = state.pendingIds.has(student.id);
+          const timeLabel = isCheckedIn
+            ? (student.currentCheckInAt ? `Checked in at ${formatAftercareTime(student.currentCheckInAt)}` : "Checked in")
+            : isCheckedOut
+              ? (todayEntry?.checkedOutAt ? `Checked out at ${formatAftercareTime(todayEntry.checkedOutAt)}` : "Checked out")
+              : "Tap to check in";
+          const groupLabel = student.group ? `<span class="aftercare-student-meta">${escapeHtml(student.group)}</span>` : "";
+          const actionLabel = isCheckedIn ? "Tap to log out" : (isCheckedOut ? "Tap to check in again" : "Tap to check in");
+          const buttonClass = isCheckedIn
+            ? "is-checked-in"
+            : (isCheckedOut ? "is-checked-out-today" : "is-not-checked-in");
+
+          return `
+            <button
+              class="aftercare-student-button ${buttonClass} ${pending ? "is-pending" : ""}"
+              type="button"
+              data-student-id="${student.id}"
+              aria-pressed="${isCheckedIn ? "true" : "false"}"
+              ${pending ? "disabled" : ""}
+            >
+              <span class="aftercare-student-name">${escapeHtml(student.displayName || "Student")}</span>
+              ${groupLabel}
+              <span class="aftercare-student-status">${isCheckedIn ? "Checked In" : (isCheckedOut ? "Checked Out" : "Not Checked In")}</span>
+              <span class="aftercare-student-time">${escapeHtml(timeLabel)}</span>
+              <span class="aftercare-student-action">${actionLabel}</span>
+            </button>
+          `;
+        };
+
+        studentSections.innerHTML = sectionConfig
+          .map((section) => {
+            const sectionStudents = studentsBySection[section.id];
+            const contentMarkup = sectionStudents.length
+              ? `<div class="aftercare-student-grid">${sectionStudents.map((entry) => renderStudentButton(entry, section.id)).join("")}</div>`
+              : `<p class="small-note">${section.emptyText}</p>`;
             return `
-              <button
-                class="aftercare-student-button ${isCheckedIn ? "is-checked-in" : "is-checked-out"} ${pending ? "is-pending" : ""}"
-                type="button"
-                data-student-id="${student.id}"
-                aria-pressed="${isCheckedIn ? "true" : "false"}"
-                ${pending ? "disabled" : ""}
-              >
-                <span class="aftercare-student-name">${escapeHtml(student.displayName || "Student")}</span>
-                ${groupLabel}
-                <span class="aftercare-student-status">${isCheckedIn ? "Checked In" : "Logged Out"}</span>
-                <span class="aftercare-student-time">${escapeHtml(timeLabel)}</span>
-                <span class="aftercare-student-action">${actionLabel}</span>
-              </button>
+              <section class="aftercare-student-section is-${section.id}-section">
+                <div class="aftercare-section-header">
+                  <div>
+                    <h2 class="aftercare-section-title">${section.title}</h2>
+                    <p class="small-note">${section.subtitle}</p>
+                  </div>
+                  <span class="aftercare-section-count">${sectionStudents.length}</span>
+                </div>
+                ${contentMarkup}
+              </section>
             `;
           })
           .join("");
-        refreshRevealMotion({ scope: studentGrid });
+        refreshRevealMotion({ scope: studentSections });
       };
 
       const setLockedState = (message) => {
@@ -241,12 +328,33 @@
         });
       };
 
+      const startAttendanceSubscription = () => {
+        if (state.unsubscribeAttendance) {
+          state.unsubscribeAttendance();
+        }
+
+        state.unsubscribeAttendance = subscribeToAftercareAttendance({
+          onData: (entries) => {
+            state.attendanceEntries = entries;
+            renderStudents();
+          },
+          onError: () => {
+            statusBanner.textContent = "Could not load attendance history. Check Firestore rules.";
+          },
+        });
+      };
+
       const stopStudentSubscription = () => {
         if (state.unsubscribeStudents) {
           state.unsubscribeStudents();
           state.unsubscribeStudents = null;
         }
+        if (state.unsubscribeAttendance) {
+          state.unsubscribeAttendance();
+          state.unsubscribeAttendance = null;
+        }
         state.students = [];
+        state.attendanceEntries = [];
         renderStudents();
       };
 
@@ -267,7 +375,38 @@
         renderStudents();
       });
 
-      studentGrid.addEventListener("click", async (event) => {
+      resetDayButton.addEventListener("click", async () => {
+        if (!state.user) {
+          return;
+        }
+
+        const checkedInStudents = state.students.filter((student) => isStudentCheckedIn(student) && student.currentAttendanceId);
+        if (!checkedInStudents.length) {
+          statusBanner.textContent = "Nobody is currently checked in, so there is nothing to reset.";
+          return;
+        }
+
+        const confirmed = window.confirm(`Reset the day and check out ${checkedInStudents.length} student${checkedInStudents.length === 1 ? "" : "s"}?`);
+        if (!confirmed) {
+          return;
+        }
+
+        resetDayButton.disabled = true;
+        try {
+          const result = await resetAftercareDay({ students: state.students, user: state.user });
+          statusBanner.textContent = result.count
+            ? `Reset complete. Checked out ${result.count} student${result.count === 1 ? "" : "s"}.`
+            : "Nobody is currently checked in, so there is nothing to reset.";
+        } catch (error) {
+          console.error("Could not reset aftercare day", error);
+          statusBanner.textContent = error instanceof Error ? error.message : "Could not reset the day.";
+        } finally {
+          resetDayButton.disabled = false;
+          renderStudents();
+        }
+      });
+
+      studentSections.addEventListener("click", async (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) {
           return;
@@ -334,6 +473,7 @@
           setActiveState();
           statusBanner.textContent = "Ready. Search a student or tap a name to record attendance.";
           startStudentSubscription();
+          startAttendanceSubscription();
         },
       });
 

@@ -182,6 +182,34 @@ export const formatAftercareDateTime = (value) => {
   });
 };
 
+export const aftercareEntryTimeMs = (entry = {}) => {
+  const date = asDate(entry.updatedAt) || asDate(entry.checkedOutAt) || asDate(entry.checkedInAt);
+  return date ? date.getTime() : 0;
+};
+
+export const latestAftercareAttendanceByStudent = ({ entries = [], dateKey = "" } = {}) => {
+  const normalizedDateKey = String(dateKey || "").trim();
+  const latestEntries = new Map();
+
+  entries.forEach((entry) => {
+    if (normalizedDateKey && String(entry.dateKey || "").trim() !== normalizedDateKey) {
+      return;
+    }
+
+    const studentId = String(entry.studentId || "").trim();
+    if (!studentId) {
+      return;
+    }
+
+    const existingEntry = latestEntries.get(studentId);
+    if (!existingEntry || aftercareEntryTimeMs(entry) >= aftercareEntryTimeMs(existingEntry)) {
+      latestEntries.set(studentId, entry);
+    }
+  });
+
+  return latestEntries;
+};
+
 export const subscribeToAftercareStudents = ({ onData, onError } = {}) => onSnapshot(
   query(aftercareStudentsCollection, orderBy("normalizedName")),
   (snapshot) => {
@@ -333,4 +361,39 @@ export const toggleAftercareAttendance = async ({ student = null, user = null } 
     action: AFTERCARE_STATUS.checkedIn,
     studentName: student.displayName,
   };
+};
+
+export const resetAftercareDay = async ({ students = [], user = null } = {}) => {
+  if (!user?.uid) {
+    throw new Error("You must be signed in.");
+  }
+
+  const openStudents = students.filter((student) => isStudentCheckedIn(student) && student.currentAttendanceId);
+  if (!openStudents.length) {
+    return { count: 0 };
+  }
+
+  const batch = writeBatch(db);
+  const actorLabel = actorLabelForUser(user);
+
+  openStudents.forEach((student) => {
+    batch.update(doc(aftercareAttendanceCollection, student.currentAttendanceId), {
+      status: AFTERCARE_STATUS.checkedOut,
+      checkedOutAt: serverTimestamp(),
+      checkedOutByUid: user.uid,
+      checkedOutByLabel: actorLabel,
+      updatedAt: serverTimestamp(),
+    });
+
+    batch.update(doc(aftercareStudentsCollection, student.id), {
+      currentStatus: AFTERCARE_STATUS.checkedOut,
+      currentAttendanceId: null,
+      currentCheckInAt: null,
+      lastActionAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  await batch.commit();
+  return { count: openStudents.length };
 };

@@ -78,14 +78,53 @@
               </div>
             </div>
             <p id="aftercare-admin-status" class="small-note" aria-live="polite">Sign in as admin to manage students.</p>
+              import {
+                AFTERCARE_STATUS,
             <div id="aftercare-students-list" class="stack-form" aria-live="polite">
               <p class="small-note">Sign in as admin to load students.</p>
             </div>
           </article>
 
+                latestAftercareAttendanceByStudent,
           <article class="project-card">
             <h2>Aftercare Attendance</h2>
-            <p class="small-note">Filter by date or student, then export a CSV you can open in Excel or Google Sheets.</p>
+             <p class="small-note">See a simple day-by-day roster, then export CSV files that open cleanly in Excel or Google Sheets.</p>
+             <div class="aftercare-import-panel">
+               <div class="entry-grid aftercare-admin-form-grid">
+                 <div class="entry-row">
+                   <label for="aftercare-daily-date">Day</label>
+                   <input id="aftercare-daily-date" type="date" />
+                 </div>
+               </div>
+               <div id="aftercare-daily-filters" class="aftercare-filter-chip-row" role="group" aria-label="Daily roster filters">
+                 <button class="btn btn-secondary aftercare-filter-chip is-active" type="button" data-aftercare-day-filter="all">All</button>
+                 <button class="btn btn-secondary aftercare-filter-chip" type="button" data-aftercare-day-filter="checked-in">Checked In</button>
+                 <button class="btn btn-secondary aftercare-filter-chip" type="button" data-aftercare-day-filter="checked-out">Checked Out</button>
+                 <button class="btn btn-secondary aftercare-filter-chip" type="button" data-aftercare-day-filter="not-checked-in">Not Checked In</button>
+               </div>
+               <div class="aftercare-stats aftercare-admin-stats" aria-live="polite">
+                 <div class="aftercare-stat-pill is-checked-in">
+                   <strong id="aftercare-daily-checked-in-count">0</strong>
+                   <span>Checked in</span>
+                 </div>
+                 <div class="aftercare-stat-pill is-checked-out">
+                   <strong id="aftercare-daily-checked-out-count">0</strong>
+                   <span>Checked out</span>
+                 </div>
+                 <div class="aftercare-stat-pill">
+                   <strong id="aftercare-daily-not-checked-in-count">0</strong>
+                   <span>Not checked in</span>
+                 </div>
+               </div>
+               <div class="form-actions">
+                 <button id="aftercare-export-day" class="btn btn-primary" type="button">Export Day CSV</button>
+               </div>
+               <p id="aftercare-daily-status" class="small-note" aria-live="polite">Sign in as admin to load the day view.</p>
+               <div id="aftercare-daily-list" class="stack-form" aria-live="polite">
+                 <p class="small-note">Sign in as admin to load the day view.</p>
+               </div>
+             </div>
+             <p class="small-note">Raw attendance log: filter by date or student, then export matching rows.</p>
             <div class="entry-grid aftercare-admin-form-grid">
               <div class="entry-row">
                 <label for="aftercare-filter-start">From</label>
@@ -205,6 +244,14 @@
       const aftercareStudentImport = document.getElementById("aftercare-student-import");
       const aftercareAdminStatus = document.getElementById("aftercare-admin-status");
       const aftercareStudentsList = document.getElementById("aftercare-students-list");
+      const aftercareDailyDate = document.getElementById("aftercare-daily-date");
+      const aftercareDailyFilters = document.getElementById("aftercare-daily-filters");
+      const aftercareDailyCheckedInCount = document.getElementById("aftercare-daily-checked-in-count");
+      const aftercareDailyCheckedOutCount = document.getElementById("aftercare-daily-checked-out-count");
+      const aftercareDailyNotCheckedInCount = document.getElementById("aftercare-daily-not-checked-in-count");
+      const aftercareExportDay = document.getElementById("aftercare-export-day");
+      const aftercareDailyStatus = document.getElementById("aftercare-daily-status");
+      const aftercareDailyList = document.getElementById("aftercare-daily-list");
       const aftercareFilterStart = document.getElementById("aftercare-filter-start");
       const aftercareFilterEnd = document.getElementById("aftercare-filter-end");
       const aftercareFilterStatus = document.getElementById("aftercare-filter-status");
@@ -225,6 +272,7 @@
       let editingAftercareStudentId = "";
       let aftercareStudents = [];
       let aftercareAttendance = [];
+      let aftercareDayFilter = "all";
 
       const slugifyMonth = (monthName) =>
         String(monthName || "")
@@ -580,6 +628,55 @@
         });
       };
 
+      const dailyAftercareRoster = () => {
+        const dateKey = String(aftercareDailyDate.value || toLocalDateKey()).trim();
+        const latestEntries = latestAftercareAttendanceByStudent({
+          entries: aftercareAttendance,
+          dateKey,
+        });
+        const statusOrder = {
+          "checked-in": 0,
+          "checked-out": 1,
+          "not-checked-in": 2,
+        };
+
+        return [...aftercareStudents]
+          .filter((student) => student.isActive !== false)
+          .map((student) => {
+            const latestEntry = latestEntries.get(student.id) || null;
+            const dayStatus = !latestEntry
+              ? "not-checked-in"
+              : (String(latestEntry.status || "") === AFTERCARE_STATUS.checkedIn ? "checked-in" : "checked-out");
+
+            return {
+              student,
+              latestEntry,
+              dayStatus,
+              checkInText: latestEntry?.checkedInAt ? formatAftercareDateTime(latestEntry.checkedInAt) : "Not checked in",
+              checkOutText: latestEntry?.checkedOutAt
+                ? formatAftercareDateTime(latestEntry.checkedOutAt)
+                : (dayStatus === "checked-in" ? "Still checked in" : "-"),
+            };
+          })
+          .sort((left, right) => {
+            const statusDelta = statusOrder[left.dayStatus] - statusOrder[right.dayStatus];
+            if (statusDelta !== 0) {
+              return statusDelta;
+            }
+
+            return studentSortValue(left.student, "last-name").localeCompare(studentSortValue(right.student, "last-name"));
+          });
+      };
+
+      const filteredDailyAftercareRoster = () => {
+        const rows = dailyAftercareRoster();
+        if (aftercareDayFilter === "all") {
+          return rows;
+        }
+
+        return rows.filter((row) => row.dayStatus === aftercareDayFilter);
+      };
+
       const renderAftercareStudents = () => {
         if (!aftercareStudents.length) {
           aftercareStudentsList.innerHTML = '<p class="small-note">No students added yet.</p>';
@@ -617,6 +714,67 @@
           })
           .join("");
         refreshRevealMotion({ scope: aftercareStudentsList });
+      };
+
+      const renderAftercareDailyRoster = () => {
+        const allRows = dailyAftercareRoster();
+        const filteredRows = filteredDailyAftercareRoster();
+        const dateKey = String(aftercareDailyDate.value || toLocalDateKey()).trim();
+        const counts = allRows.reduce((totals, row) => {
+          totals[row.dayStatus] += 1;
+          return totals;
+        }, {
+          "checked-in": 0,
+          "checked-out": 0,
+          "not-checked-in": 0,
+        });
+
+        aftercareDailyCheckedInCount.textContent = String(counts["checked-in"]);
+        aftercareDailyCheckedOutCount.textContent = String(counts["checked-out"]);
+        aftercareDailyNotCheckedInCount.textContent = String(counts["not-checked-in"]);
+
+        Array.from(aftercareDailyFilters.querySelectorAll("[data-aftercare-day-filter]"))
+          .forEach((button) => {
+            if (button instanceof HTMLButtonElement) {
+              button.classList.toggle("is-active", button.dataset.aftercareDayFilter === aftercareDayFilter);
+            }
+          });
+
+        if (!allRows.length) {
+          aftercareDailyStatus.textContent = "No active students are available for the day view.";
+          aftercareDailyList.innerHTML = '<p class="small-note">No active students are available for the day view.</p>';
+          return;
+        }
+
+        aftercareDailyStatus.textContent = `Showing ${filteredRows.length} of ${allRows.length} active students for ${dateKey}.`;
+
+        if (!filteredRows.length) {
+          aftercareDailyList.innerHTML = '<p class="small-note">No students match the selected day filter.</p>';
+          return;
+        }
+
+        aftercareDailyList.innerHTML = filteredRows
+          .map((row) => {
+            const groupLine = row.student.group ? `<p><strong>Group:</strong> ${escapeHtml(row.student.group)}</p>` : "";
+            const loggedBy = row.latestEntry
+              ? [row.latestEntry.checkedInByLabel, row.latestEntry.checkedOutByLabel].filter(Boolean).join(" / ")
+              : "-";
+            const statusLabel = row.dayStatus === "checked-in"
+              ? "Checked in"
+              : (row.dayStatus === "checked-out" ? "Checked out" : "Not checked in");
+            return `
+              <article class="project-card aftercare-admin-card ${row.dayStatus === "checked-in" ? "is-checked-in" : ""} ${row.dayStatus === "checked-out" ? "is-checked-out" : ""} ${row.dayStatus === "not-checked-in" ? "is-not-checked-in" : ""}">
+                <h3>${escapeHtml(row.student.displayName || "Student")}</h3>
+                ${groupLine}
+                <p><strong>Status:</strong> ${statusLabel}</p>
+                <p><strong>Checked in:</strong> ${escapeHtml(row.checkInText)}</p>
+                <p><strong>Checked out:</strong> ${escapeHtml(row.checkOutText)}</p>
+                <p><strong>Logged by:</strong> ${escapeHtml(loggedBy)}</p>
+              </article>
+            `;
+          })
+          .join("");
+        refreshRevealMotion({ scope: aftercareDailyList });
       };
 
       const renderAftercareAttendance = () => {
@@ -661,6 +819,7 @@
           onData: (students) => {
             aftercareStudents = students;
             renderAftercareStudents();
+            renderAftercareDailyRoster();
           },
           onError: () => {
             aftercareAdminStatus.textContent = "Could not load aftercare students.";
@@ -670,9 +829,11 @@
         unsubscribeAftercareAttendance = subscribeToAftercareAttendance({
           onData: (entries) => {
             aftercareAttendance = entries;
+            renderAftercareDailyRoster();
             renderAftercareAttendance();
           },
           onError: () => {
+            aftercareDailyStatus.textContent = "Could not load the day view.";
             aftercareExportStatus.textContent = "Could not load attendance entries.";
           },
         });
@@ -691,6 +852,8 @@
         aftercareAttendance = [];
         resetAftercareStudentForm();
         aftercareStudentsList.innerHTML = '<p class="small-note">Sign in as admin to load students.</p>';
+        aftercareDailyStatus.textContent = "Sign in as admin to load the day view.";
+        aftercareDailyList.innerHTML = '<p class="small-note">Sign in as admin to load the day view.</p>';
         aftercareAttendanceList.innerHTML = '<p class="small-note">Sign in as admin to load attendance.</p>';
       };
 
@@ -737,6 +900,32 @@
 
         downloadCsv(rows, fileName);
         aftercareExportStatus.textContent = `Exported ${entries.length} attendance rows.`;
+      };
+
+      const exportDailyRosterRows = () => {
+        const rows = dailyAftercareRoster();
+        const dateKey = String(aftercareDailyDate.value || toLocalDateKey()).trim();
+
+        if (!rows.length) {
+          aftercareDailyStatus.textContent = "No day-view rows to export.";
+          return;
+        }
+
+        downloadCsv([
+          ["Student Name", "Group", "Date", "Status", "Checked In", "Checked Out", "Checked In By", "Checked Out By"],
+          ...rows.map((row) => [
+            row.student.displayName || "",
+            row.student.group || "",
+            dateKey,
+            row.dayStatus,
+            row.latestEntry ? (formatAftercareDateTime(row.latestEntry.checkedInAt) || "") : "",
+            row.latestEntry ? (formatAftercareDateTime(row.latestEntry.checkedOutAt) || (row.dayStatus === "checked-in" ? "Still checked in" : "")) : "",
+            row.latestEntry?.checkedInByLabel || "",
+            row.latestEntry?.checkedOutByLabel || "",
+          ]),
+        ], `aftercare-day-${dateKey}.csv`);
+
+        aftercareDailyStatus.textContent = `Exported ${rows.length} day-view row${rows.length === 1 ? "" : "s"}.`;
       };
 
       const applyJanuaryPresetLock = async () => {
@@ -1040,8 +1229,35 @@
         });
       });
 
+      aftercareDailyDate.addEventListener("input", () => {
+        renderAftercareDailyRoster();
+      });
+
+      aftercareDailyDate.addEventListener("change", () => {
+        renderAftercareDailyRoster();
+      });
+
+      aftercareDailyFilters.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const button = target.closest("[data-aftercare-day-filter]");
+        if (!(button instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        aftercareDayFilter = String(button.dataset.aftercareDayFilter || "all");
+        renderAftercareDailyRoster();
+      });
+
       aftercareExportFiltered.addEventListener("click", () => {
         exportAttendanceRows(filteredAftercareAttendance(), `aftercare-attendance-${toLocalDateKey()}.csv`);
+      });
+
+      aftercareExportDay.addEventListener("click", () => {
+        exportDailyRosterRows();
       });
 
       aftercareExportToday.addEventListener("click", () => {
@@ -1050,6 +1266,7 @@
         exportAttendanceRows(todayEntries, `aftercare-attendance-${todayKey}.csv`);
       });
 
+      aftercareDailyDate.value = toLocalDateKey();
       aftercareFilterStart.value = toLocalDateKey();
       aftercareFilterEnd.value = toLocalDateKey();
 
