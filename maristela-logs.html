@@ -365,9 +365,43 @@
 
       .log-form,
       .entries-list,
-      .entry-notes {
+      .entry-notes,
+      .trip-list {
         display: grid;
         gap: 0.9rem;
+      }
+
+      .trip-manager {
+        display: grid;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        padding: 0.95rem;
+        border: 1px solid rgba(37, 55, 65, 0.11);
+        background: rgba(255, 255, 255, 0.28);
+      }
+
+      .trip-list {
+        gap: 0.45rem;
+      }
+
+      .trip-chip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+        padding: 0.62rem 0.7rem;
+        border: 1px solid rgba(37, 55, 65, 0.12);
+        background: #fffaf0;
+      }
+
+      .trip-chip strong {
+        display: block;
+        color: #243746;
+      }
+
+      .trip-chip span {
+        color: #687574;
+        font-size: 0.82rem;
       }
 
       .field-group {
@@ -446,7 +480,7 @@
 
       .filter-row {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.3fr);
+        grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.35fr) minmax(10rem, 0.3fr);
         gap: 0.8rem;
         margin-bottom: 1rem;
       }
@@ -658,9 +692,48 @@
               <form id="log-form" class="log-form">
                 <input id="entry-id" type="hidden" />
 
+                <div class="trip-manager" aria-label="Trip manager">
+                  <div>
+                    <p class="eyebrow">Trips</p>
+                    <h3>Group Logs By Trip</h3>
+                    <p class="status-line">Create a trip once, then attach every daily log to it.</p>
+                  </div>
+
+                  <div class="field-grid">
+                    <div class="field">
+                      <label for="trip-name">Trip Name</label>
+                      <input id="trip-name" type="text" placeholder="Alaska shakedown / San Juans / Around the world" />
+                    </div>
+                    <div class="field">
+                      <label for="trip-scope">Trip Scope</label>
+                      <input id="trip-scope" type="text" placeholder="3 days, month long, extended voyage..." />
+                    </div>
+                    <div class="field">
+                      <label for="trip-start">Start Date</label>
+                      <input id="trip-start" type="date" />
+                    </div>
+                    <div class="field">
+                      <label for="trip-end">End Date</label>
+                      <input id="trip-end" type="date" />
+                    </div>
+                    <div class="field full">
+                      <label for="trip-notes">Trip Notes</label>
+                      <textarea id="trip-notes" placeholder="Goal, crew, broad plan, route notes..."></textarea>
+                    </div>
+                  </div>
+                  <div class="form-actions">
+                    <button id="save-trip" class="btn ghost" type="button">Save Trip</button>
+                  </div>
+                  <div id="trip-list" class="trip-list" aria-live="polite"></div>
+                </div>
+
                 <fieldset class="field-group">
                   <legend>Trip Basics</legend>
                   <div class="field-grid">
+                    <div class="field full">
+                      <label for="log-trip">Trip</label>
+                      <select id="log-trip" name="tripId"></select>
+                    </div>
                     <div class="field">
                       <label for="log-date">Date</label>
                       <input id="log-date" name="date" type="date" required />
@@ -839,6 +912,10 @@
                   <input id="search-logs" type="search" placeholder="Search route, crew, notes, weather..." />
                 </div>
                 <div class="field">
+                  <label for="filter-trip">Trip</label>
+                  <select id="filter-trip"></select>
+                </div>
+                <div class="field">
                   <label for="sort-logs">Sort</label>
                   <select id="sort-logs">
                     <option value="newest">Newest First</option>
@@ -864,10 +941,16 @@
 
     <script>
       const STORAGE_KEY = "maristela-logbook-entries";
+      const TRIPS_KEY = "maristela-logbook-trips";
+      const DEFAULT_TRIP_ID = "general";
       const form = document.getElementById("log-form");
       const formStatus = document.getElementById("form-status");
       const entriesList = document.getElementById("entries-list");
       const searchInput = document.getElementById("search-logs");
+      const tripFilter = document.getElementById("filter-trip");
+      const logTripSelect = document.getElementById("log-trip");
+      const saveTripButton = document.getElementById("save-trip");
+      const tripList = document.getElementById("trip-list");
       const sortSelect = document.getElementById("sort-logs");
       const exportButton = document.getElementById("export-csv");
       const clearAllButton = document.getElementById("clear-all");
@@ -881,6 +964,7 @@
       const totalFuelEl = document.getElementById("total-fuel");
 
       const fields = [
+        "tripId",
         "date",
         "dayOfWeek",
         "onBoard",
@@ -915,6 +999,7 @@
       ];
 
       let entries = [];
+  let trips = [];
 
       const escapeHtml = (value) => String(value || "").replace(/[&<>'"]/g, (char) => ({
         "&": "&amp;",
@@ -971,6 +1056,20 @@
         return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(date);
       };
 
+      const defaultTrip = () => ({
+        id: DEFAULT_TRIP_ID,
+        name: "General / Unassigned",
+        scope: "Ongoing",
+        startDate: "",
+        endDate: "",
+        notes: "Catch-all trip for logs that are not part of a named voyage yet.",
+        createdAt: "",
+      });
+
+      const tripById = (tripId) => trips.find((trip) => trip.id === tripId) || defaultTrip();
+
+      const tripDateRange = (trip) => [trip.startDate, trip.endDate].filter(Boolean).join(" → ") || trip.scope || "Open trip";
+
       const valueById = (id) => parseNumber(document.getElementById(id).value);
       const setIfEmpty = (id, value) => {
         const element = document.getElementById(id);
@@ -1013,17 +1112,60 @@
         }
       };
 
+      const loadTrips = () => {
+        try {
+          const storedTrips = JSON.parse(localStorage.getItem(TRIPS_KEY) || "[]");
+          trips = Array.isArray(storedTrips) ? storedTrips : [];
+        } catch (error) {
+          trips = [];
+        }
+
+        if (!trips.some((trip) => trip.id === DEFAULT_TRIP_ID)) {
+          trips.unshift(defaultTrip());
+        }
+      };
+
       const saveEntries = () => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
       };
 
-      const entrySearchText = (entry) => fields.map((field) => entry[field] || "").join(" ").toLowerCase();
+      const saveTrips = () => {
+        localStorage.setItem(TRIPS_KEY, JSON.stringify(trips.filter((trip) => trip.id !== DEFAULT_TRIP_ID)));
+      };
+
+      const renderTripOptions = () => {
+        logTripSelect.innerHTML = trips.map((trip) => `<option value="${escapeHtml(trip.id)}">${escapeHtml(trip.name)}</option>`).join("");
+        tripFilter.innerHTML = '<option value="all">All Trips</option>' + trips.map((trip) => `<option value="${escapeHtml(trip.id)}">${escapeHtml(trip.name)}</option>`).join("");
+      };
+
+      const renderTripList = () => {
+        tripList.innerHTML = trips.map((trip) => {
+          const count = entries.filter((entry) => (entry.tripId || DEFAULT_TRIP_ID) === trip.id).length;
+          return `
+            <div class="trip-chip">
+              <span><strong>${escapeHtml(trip.name)}</strong><span>${escapeHtml(tripDateRange(trip))}</span></span>
+              <span>${count} log${count === 1 ? "" : "s"}</span>
+            </div>
+          `;
+        }).join("");
+      };
+
+      const entrySearchText = (entry) => `${tripById(entry.tripId || DEFAULT_TRIP_ID).name} ${fields.map((field) => entry[field] || "").join(" ")}`.toLowerCase();
+
+      const entriesForSelectedTrip = () => {
+        if (!tripFilter || tripFilter.value === "all") {
+          return [...entries];
+        }
+
+        return entries.filter((entry) => (entry.tripId || DEFAULT_TRIP_ID) === tripFilter.value);
+      };
 
       const filteredEntries = () => {
         const query = searchInput.value.trim().toLowerCase();
+        const tripEntries = entriesForSelectedTrip();
         const visibleEntries = query
-          ? entries.filter((entry) => entrySearchText(entry).includes(query))
-          : [...entries];
+          ? tripEntries.filter((entry) => entrySearchText(entry).includes(query))
+          : [...tripEntries];
 
         return visibleEntries.sort((left, right) => {
           if (sortSelect.value === "oldest") {
@@ -1039,11 +1181,12 @@
       };
 
       const updateSummary = () => {
-        const totalNm = entries.reduce((sum, entry) => sum + parseNumber(entry.totalNmTraveled), 0);
-        const totalEngine = entries.reduce((sum, entry) => sum + parseNumber(entry.totalEngineTime || entry.engineHours), 0);
-        const totalFuel = entries.reduce((sum, entry) => sum + parseNumber(entry.fuelUsed), 0);
+        const summaryEntries = entriesForSelectedTrip();
+        const totalNm = summaryEntries.reduce((sum, entry) => sum + parseNumber(entry.totalNmTraveled), 0);
+        const totalEngine = summaryEntries.reduce((sum, entry) => sum + parseNumber(entry.totalEngineTime || entry.engineHours), 0);
+        const totalFuel = summaryEntries.reduce((sum, entry) => sum + parseNumber(entry.fuelUsed), 0);
 
-        totalEntriesEl.textContent = String(entries.length);
+        totalEntriesEl.textContent = String(summaryEntries.length);
         totalNmEl.textContent = formatNumber(totalNm, " NM");
         totalEngineEl.textContent = formatNumber(totalEngine, " hr");
         totalFuelEl.textContent = formatNumber(totalFuel, " gal");
@@ -1064,6 +1207,7 @@
         }
 
         entriesList.innerHTML = visibleEntries.map((entry) => {
+          const trip = tripById(entry.tripId || DEFAULT_TRIP_ID);
           const route = `${entry.departingFrom || "Departure not set"} → ${entry.destination || "Destination not set"}`;
           const noteBlocks = [
             ["Observations", entry.observations],
@@ -1075,7 +1219,7 @@
             <article class="log-entry-card">
               <div class="entry-topline">
                 <div>
-                  <p class="eyebrow">${escapeHtml(entry.dayOfWeek || inferDayOfWeek(entry.date))}</p>
+                  <p class="eyebrow">${escapeHtml(trip.name)} · ${escapeHtml(entry.dayOfWeek || inferDayOfWeek(entry.date))}</p>
                   <h3>${escapeHtml(formatDate(entry.date))}</h3>
                   <p class="entry-route">${escapeHtml(route)}</p>
                 </div>
@@ -1111,6 +1255,7 @@
       const clearForm = () => {
         form.reset();
         entryIdInput.value = "";
+        logTripSelect.value = tripFilter && tripFilter.value !== "all" ? tripFilter.value : DEFAULT_TRIP_ID;
         form.querySelector("button[type='submit']").textContent = "Save Log Entry";
       };
 
@@ -1137,14 +1282,15 @@
       };
 
       const exportCsv = () => {
-        if (!entries.length) {
+        const exportEntries = filteredEntries();
+        if (!exportEntries.length) {
           formStatus.textContent = "No entries to export yet.";
           return;
         }
 
-        const headers = ["date", ...fields.filter((field) => field !== "date")];
-        const csvRows = [headers.join(",")].concat(entries.map((entry) => headers.map((header) => {
-          const value = String(entry[header] || "").replace(/"/g, '""');
+        const headers = ["tripName", "date", ...fields.filter((field) => field !== "date")];
+        const csvRows = [headers.join(",")].concat(exportEntries.map((entry) => headers.map((header) => {
+          const value = String(header === "tripName" ? tripById(entry.tripId || DEFAULT_TRIP_ID).name : entry[header] || "").replace(/"/g, '""');
           return `"${value}"`;
         }).join(",")));
         const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8" });
@@ -1170,6 +1316,39 @@
 
         saveEntries();
         clearForm();
+        renderTripList();
+        renderEntries();
+      });
+
+      saveTripButton.addEventListener("click", () => {
+        const nameInput = document.getElementById("trip-name");
+        const name = nameInput.value.trim();
+        if (!name) {
+          formStatus.textContent = "Add a trip name first.";
+          nameInput.focus();
+          return;
+        }
+
+        const trip = {
+          id: newId(),
+          name,
+          scope: document.getElementById("trip-scope").value.trim(),
+          startDate: document.getElementById("trip-start").value,
+          endDate: document.getElementById("trip-end").value,
+          notes: document.getElementById("trip-notes").value.trim(),
+          createdAt: new Date().toISOString(),
+        };
+
+        trips.push(trip);
+        saveTrips();
+        renderTripOptions();
+        renderTripList();
+        logTripSelect.value = trip.id;
+        tripFilter.value = trip.id;
+        ["trip-name", "trip-scope", "trip-start", "trip-end", "trip-notes"].forEach((id) => {
+          document.getElementById(id).value = "";
+        });
+        formStatus.textContent = `Trip "${trip.name}" created. New logs will attach to it.`;
         renderEntries();
       });
 
@@ -1221,12 +1400,17 @@
         if (button.dataset.action === "delete" && confirm("Delete this Maristela log entry?")) {
           entries = entries.filter((savedEntry) => savedEntry.id !== entry.id);
           saveEntries();
+          renderTripList();
           renderEntries();
           formStatus.textContent = "Log entry deleted.";
         }
       });
 
       searchInput.addEventListener("input", renderEntries);
+      tripFilter.addEventListener("change", () => {
+        clearForm();
+        renderEntries();
+      });
       sortSelect.addEventListener("change", renderEntries);
       exportButton.addEventListener("click", exportCsv);
       clearAllButton.addEventListener("click", () => {
@@ -1239,12 +1423,17 @@
           entries = [];
           saveEntries();
           clearForm();
+          renderTripList();
           renderEntries();
           formStatus.textContent = "All log entries cleared.";
         }
       });
 
+      loadTrips();
       loadEntries();
+      renderTripOptions();
+      renderTripList();
+      clearForm();
       renderEntries();
     </script>
   </body>

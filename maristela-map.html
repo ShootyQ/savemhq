@@ -679,8 +679,8 @@
           </article>
           <article class="detail-card">
             <p class="eyebrow">Next Step</p>
-            <h3>Real Log Sync</h3>
-            <p>The route list can later be connected to Maristela logbook entries or Firebase so trips can be added without editing this page.</p>
+            <h3>Logbook Connected</h3>
+            <p>Trips created in the digital logbook appear here too. If their log locations match known Puget Sound places, the route is plotted automatically.</p>
           </article>
         </div>
       </section>
@@ -694,6 +694,9 @@
     </footer>
 
     <script>
+      const LOGBOOK_TRIPS_KEY = "maristela-logbook-trips";
+      const LOGBOOK_ENTRIES_KEY = "maristela-logbook-entries";
+
       const points = {
         seattle: { label: "Seattle", x: 514, y: 574, note: "Home waters" },
         bainbridge: { label: "Bainbridge Island", x: 445, y: 536, note: "Across Elliott Bay" },
@@ -710,7 +713,7 @@
         hoodCanal: { label: "Hood Canal", x: 295, y: 560, note: "Canal run" },
       };
 
-      const trips = [
+      const sampleTrips = [
         {
           id: "san-juan-weekend",
           title: "Seattle to Friday Harbor",
@@ -758,6 +761,80 @@
         },
       ];
 
+      const escapeHtml = (value) => String(value || "").replace(/[&<>'"]/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;",
+      })[char]);
+
+      const normalizeLocation = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+      const locationAliases = [
+        ["friday", "fridayHarbor"],
+        ["roche", "roches"],
+        ["victoria", "victoria"],
+        ["anacortes", "anacortes"],
+        ["deception", "deceptionPass"],
+        ["everett", "everett"],
+        ["port townsend", "portTownsend"],
+        ["bainbridge", "bainbridge"],
+        ["poulsbo", "poulsbo"],
+        ["hood", "hoodCanal"],
+        ["gig", "gigHarbor"],
+        ["tacoma", "tacoma"],
+        ["seattle", "seattle"],
+      ];
+
+      const pointIdForLocation = (value) => {
+        const normalized = normalizeLocation(value);
+        const match = locationAliases.find(([alias]) => normalized.includes(alias));
+        return match ? match[1] : "";
+      };
+
+      const loadStoredArray = (key) => {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+          return [];
+        }
+      };
+
+      const loadLogbookTrips = () => {
+        const storedTrips = loadStoredArray(LOGBOOK_TRIPS_KEY);
+        const logEntries = loadStoredArray(LOGBOOK_ENTRIES_KEY);
+
+        return storedTrips.map((trip) => {
+          const tripEntries = logEntries
+            .filter((entry) => entry.tripId === trip.id)
+            .sort((left, right) => (left.date || "").localeCompare(right.date || ""));
+          const route = [];
+          tripEntries.forEach((entry) => {
+            [entry.departingFrom, entry.destination].map(pointIdForLocation).filter(Boolean).forEach((pointId) => {
+              if (route[route.length - 1] !== pointId) {
+                route.push(pointId);
+              }
+            });
+          });
+          const distance = tripEntries.reduce((sum, entry) => sum + (Number.parseFloat(entry.totalNmTraveled) || 0), 0);
+          const dateRange = [trip.startDate, trip.endDate].filter(Boolean).join(" → ");
+
+          return {
+            id: `logbook-${trip.id}`,
+            title: trip.name,
+            subtitle: trip.notes || "Trip created in the Maristela digital logbook.",
+            distance: distance > 0 ? `${Number.isInteger(distance) ? distance : distance.toFixed(1)} NM` : "From logs",
+            duration: trip.scope || dateRange || "Open trip",
+            season: "Logbook",
+            route,
+          };
+        });
+      };
+
+      const trips = [...sampleTrips, ...loadLogbookTrips()];
+
       const tripSelect = document.getElementById("trip-select");
       const tripSummary = document.getElementById("trip-summary");
       const waypointList = document.getElementById("waypoint-list");
@@ -803,27 +880,30 @@
         gridLayer.appendChild(fragment);
       };
 
-      const pointString = (route) => route.map((id) => `${points[id].x},${points[id].y}`).join(" ");
+      const pointString = (route) => route.filter((id) => points[id]).map((id) => `${points[id].x},${points[id].y}`).join(" ");
 
       const renderTrip = (tripId) => {
         const trip = trips.find((candidate) => candidate.id === tripId) || trips[0];
-        const routePoints = pointString(trip.route);
+        const plottedRoute = trip.route.filter((id) => points[id]);
+        const routePoints = pointString(plottedRoute);
         chartTitle.textContent = trip.title;
         routeUnderlay.innerHTML = "";
         routeLayer.innerHTML = "";
         waypointLayer.innerHTML = "";
 
-        const underlay = createSvgElement("polyline");
-        underlay.setAttribute("class", "route-line-underlay");
-        underlay.setAttribute("points", routePoints);
-        routeUnderlay.appendChild(underlay);
+        if (plottedRoute.length > 1) {
+          const underlay = createSvgElement("polyline");
+          underlay.setAttribute("class", "route-line-underlay");
+          underlay.setAttribute("points", routePoints);
+          routeUnderlay.appendChild(underlay);
 
-        const routeLine = createSvgElement("polyline");
-        routeLine.setAttribute("class", "route-line");
-        routeLine.setAttribute("points", routePoints);
-        routeLayer.appendChild(routeLine);
+          const routeLine = createSvgElement("polyline");
+          routeLine.setAttribute("class", "route-line");
+          routeLine.setAttribute("points", routePoints);
+          routeLayer.appendChild(routeLine);
+        }
 
-        trip.route.forEach((id, index) => {
+        plottedRoute.forEach((id, index) => {
           const point = points[id];
           const dot = createSvgElement("circle");
           dot.setAttribute("class", "waypoint-dot");
@@ -841,16 +921,16 @@
         });
 
         tripSummary.innerHTML = `
-          <p>${trip.subtitle}</p>
+          <p>${escapeHtml(trip.subtitle)}${plottedRoute.length < 2 ? " Add log locations like Seattle, Bainbridge, Port Townsend, Anacortes, or Friday Harbor to plot this trip." : ""}</p>
           <div class="stat-grid">
-            <div class="mini-stat"><span>Distance</span><strong>${trip.distance}</strong></div>
-            <div class="mini-stat"><span>Duration</span><strong>${trip.duration}</strong></div>
-            <div class="mini-stat"><span>Season</span><strong>${trip.season}</strong></div>
-            <div class="mini-stat"><span>Waypoints</span><strong>${trip.route.length}</strong></div>
+            <div class="mini-stat"><span>Distance</span><strong>${escapeHtml(trip.distance)}</strong></div>
+            <div class="mini-stat"><span>Duration</span><strong>${escapeHtml(trip.duration)}</strong></div>
+            <div class="mini-stat"><span>Season</span><strong>${escapeHtml(trip.season)}</strong></div>
+            <div class="mini-stat"><span>Waypoints</span><strong>${plottedRoute.length}</strong></div>
           </div>
         `;
 
-        waypointList.innerHTML = trip.route.map((id, index) => {
+        waypointList.innerHTML = plottedRoute.length ? plottedRoute.map((id, index) => {
           const point = points[id];
           return `
             <li>
@@ -858,7 +938,7 @@
               <span><strong>${point.label}</strong><span>${point.note}</span></span>
             </li>
           `;
-        }).join("");
+        }).join("") : '<li><span class="waypoint-number">!</span><span><strong>No plotted waypoints yet</strong><span>Add recognizable departure and destination names to this trip’s logs.</span></span></li>';
       };
 
       trips.forEach((trip) => {
