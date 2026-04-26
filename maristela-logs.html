@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maristela Log Archive | Captain Jonathan Carlson</title>
+    <meta
+      name="description"
+      content="A private-feeling visual archive of Captain Jonathan Carlson's Maristela ship log pages, preserving the logbook photos without transcribing logged details."
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap");
+
+      :root {
+        --ink: #112838;
+        --navy: #102636;
+        --navy-soft: #17384c;
+        --cream: #f1e8da;
+        --paper: #fffaf0;
+        --gold: #c9a464;
+        --muted: #6f7d80;
+        --line: rgba(201, 164, 100, 0.36);
+        --shadow: 0 26px 60px rgba(7, 22, 32, 0.28);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        color: var(--ink);
+        background:
+          radial-gradient(42rem 22rem at 10% -8%, rgba(201, 164, 100, 0.22), transparent 64%),
+          linear-gradient(180deg, #102636 0 23rem, #efe5d7 23rem 100%);
+        font-family: "Inter", "Segoe UI", sans-serif;
+        line-height: 1.6;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .skip-link {
+        position: absolute;
+        left: 1rem;
+        top: -8rem;
+        z-index: 50;
+        padding: 0.75rem 1rem;
+        color: var(--navy);
+        background: var(--paper);
+        font-weight: 800;
+        text-decoration: none;
+      }
+
+      .skip-link:focus-visible {
+        top: 1rem;
+      }
+
+      .container {
+        width: min(92rem, 92vw);
+        margin: 0 auto;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: 1.45rem 0;
+        color: var(--paper);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        width: 3rem;
+        height: 3rem;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(255, 250, 240, 0.48);
+        border-radius: 50%;
+        color: var(--gold);
+        font-size: 1.65rem;
+      }
+
+      .brand-copy {
+        display: grid;
+        gap: 0.05rem;
+        text-transform: uppercase;
+        line-height: 1;
+      }
+
+      .brand-copy strong {
+        color: #fff5e5;
+        font-size: 1.1rem;
+        font-weight: 900;
+        letter-spacing: 0.24em;
+      }
+
+      .brand-copy span {
+        color: rgba(255, 245, 229, 0.75);
+        font-size: 0.64rem;
+        font-weight: 800;
+        letter-spacing: 0.25em;
+      }
+
+      .topnav {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.8rem 1.4rem;
+      }
+
+      .topnav a {
+        color: rgba(255, 245, 229, 0.86);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.17em;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+
+      .topnav a:hover {
+        color: #fff5e5;
+      }
+
+      .hero {
+        padding: clamp(2.2rem, 5vw, 5.5rem) 0 clamp(2.5rem, 6vw, 5rem);
+        color: var(--paper);
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.94fr) minmax(18rem, 0.82fr);
+        gap: clamp(1.4rem, 4vw, 4.2rem);
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 0.65rem;
+        color: var(--gold);
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        font-family: "Cormorant Garamond", Georgia, serif;
+        line-height: 1;
+      }
+
+      h1 {
+        max-width: 48rem;
+        color: #fff3dd;
+        font-size: clamp(4rem, 8.3vw, 8rem);
+        letter-spacing: -0.055em;
+      }
+
+      h2 {
+        color: #1c3241;
+        font-size: clamp(2.05rem, 4vw, 3.6rem);
+      }
+
+      h3 {
+        color: #26333a;
+        font-size: clamp(1.45rem, 2.4vw, 2.15rem);
+      }
+
+      .hero p:not(.eyebrow) {
+        max-width: 40rem;
+        margin: 1.25rem 0 0;
+        color: rgba(255, 245, 229, 0.86);
+        font-size: 1.05rem;
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 1.75rem;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 3.15rem;
+        padding: 0.85rem 1.35rem;
+        border: 1px solid rgba(255, 245, 229, 0.35);
+        background: #efe5d7;
+        color: #203343;
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.13em;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+
+      .button.secondary {
+        background: transparent;
+        color: #fff1dc;
+      }
+
+      .ship-photo {
+        position: relative;
+        min-height: 26rem;
+        border: 1px solid rgba(255, 245, 229, 0.22);
+        background:
+          linear-gradient(180deg, rgba(7, 24, 34, 0.08), rgba(7, 24, 34, 0.62)),
+          url("images/maristela/maristela-ship.jpg") center / cover no-repeat,
+          linear-gradient(145deg, #516f7e, #102636);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .ship-photo::before {
+        content: "Maristela";
+        position: absolute;
+        left: 1.1rem;
+        bottom: 1rem;
+        color: #fff1dc;
+        font-family: "Cormorant Garamond", Georgia, serif;
+        font-size: 2.15rem;
+        line-height: 1;
+        text-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+      }
+
+      .ship-photo::after {
+        content: "Add ship photo: images/maristela/maristela-ship.jpg";
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+        max-width: 13rem;
+        padding: 0.65rem 0.8rem;
+        color: rgba(255, 245, 229, 0.88);
+        border: 1px solid rgba(255, 245, 229, 0.25);
+        background: rgba(9, 28, 40, 0.54);
+        font-size: 0.68rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .archive-intro {
+        padding: clamp(2.5rem, 5vw, 5rem) 0 1.5rem;
+        background: #efe5d7;
+      }
+
+      .intro-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.55fr);
+        gap: 1.5rem;
+        align-items: end;
+        padding: clamp(1.4rem, 3vw, 2.2rem);
+        border: 1px solid rgba(37, 55, 65, 0.14);
+        background: rgba(255, 250, 240, 0.75);
+        box-shadow: 0 16px 42px rgba(37, 55, 65, 0.1);
+      }
+
+      .intro-card p {
+        margin: 0.8rem 0 0;
+        color: #586665;
+      }
+
+      .privacy-note {
+        padding: 1rem;
+        border-left: 3px solid var(--gold);
+        background: #f9f2e8;
+        color: #46565a;
+        font-weight: 700;
+      }
+
+      .log-gallery {
+        padding: 1.5rem 0 clamp(3rem, 6vw, 6rem);
+        background: #efe5d7;
+      }
+
+      .log-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: clamp(1rem, 2vw, 1.5rem);
+      }
+
+      .log-card {
+        display: grid;
+        gap: 0.95rem;
+        padding: 0.85rem;
+        border: 1px solid rgba(37, 55, 65, 0.16);
+        background: #fffaf0;
+        box-shadow: 0 20px 50px rgba(37, 55, 65, 0.14);
+      }
+
+      .log-scan {
+        min-height: clamp(22rem, 46vw, 38rem);
+        display: grid;
+        place-items: center;
+        padding: 1.1rem;
+        color: rgba(37, 55, 65, 0.74);
+        text-align: center;
+        border: 1px solid rgba(37, 55, 65, 0.12);
+        background:
+          linear-gradient(180deg, rgba(255, 250, 240, 0.1), rgba(255, 250, 240, 0.22)),
+          var(--scan-image) center / contain no-repeat,
+          repeating-linear-gradient(0deg, #fffdf7 0 2.2rem, #d8d1c4 2.24rem 2.31rem),
+          linear-gradient(135deg, #faf5eb, #ded2be);
+      }
+
+      .log-scan span {
+        max-width: 18rem;
+        padding: 0.8rem 1rem;
+        border: 1px solid rgba(37, 55, 65, 0.13);
+        background: rgba(255, 250, 240, 0.82);
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .log-scan-one {
+        --scan-image: url("images/maristela/log-page-1.jpg");
+      }
+
+      .log-scan-two {
+        --scan-image: url("images/maristela/log-page-2.jpg");
+      }
+
+      .log-scan-three {
+        --scan-image: url("images/maristela/log-page-3.jpg");
+      }
+
+      .log-scan-four {
+        --scan-image: url("images/maristela/log-page-4.jpg");
+      }
+
+      .log-card h3 {
+        padding-inline: 0.35rem;
+      }
+
+      .log-card p {
+        margin: 0;
+        padding: 0 0.35rem 0.3rem;
+        color: #64706f;
+      }
+
+      .footer-band {
+        background: var(--navy);
+        color: #d5dfdd;
+      }
+
+      .footer-inner {
+        min-height: 5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .footer-inner a {
+        color: #fff1dc;
+        text-decoration: none;
+      }
+
+      @media (max-width: 900px) {
+        .topbar,
+        .footer-inner {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .topnav {
+          justify-content: flex-start;
+        }
+
+        .hero-grid,
+        .intro-card,
+        .log-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .ship-photo {
+          min-height: 20rem;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .container {
+          width: min(100% - 2rem, 92rem);
+        }
+
+        h1 {
+          font-size: clamp(3.4rem, 18vw, 5rem);
+        }
+
+        .log-scan {
+          min-height: 22rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="container topbar">
+      <a class="brand" href="maristela.html" aria-label="Back to Maristela home">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span class="brand-copy"><strong>Maristela</strong><span>Captain Jonathan Carlson</span></span>
+      </a>
+      <nav class="topnav" aria-label="Maristela pages">
+        <a href="maristela.html">Home</a>
+        <a href="#logs" aria-current="page">Logs</a>
+        <a href="#ship">Ship Photo</a>
+        <a href="index.html">SavemHQ</a>
+      </nav>
+    </header>
+
+    <main id="main-content">
+      <section class="hero" aria-label="Maristela log archive introduction">
+        <div class="container hero-grid">
+          <div>
+            <p class="eyebrow">Captain's Archive</p>
+            <h1>Ship Logs, Preserved as Photos.</h1>
+            <p>
+              A clean visual logbook page for Maristela. The archive shows the scanned pages and ship imagery without publishing the handwritten voyage details as searchable text.
+            </p>
+            <div class="button-row">
+              <a class="button" href="#logs">View Log Photos</a>
+              <a class="button secondary" href="maristela.html">Back to Maristela</a>
+            </div>
+          </div>
+          <div id="ship" class="ship-photo" role="img" aria-label="Maristela ship photo"></div>
+        </div>
+      </section>
+
+      <section class="archive-intro" aria-label="Archive note">
+        <div class="container intro-card">
+          <div>
+            <p class="eyebrow">What This Page Holds</p>
+            <h2>Photos only. No logged data copied out.</h2>
+            <p>
+              Use this page for the ship photo and every logbook image you want to keep with the Maristela site. Add more scans as simple gallery cards later.
+            </p>
+          </div>
+          <p class="privacy-note">
+            The logbook stays visual: dates, locations, odometer readings, hours, fuel, notes, and other handwritten details are not transcribed into page text.
+          </p>
+        </div>
+      </section>
+
+      <section id="logs" class="log-gallery" aria-label="Maristela scanned log pages">
+        <div class="container log-grid">
+          <article class="log-card">
+            <div class="log-scan log-scan-one" role="img" aria-label="Scanned Maristela logbook page one">
+              <span>Add log image: images/maristela/log-page-1.jpg</span>
+            </div>
+            <h3>Logbook Scan 01</h3>
+            <p>Original page photo, kept as an image only.</p>
+          </article>
+
+          <article class="log-card">
+            <div class="log-scan log-scan-two" role="img" aria-label="Scanned Maristela logbook page two">
+              <span>Add log image: images/maristela/log-page-2.jpg</span>
+            </div>
+            <h3>Logbook Scan 02</h3>
+            <p>Another scan slot for the log pages he keeps.</p>
+          </article>
+
+          <article class="log-card">
+            <div class="log-scan log-scan-three" role="img" aria-label="Scanned Maristela logbook page three">
+              <span>Add log image: images/maristela/log-page-3.jpg</span>
+            </div>
+            <h3>Logbook Scan 03</h3>
+            <p>Ready for an additional page photo.</p>
+          </article>
+
+          <article class="log-card">
+            <div class="log-scan log-scan-four" role="img" aria-label="Scanned Maristela logbook page four">
+              <span>Add log image: images/maristela/log-page-4.jpg</span>
+            </div>
+            <h3>Logbook Scan 04</h3>
+            <p>Ready for another logbook image when available.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer-band">
+      <div class="container footer-inner">
+        <span>© 2026 Maristela Log Archive</span>
+        <a href="maristela.html">Return to Maristela Home</a>
+      </div>
+    </footer>
+  </body>
+</html>

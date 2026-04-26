@@ -21,34 +21,76 @@
       </section>
 
       <section class="section section-card">
-        <div class="container auth-grid">
-          <article class="project-card">
-            <h2>Admin Access</h2>
+        <div class="container admin-layout">
+          <article class="project-card admin-status-panel">
+            <div class="admin-section-header">
+              <div>
+                <p class="tagline">Admin Access</p>
+                <h2>Operations Dashboard</h2>
+              </div>
+            </div>
             <p id="admin-status" class="small-note" aria-live="polite">Sign in from the top-right header to manage approvals.</p>
           </article>
 
-          <article class="project-card">
-            <h2>Approval Queue</h2>
-            <p class="small-note">Approve accounts, assign player roles, and choose which sections each login can use.</p>
-            <div id="approvals-list" class="stack-form" aria-live="polite">
-              <p class="small-note">Sign in as admin to load requests.</p>
-            </div>
-          </article>
+          <div class="admin-ops-grid">
+            <article class="project-card admin-panel">
+              <div class="admin-section-header">
+                <div>
+                  <h2>Approval Queue</h2>
+                  <p class="small-note">Approve accounts, assign player roles, and choose which sections each login can use.</p>
+                </div>
+              </div>
+              <div id="approvals-list" class="admin-card-list" aria-live="polite">
+                <p class="small-note">Sign in as admin to load requests.</p>
+              </div>
+            </article>
 
-          <article class="project-card">
-            <h2>Month Locks</h2>
-            <p class="small-note">Lock a month to freeze plate edits. Unlock to resume edits.</p>
-            <div class="form-actions">
-              <button id="apply-january-lock" class="btn btn-secondary" type="button">Apply January Lock (Savannah 29, Andy 28)</button>
-            </div>
-            <div id="month-locks-list" class="stack-form" aria-live="polite">
-              <p class="small-note">Sign in as admin to manage month locks.</p>
-            </div>
-          </article>
+            <article class="project-card admin-panel">
+              <div class="admin-section-header">
+                <div>
+                  <h2>Month Locks</h2>
+                  <p class="small-note">Lock a month to freeze plate edits. Unlock to resume edits.</p>
+                </div>
+                <div class="form-actions admin-inline-actions">
+                  <button id="apply-january-lock" class="btn btn-secondary" type="button">Apply January Lock</button>
+                </div>
+              </div>
+              <div id="month-locks-list" class="admin-card-list" aria-live="polite">
+                <p class="small-note">Sign in as admin to manage month locks.</p>
+              </div>
+            </article>
+          </div>
 
-          <article class="project-card">
-            <h2>Aftercare Roster</h2>
-            <p class="small-note">Add students, import a CSV with last and first names, and hide inactive students from the check-in screen.</p>
+          <article class="project-card admin-panel admin-panel-wide">
+            <div class="admin-section-header">
+              <div>
+                <h2>Aftercare Roster</h2>
+                <p class="small-note">Add students, import CSV, and manage who appears on the check-in screen.</p>
+              </div>
+              <div class="form-actions admin-inline-actions">
+                <button id="aftercare-open-students" class="btn btn-secondary" type="button">View Student Roster</button>
+              </div>
+            </div>
+
+            <div class="admin-summary-grid">
+              <div class="aftercare-stat-pill">
+                <strong id="aftercare-student-total-count">0</strong>
+                <span>Total students</span>
+              </div>
+              <div class="aftercare-stat-pill">
+                <strong id="aftercare-student-active-count">0</strong>
+                <span>Active</span>
+              </div>
+              <div class="aftercare-stat-pill">
+                <strong id="aftercare-student-inactive-count">0</strong>
+                <span>Inactive</span>
+              </div>
+              <div class="aftercare-stat-pill is-checked-in">
+                <strong id="aftercare-student-checked-in-count">0</strong>
+                <span>Checked in now</span>
+              </div>
+            </div>
+
             <form id="aftercare-student-form" class="stack-form">
               <div class="entry-grid aftercare-admin-form-grid">
                 <div class="entry-row">
@@ -69,6 +111,7 @@
                 <button id="aftercare-student-reset" class="btn btn-secondary hidden" type="button">Cancel Edit</button>
               </div>
             </form>
+
             <div class="aftercare-import-panel">
               <label for="aftercare-student-csv">Upload student CSV</label>
               <input id="aftercare-student-csv" type="file" accept=".csv,text/csv" />
@@ -77,54 +120,60 @@
                 <button id="aftercare-student-import" class="btn btn-secondary" type="button">Import CSV</button>
               </div>
             </div>
+
             <p id="aftercare-admin-status" class="small-note" aria-live="polite">Sign in as admin to manage students.</p>
-              import {
-                AFTERCARE_STATUS,
-            <div id="aftercare-students-list" class="stack-form" aria-live="polite">
-              <p class="small-note">Sign in as admin to load students.</p>
-            </div>
           </article>
 
-                latestAftercareAttendanceByStudent,
-          <article class="project-card">
-            <h2>Aftercare Attendance</h2>
-             <p class="small-note">See a simple day-by-day roster, then export CSV files that open cleanly in Excel or Google Sheets.</p>
-             <div class="aftercare-import-panel">
-               <div class="entry-grid aftercare-admin-form-grid">
-                 <div class="entry-row">
-                   <label for="aftercare-daily-date">Day</label>
-                   <input id="aftercare-daily-date" type="date" />
-                 </div>
-               </div>
-               <div id="aftercare-daily-filters" class="aftercare-filter-chip-row" role="group" aria-label="Daily roster filters">
-                 <button class="btn btn-secondary aftercare-filter-chip is-active" type="button" data-aftercare-day-filter="all">All</button>
-                 <button class="btn btn-secondary aftercare-filter-chip" type="button" data-aftercare-day-filter="checked-in">Checked In</button>
-                 <button class="btn btn-secondary aftercare-filter-chip" type="button" data-aftercare-day-filter="checked-out">Checked Out</button>
-                 <button class="btn btn-secondary aftercare-filter-chip" type="button" data-aftercare-day-filter="not-checked-in">Not Checked In</button>
-               </div>
-               <div class="aftercare-stats aftercare-admin-stats" aria-live="polite">
-                 <div class="aftercare-stat-pill is-checked-in">
-                   <strong id="aftercare-daily-checked-in-count">0</strong>
-                   <span>Checked in</span>
-                 </div>
-                 <div class="aftercare-stat-pill is-checked-out">
-                   <strong id="aftercare-daily-checked-out-count">0</strong>
-                   <span>Checked out</span>
-                 </div>
-                 <div class="aftercare-stat-pill">
-                   <strong id="aftercare-daily-not-checked-in-count">0</strong>
-                   <span>Not checked in</span>
-                 </div>
-               </div>
-               <div class="form-actions">
-                 <button id="aftercare-export-day" class="btn btn-primary" type="button">Export Day CSV</button>
-               </div>
-               <p id="aftercare-daily-status" class="small-note" aria-live="polite">Sign in as admin to load the day view.</p>
-               <div id="aftercare-daily-list" class="stack-form" aria-live="polite">
-                 <p class="small-note">Sign in as admin to load the day view.</p>
-               </div>
-             </div>
-             <p class="small-note">Raw attendance log: filter by date or student, then export matching rows.</p>
+          <article class="project-card admin-panel admin-panel-wide">
+            <div class="admin-section-header">
+              <div>
+                <h2>Aftercare Attendance</h2>
+                <p class="small-note">Start with a simple day snapshot, then use the raw attendance log when you need exports or history.</p>
+              </div>
+            </div>
+
+            <div class="aftercare-import-panel">
+              <div class="entry-grid aftercare-admin-form-grid">
+                <div class="entry-row">
+                  <label for="aftercare-daily-date">Day</label>
+                  <input id="aftercare-daily-date" type="date" />
+                </div>
+              </div>
+              <div id="aftercare-daily-filters" class="aftercare-filter-chip-row" role="group" aria-label="Daily roster filters">
+                <button class="btn btn-secondary aftercare-filter-chip is-active" type="button" data-aftercare-day-filter="all">All</button>
+                <button class="btn btn-secondary aftercare-filter-chip" type="button" data-aftercare-day-filter="checked-in">Checked In</button>
+                <button class="btn btn-secondary aftercare-filter-chip" type="button" data-aftercare-day-filter="checked-out">Checked Out</button>
+                <button class="btn btn-secondary aftercare-filter-chip" type="button" data-aftercare-day-filter="not-checked-in">Not Checked In</button>
+              </div>
+              <div class="aftercare-stats aftercare-admin-stats" aria-live="polite">
+                <div class="aftercare-stat-pill is-checked-in">
+                  <strong id="aftercare-daily-checked-in-count">0</strong>
+                  <span>Checked in</span>
+                </div>
+                <div class="aftercare-stat-pill is-checked-out">
+                  <strong id="aftercare-daily-checked-out-count">0</strong>
+                  <span>Checked out</span>
+                </div>
+                <div class="aftercare-stat-pill">
+                  <strong id="aftercare-daily-not-checked-in-count">0</strong>
+                  <span>Not checked in</span>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button id="aftercare-export-day" class="btn btn-primary" type="button">Export Day CSV</button>
+              </div>
+              <p id="aftercare-daily-status" class="small-note" aria-live="polite">Sign in as admin to load the day view.</p>
+              <div id="aftercare-daily-list" class="admin-card-list" aria-live="polite">
+                <p class="small-note">Sign in as admin to load the day view.</p>
+              </div>
+            </div>
+
+            <div class="admin-section-header admin-subsection-header">
+              <div>
+                <h3>Raw Attendance Log</h3>
+                <p class="small-note">Filter by date or student, then export matching rows.</p>
+              </div>
+            </div>
             <div class="entry-grid aftercare-admin-form-grid">
               <div class="entry-row">
                 <label for="aftercare-filter-start">From</label>
@@ -152,12 +201,29 @@
               <button id="aftercare-export-today" class="btn btn-secondary" type="button">Export Today</button>
             </div>
             <p id="aftercare-export-status" class="small-note" aria-live="polite">Sign in as admin to load attendance.</p>
-            <div id="aftercare-attendance-list" class="stack-form" aria-live="polite">
+            <div id="aftercare-attendance-list" class="admin-card-list" aria-live="polite">
               <p class="small-note">Sign in as admin to load attendance.</p>
             </div>
           </article>
         </div>
       </section>
+
+      <div id="aftercare-students-modal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="aftercare-students-modal-title">
+        <div class="admin-modal-backdrop" data-aftercare-modal-close></div>
+        <div class="admin-modal-card">
+          <div class="admin-modal-header">
+            <div>
+              <p class="tagline">Aftercare Roster</p>
+              <h2 id="aftercare-students-modal-title">Student List</h2>
+            </div>
+            <button id="aftercare-students-modal-close" class="btn btn-secondary" type="button">Close</button>
+          </div>
+          <p id="aftercare-students-modal-status" class="small-note" aria-live="polite">Sign in as admin to load students.</p>
+          <div id="aftercare-students-list" class="aftercare-student-list-modal" aria-live="polite">
+            <p class="small-note">Sign in as admin to load students.</p>
+          </div>
+        </div>
+      </div>
     </main>
 
     <footer class="site-footer">
@@ -178,11 +244,13 @@
         setDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
       import {
+        AFTERCARE_STATUS,
         createAftercareStudent,
         formatAftercareDateTime,
         formatAftercareTime,
         importAftercareStudents,
         isStudentCheckedIn,
+        latestAftercareAttendanceByStudent,
         parseStudentNameParts,
         saveAftercareStudent,
         setAftercareStudentActive,
@@ -243,6 +311,14 @@
       const aftercareStudentCsvInput = document.getElementById("aftercare-student-csv");
       const aftercareStudentImport = document.getElementById("aftercare-student-import");
       const aftercareAdminStatus = document.getElementById("aftercare-admin-status");
+      const aftercareOpenStudentsButton = document.getElementById("aftercare-open-students");
+      const aftercareStudentTotalCount = document.getElementById("aftercare-student-total-count");
+      const aftercareStudentActiveCount = document.getElementById("aftercare-student-active-count");
+      const aftercareStudentInactiveCount = document.getElementById("aftercare-student-inactive-count");
+      const aftercareStudentCheckedInCount = document.getElementById("aftercare-student-checked-in-count");
+      const aftercareStudentsModal = document.getElementById("aftercare-students-modal");
+      const aftercareStudentsModalStatus = document.getElementById("aftercare-students-modal-status");
+      const aftercareStudentsModalClose = document.getElementById("aftercare-students-modal-close");
       const aftercareStudentsList = document.getElementById("aftercare-students-list");
       const aftercareDailyDate = document.getElementById("aftercare-daily-date");
       const aftercareDailyFilters = document.getElementById("aftercare-daily-filters");
@@ -677,33 +753,59 @@
         return rows.filter((row) => row.dayStatus === aftercareDayFilter);
       };
 
+      const openAftercareStudentsModal = () => {
+        aftercareStudentsModal.classList.remove("hidden");
+        document.body.classList.add("is-modal-open");
+        aftercareStudentsModalClose.focus();
+      };
+
+      const closeAftercareStudentsModal = () => {
+        aftercareStudentsModal.classList.add("hidden");
+        document.body.classList.remove("is-modal-open");
+      };
+
       const renderAftercareStudents = () => {
+        const totalStudents = aftercareStudents.length;
+        const activeStudents = aftercareStudents.filter((student) => student.isActive !== false);
+        const inactiveStudents = totalStudents - activeStudents.length;
+        const checkedInStudents = activeStudents.filter((student) => isStudentCheckedIn(student));
+
+        aftercareStudentTotalCount.textContent = String(totalStudents);
+        aftercareStudentActiveCount.textContent = String(activeStudents.length);
+        aftercareStudentInactiveCount.textContent = String(inactiveStudents);
+        aftercareStudentCheckedInCount.textContent = String(checkedInStudents.length);
+        aftercareOpenStudentsButton.disabled = totalStudents === 0;
+
         if (!aftercareStudents.length) {
+          aftercareStudentsModalStatus.textContent = "No students added yet.";
           aftercareStudentsList.innerHTML = '<p class="small-note">No students added yet.</p>';
           return;
         }
 
+        aftercareStudentsModalStatus.textContent = `Showing ${totalStudents} students. Active: ${activeStudents.length}. Inactive: ${inactiveStudents}.`;
         aftercareStudentsList.innerHTML = [...aftercareStudents]
           .sort((left, right) => studentSortValue(left, "last-name").localeCompare(studentSortValue(right, "last-name")))
           .map((student) => {
             const checkedIn = isStudentCheckedIn(student);
             const parsedName = parseStudentNameParts(student);
-            const groupLabel = student.group ? `<p><strong>Group:</strong> ${escapeHtml(student.group)}</p>` : "";
+            const groupLabel = student.group ? escapeHtml(student.group) : "No group";
             const currentTime = checkedIn && student.currentCheckInAt
-              ? `<p><strong>Current check-in:</strong> ${escapeHtml(formatAftercareTime(student.currentCheckInAt))}</p>`
+              ? `Checked in at ${escapeHtml(formatAftercareTime(student.currentCheckInAt))}`
               : "";
             const sortLabel = parsedName.lastName && parsedName.firstName
-              ? `<p class="small-note">${escapeHtml(parsedName.lastName)}, ${escapeHtml(parsedName.firstName)}</p>`
+              ? `${escapeHtml(parsedName.lastName)}, ${escapeHtml(parsedName.firstName)}`
               : "";
             return `
-              <article class="project-card aftercare-admin-card ${student.isActive === false ? "is-inactive" : ""}">
-                <h3>${escapeHtml(student.displayName || "Student")}</h3>
-                ${sortLabel}
-                ${groupLabel}
-                <p><strong>Roster status:</strong> ${student.isActive === false ? "Inactive" : "Active"}</p>
-                <p><strong>Attendance status:</strong> ${checkedIn ? "Checked in" : "Logged out"}</p>
-                ${currentTime}
-                <div class="form-actions">
+              <article class="aftercare-student-row ${student.isActive === false ? "is-inactive" : ""}">
+                <div class="aftercare-student-row-primary">
+                  <strong>${escapeHtml(student.displayName || "Student")}</strong>
+                  ${sortLabel ? `<span class="small-note">${sortLabel}</span>` : ""}
+                  ${currentTime ? `<span class="small-note">${currentTime}</span>` : ""}
+                </div>
+                <div class="aftercare-student-row-meta">${groupLabel}</div>
+                <span class="admin-status-chip ${student.isActive === false ? "is-inactive" : "is-active"}">${student.isActive === false ? "Inactive" : "Active"}</span>
+                <span class="admin-status-chip ${checkedIn ? "is-checked-in" : "is-checked-out"}">${checkedIn ? "Checked In" : "Checked Out"}</span>
+                <div class="form-actions aftercare-student-row-actions">
                   <button class="btn btn-primary" type="button" data-aftercare-student-action="edit" data-student-id="${student.id}">Edit</button>
                   <button class="btn btn-secondary" type="button" data-aftercare-student-action="toggle-active" data-student-id="${student.id}">
                     ${student.isActive === false ? "Set Active" : "Set Inactive"}
@@ -851,6 +953,13 @@
         aftercareStudents = [];
         aftercareAttendance = [];
         resetAftercareStudentForm();
+        closeAftercareStudentsModal();
+        aftercareStudentTotalCount.textContent = "0";
+        aftercareStudentActiveCount.textContent = "0";
+        aftercareStudentInactiveCount.textContent = "0";
+        aftercareStudentCheckedInCount.textContent = "0";
+        aftercareOpenStudentsButton.disabled = true;
+        aftercareStudentsModalStatus.textContent = "Sign in as admin to load students.";
         aftercareStudentsList.innerHTML = '<p class="small-note">Sign in as admin to load students.</p>';
         aftercareDailyStatus.textContent = "Sign in as admin to load the day view.";
         aftercareDailyList.innerHTML = '<p class="small-note">Sign in as admin to load the day view.</p>';
@@ -1197,6 +1306,7 @@
           aftercareStudentGroupInput.value = student.group || "";
           aftercareStudentSubmit.textContent = "Save Student";
           aftercareStudentReset.classList.remove("hidden");
+          closeAftercareStudentsModal();
           aftercareStudentLastNameInput.focus();
           aftercareAdminStatus.textContent = `Editing ${student.displayName}.`;
           return;
@@ -1250,6 +1360,35 @@
 
         aftercareDayFilter = String(button.dataset.aftercareDayFilter || "all");
         renderAftercareDailyRoster();
+      });
+
+      aftercareOpenStudentsButton.addEventListener("click", () => {
+        if (!aftercareStudents.length) {
+          return;
+        }
+
+        openAftercareStudentsModal();
+      });
+
+      aftercareStudentsModalClose.addEventListener("click", () => {
+        closeAftercareStudentsModal();
+      });
+
+      aftercareStudentsModal.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        if (target.hasAttribute("data-aftercare-modal-close")) {
+          closeAftercareStudentsModal();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !aftercareStudentsModal.classList.contains("hidden")) {
+          closeAftercareStudentsModal();
+        }
       });
 
       aftercareExportFiltered.addEventListener("click", () => {
