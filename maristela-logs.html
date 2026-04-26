@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Maristela Log Archive | Captain Jonathan Carlson</title>
+    <title>Maristela Logbook | Captain Jonathan Carlson</title>
     <meta
       name="description"
-      content="A private-feeling visual archive of Captain Jonathan Carlson's Maristela ship log pages, preserving the logbook photos without transcribing logged details."
+      content="A digital ship logbook for Captain Jonathan Carlson and Maristela, with entry forms, totals, filtering, export, and local browser storage."
     />
     <style>
       @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap");
@@ -19,7 +19,6 @@
         --paper: #fffaf0;
         --gold: #c9a464;
         --muted: #6f7d80;
-        --line: rgba(201, 164, 100, 0.36);
         --shadow: 0 26px 60px rgba(7, 22, 32, 0.28);
       }
 
@@ -37,13 +36,20 @@
         color: var(--ink);
         background:
           radial-gradient(42rem 22rem at 10% -8%, rgba(201, 164, 100, 0.22), transparent 64%),
-          linear-gradient(180deg, #102636 0 23rem, #efe5d7 23rem 100%);
+          linear-gradient(180deg, #102636 0 25rem, #efe5d7 25rem 100%);
         font-family: "Inter", "Segoe UI", sans-serif;
         line-height: 1.6;
       }
 
       a {
         color: inherit;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
       }
 
       .skip-link {
@@ -131,18 +137,14 @@
         text-transform: uppercase;
       }
 
-      .topnav a:hover {
-        color: #fff5e5;
-      }
-
       .hero {
-        padding: clamp(2.2rem, 5vw, 5.5rem) 0 clamp(2.5rem, 6vw, 5rem);
+        padding: clamp(2.2rem, 5vw, 5.4rem) 0 clamp(2.2rem, 5vw, 4.5rem);
         color: var(--paper);
       }
 
       .hero-grid {
         display: grid;
-        grid-template-columns: minmax(0, 0.94fr) minmax(18rem, 0.82fr);
+        grid-template-columns: minmax(0, 0.95fr) minmax(18rem, 0.8fr);
         gap: clamp(1.4rem, 4vw, 4.2rem);
         align-items: center;
       }
@@ -182,26 +184,34 @@
       }
 
       .hero p:not(.eyebrow) {
-        max-width: 40rem;
+        max-width: 42rem;
         margin: 1.25rem 0 0;
         color: rgba(255, 245, 229, 0.86);
         font-size: 1.05rem;
       }
 
-      .button-row {
+      .button-row,
+      .form-actions,
+      .toolbar,
+      .entry-actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.8rem;
+        gap: 0.7rem;
+        align-items: center;
+      }
+
+      .button-row {
         margin-top: 1.75rem;
       }
 
-      .button {
+      .button,
+      .btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 3.15rem;
-        padding: 0.85rem 1.35rem;
-        border: 1px solid rgba(255, 245, 229, 0.35);
+        min-height: 3.05rem;
+        padding: 0.82rem 1.25rem;
+        border: 1px solid rgba(17, 40, 56, 0.18);
         background: #efe5d7;
         color: #203343;
         font-size: 0.72rem;
@@ -209,16 +219,29 @@
         letter-spacing: 0.13em;
         text-decoration: none;
         text-transform: uppercase;
+        cursor: pointer;
       }
 
-      .button.secondary {
+      .button.secondary,
+      .btn.secondary {
         background: transparent;
         color: #fff1dc;
+        border-color: rgba(255, 245, 229, 0.35);
+      }
+
+      .btn.ghost {
+        background: transparent;
+        color: #243d4d;
+      }
+
+      .btn.danger {
+        background: #7f3d32;
+        color: #fff4e8;
       }
 
       .ship-photo {
         position: relative;
-        min-height: 26rem;
+        min-height: 25rem;
         border: 1px solid rgba(255, 245, 229, 0.22);
         background:
           linear-gradient(180deg, rgba(7, 24, 34, 0.08), rgba(7, 24, 34, 0.62)),
@@ -241,7 +264,7 @@
       }
 
       .ship-photo::after {
-        content: "Add ship photo: images/maristela/maristela-ship.jpg";
+        content: "Optional ship photo: images/maristela/maristela-ship.jpg";
         position: absolute;
         right: 1rem;
         top: 1rem;
@@ -256,105 +279,218 @@
         text-transform: uppercase;
       }
 
-      .archive-intro {
-        padding: clamp(2.5rem, 5vw, 5rem) 0 1.5rem;
+      .logbook-main {
+        padding: clamp(2.5rem, 5vw, 5rem) 0 clamp(3rem, 6vw, 6rem);
         background: #efe5d7;
       }
 
-      .intro-card {
+      .summary-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.55fr);
-        gap: 1.5rem;
-        align-items: end;
-        padding: clamp(1.4rem, 3vw, 2.2rem);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.9rem;
+        margin-bottom: 1.2rem;
+      }
+
+      .summary-card,
+      .panel,
+      .log-entry-card {
         border: 1px solid rgba(37, 55, 65, 0.14);
-        background: rgba(255, 250, 240, 0.75);
+        background: rgba(255, 250, 240, 0.86);
         box-shadow: 0 16px 42px rgba(37, 55, 65, 0.1);
       }
 
-      .intro-card p {
-        margin: 0.8rem 0 0;
-        color: #586665;
-      }
-
-      .privacy-note {
+      .summary-card {
+        min-height: 8.6rem;
+        display: grid;
+        align-content: center;
+        gap: 0.25rem;
         padding: 1rem;
-        border-left: 3px solid var(--gold);
-        background: #f9f2e8;
-        color: #46565a;
-        font-weight: 700;
       }
 
-      .log-gallery {
-        padding: 1.5rem 0 clamp(3rem, 6vw, 6rem);
-        background: #efe5d7;
-      }
-
-      .log-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: clamp(1rem, 2vw, 1.5rem);
-      }
-
-      .log-card {
-        display: grid;
-        gap: 0.95rem;
-        padding: 0.85rem;
-        border: 1px solid rgba(37, 55, 65, 0.16);
-        background: #fffaf0;
-        box-shadow: 0 20px 50px rgba(37, 55, 65, 0.14);
-      }
-
-      .log-scan {
-        min-height: clamp(22rem, 46vw, 38rem);
-        display: grid;
-        place-items: center;
-        padding: 1.1rem;
-        color: rgba(37, 55, 65, 0.74);
-        text-align: center;
-        border: 1px solid rgba(37, 55, 65, 0.12);
-        background:
-          linear-gradient(180deg, rgba(255, 250, 240, 0.1), rgba(255, 250, 240, 0.22)),
-          var(--scan-image) center / contain no-repeat,
-          repeating-linear-gradient(0deg, #fffdf7 0 2.2rem, #d8d1c4 2.24rem 2.31rem),
-          linear-gradient(135deg, #faf5eb, #ded2be);
-      }
-
-      .log-scan span {
-        max-width: 18rem;
-        padding: 0.8rem 1rem;
-        border: 1px solid rgba(37, 55, 65, 0.13);
-        background: rgba(255, 250, 240, 0.82);
-        font-size: 0.76rem;
+      .summary-card span {
+        color: #756747;
+        font-size: 0.7rem;
         font-weight: 900;
-        letter-spacing: 0.1em;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
       }
 
-      .log-scan-one {
-        --scan-image: url("images/maristela/log-page-1.jpg");
+      .summary-card strong {
+        color: #243746;
+        font-family: "Cormorant Garamond", Georgia, serif;
+        font-size: clamp(2.1rem, 4vw, 3.4rem);
+        line-height: 1;
       }
 
-      .log-scan-two {
-        --scan-image: url("images/maristela/log-page-2.jpg");
+      .workspace-grid {
+        display: grid;
+        grid-template-columns: minmax(20rem, 0.9fr) minmax(0, 1.25fr);
+        gap: 1.1rem;
+        align-items: start;
       }
 
-      .log-scan-three {
-        --scan-image: url("images/maristela/log-page-3.jpg");
+      .panel {
+        padding: clamp(1rem, 2vw, 1.4rem);
       }
 
-      .log-scan-four {
-        --scan-image: url("images/maristela/log-page-4.jpg");
+      .panel-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
       }
 
-      .log-card h3 {
-        padding-inline: 0.35rem;
+      .panel-header p {
+        margin: 0.45rem 0 0;
+        color: #586665;
       }
 
-      .log-card p {
+      .log-form,
+      .entries-list,
+      .entry-notes {
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .field-group {
+        display: grid;
+        gap: 0.7rem;
+        padding: 0.9rem;
+        border: 1px solid rgba(37, 55, 65, 0.11);
+        background: rgba(255, 255, 255, 0.34);
+      }
+
+      .field-group legend {
+        padding: 0 0.35rem;
+        color: #756747;
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .field-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+      }
+
+      .field-grid.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .field {
+        display: grid;
+        gap: 0.35rem;
+      }
+
+      .field.full {
+        grid-column: 1 / -1;
+      }
+
+      label {
+        color: #344b59;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        border: 1px solid rgba(37, 55, 65, 0.18);
+        border-radius: 0;
+        background: #fffdf7;
+        color: var(--ink);
+        padding: 0.7rem 0.75rem;
+      }
+
+      textarea {
+        min-height: 6rem;
+        resize: vertical;
+      }
+
+      input:focus,
+      textarea:focus,
+      select:focus {
+        outline: 3px solid rgba(201, 164, 100, 0.22);
+        border-color: rgba(201, 164, 100, 0.8);
+      }
+
+      .status-line {
+        margin: 0.35rem 0 0;
+        color: #586665;
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+
+      .filter-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.3fr);
+        gap: 0.8rem;
+        margin-bottom: 1rem;
+      }
+
+      .empty-state {
+        padding: 1.2rem;
+        border: 1px dashed rgba(37, 55, 65, 0.24);
+        color: #586665;
+        background: rgba(255, 255, 255, 0.32);
+      }
+
+      .log-entry-card {
+        display: grid;
+        gap: 0.9rem;
+        padding: 1rem;
+      }
+
+      .entry-topline {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .entry-route {
+        margin: 0.35rem 0 0;
+        color: #596766;
+        font-weight: 700;
+      }
+
+      .entry-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.55rem;
+      }
+
+      .entry-meta {
+        padding: 0.62rem;
+        background: #f8f1e7;
+        border: 1px solid rgba(37, 55, 65, 0.09);
+      }
+
+      .entry-meta span {
+        display: block;
+        color: #756747;
+        font-size: 0.65rem;
+        font-weight: 900;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      .entry-meta strong {
+        display: block;
+        margin-top: 0.15rem;
+        color: #253947;
+        font-size: 0.98rem;
+      }
+
+      .entry-notes p {
         margin: 0;
-        padding: 0 0.35rem 0.3rem;
-        color: #64706f;
+        color: #526262;
       }
 
       .footer-band {
@@ -379,9 +515,22 @@
         text-decoration: none;
       }
 
+      @media (max-width: 1100px) {
+        .summary-grid,
+        .entry-meta-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .workspace-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
       @media (max-width: 900px) {
         .topbar,
-        .footer-inner {
+        .footer-inner,
+        .entry-topline,
+        .panel-header {
           flex-direction: column;
           align-items: flex-start;
         }
@@ -391,8 +540,7 @@
         }
 
         .hero-grid,
-        .intro-card,
-        .log-grid {
+        .filter-row {
           grid-template-columns: 1fr;
         }
 
@@ -401,7 +549,7 @@
         }
       }
 
-      @media (max-width: 560px) {
+      @media (max-width: 620px) {
         .container {
           width: min(100% - 2rem, 92rem);
         }
@@ -410,8 +558,16 @@
           font-size: clamp(3.4rem, 18vw, 5rem);
         }
 
-        .log-scan {
-          min-height: 22rem;
+        .summary-grid,
+        .field-grid,
+        .field-grid.three,
+        .entry-meta-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .btn,
+        .button {
+          width: 100%;
         }
       }
     </style>
@@ -426,87 +582,652 @@
       </a>
       <nav class="topnav" aria-label="Maristela pages">
         <a href="maristela.html">Home</a>
-        <a href="#logs" aria-current="page">Logs</a>
-        <a href="#ship">Ship Photo</a>
+        <a href="#log-form" aria-current="page">Add Log</a>
+        <a href="#entries">Entries</a>
         <a href="index.html">SavemHQ</a>
       </nav>
     </header>
 
     <main id="main-content">
-      <section class="hero" aria-label="Maristela log archive introduction">
+      <section class="hero" aria-label="Maristela digital logbook introduction">
         <div class="container hero-grid">
           <div>
-            <p class="eyebrow">Captain's Archive</p>
-            <h1>Ship Logs, Preserved as Photos.</h1>
+            <p class="eyebrow">Digital Ship Log</p>
+            <h1>Track Every Voyage.</h1>
             <p>
-              A clean visual logbook page for Maristela. The archive shows the scanned pages and ship imagery without publishing the handwritten voyage details as searchable text.
+              Add Maristela logbook entries, search the archive, view totals, and export the data. Entries are saved in this browser using local storage.
             </p>
             <div class="button-row">
-              <a class="button" href="#logs">View Log Photos</a>
-              <a class="button secondary" href="maristela.html">Back to Maristela</a>
+              <a class="button" href="#log-form">Add a Log Entry</a>
+              <a class="button secondary" href="#entries">View Entries</a>
             </div>
           </div>
-          <div id="ship" class="ship-photo" role="img" aria-label="Maristela ship photo"></div>
+          <div class="ship-photo" role="img" aria-label="Maristela ship photo"></div>
         </div>
       </section>
 
-      <section class="archive-intro" aria-label="Archive note">
-        <div class="container intro-card">
-          <div>
-            <p class="eyebrow">What This Page Holds</p>
-            <h2>Photos only. No logged data copied out.</h2>
-            <p>
-              Use this page for the ship photo and every logbook image you want to keep with the Maristela site. Add more scans as simple gallery cards later.
-            </p>
+      <section class="logbook-main" aria-label="Maristela logbook tracker">
+        <div class="container">
+          <div class="summary-grid" aria-label="Logbook totals">
+            <article class="summary-card">
+              <span>Total Entries</span>
+              <strong id="total-entries">0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Total NM Traveled</span>
+              <strong id="total-nm">0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Total Engine Time</span>
+              <strong id="total-engine">0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Fuel Used</span>
+              <strong id="total-fuel">0</strong>
+            </article>
           </div>
-          <p class="privacy-note">
-            The logbook stays visual: dates, locations, odometer readings, hours, fuel, notes, and other handwritten details are not transcribed into page text.
-          </p>
-        </div>
-      </section>
 
-      <section id="logs" class="log-gallery" aria-label="Maristela scanned log pages">
-        <div class="container log-grid">
-          <article class="log-card">
-            <div class="log-scan log-scan-one" role="img" aria-label="Scanned Maristela logbook page one">
-              <span>Add log image: images/maristela/log-page-1.jpg</span>
-            </div>
-            <h3>Logbook Scan 01</h3>
-            <p>Original page photo, kept as an image only.</p>
-          </article>
+          <div class="workspace-grid">
+            <section class="panel" aria-labelledby="form-title">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">New Entry</p>
+                  <h2 id="form-title">Add Log Data</h2>
+                  <p>Use as much or as little detail as needed. Required fields are date and route.</p>
+                </div>
+              </div>
 
-          <article class="log-card">
-            <div class="log-scan log-scan-two" role="img" aria-label="Scanned Maristela logbook page two">
-              <span>Add log image: images/maristela/log-page-2.jpg</span>
-            </div>
-            <h3>Logbook Scan 02</h3>
-            <p>Another scan slot for the log pages he keeps.</p>
-          </article>
+              <form id="log-form" class="log-form">
+                <input id="entry-id" type="hidden" />
 
-          <article class="log-card">
-            <div class="log-scan log-scan-three" role="img" aria-label="Scanned Maristela logbook page three">
-              <span>Add log image: images/maristela/log-page-3.jpg</span>
-            </div>
-            <h3>Logbook Scan 03</h3>
-            <p>Ready for an additional page photo.</p>
-          </article>
+                <fieldset class="field-group">
+                  <legend>Trip Basics</legend>
+                  <div class="field-grid">
+                    <div class="field">
+                      <label for="log-date">Date</label>
+                      <input id="log-date" name="date" type="date" required />
+                    </div>
+                    <div class="field">
+                      <label for="day-of-week">Day of Week</label>
+                      <input id="day-of-week" name="dayOfWeek" type="text" placeholder="Saturday" />
+                    </div>
+                    <div class="field">
+                      <label for="on-board">On Board</label>
+                      <input id="on-board" name="onBoard" type="text" placeholder="Captain and crew" />
+                    </div>
+                    <div class="field">
+                      <label for="departing-from">Departing From</label>
+                      <input id="departing-from" name="departingFrom" type="text" placeholder="Marina / port" required />
+                    </div>
+                    <div class="field">
+                      <label for="destination">Destination</label>
+                      <input id="destination" name="destination" type="text" placeholder="Destination / anchorage" required />
+                    </div>
+                    <div class="field">
+                      <label for="forecast">Forecast</label>
+                      <input id="forecast" name="forecast" type="text" placeholder="Weather and sea forecast" />
+                    </div>
+                  </div>
+                </fieldset>
 
-          <article class="log-card">
-            <div class="log-scan log-scan-four" role="img" aria-label="Scanned Maristela logbook page four">
-              <span>Add log image: images/maristela/log-page-4.jpg</span>
-            </div>
-            <h3>Logbook Scan 04</h3>
-            <p>Ready for another logbook image when available.</p>
-          </article>
+                <fieldset class="field-group">
+                  <legend>Departure Details</legend>
+                  <div class="field-grid three">
+                    <div class="field">
+                      <label for="departure-time">Time of Departure</label>
+                      <input id="departure-time" name="departureTime" type="time" />
+                    </div>
+                    <div class="field">
+                      <label for="departure-latitude">Latitude</label>
+                      <input id="departure-latitude" name="departureLatitude" type="text" placeholder="47° 37.793'" />
+                    </div>
+                    <div class="field">
+                      <label for="departure-longitude">Longitude</label>
+                      <input id="departure-longitude" name="departureLongitude" type="text" placeholder="122° 23.501'" />
+                    </div>
+                    <div class="field">
+                      <label for="departure-odometer">Odometer</label>
+                      <input id="departure-odometer" name="departureOdometer" type="number" min="0" step="0.1" placeholder="0.0" />
+                    </div>
+                    <div class="field">
+                      <label for="departure-engine-hours">Engine Hrs</label>
+                      <input id="departure-engine-hours" name="departureEngineHours" type="number" min="0" step="0.1" placeholder="0.0" />
+                    </div>
+                    <div class="field">
+                      <label for="departure-generator-hours">Generator Hrs</label>
+                      <input id="departure-generator-hours" name="departureGeneratorHours" type="number" min="0" step="0.1" placeholder="0.0" />
+                    </div>
+                    <div class="field">
+                      <label for="fuel-on-board">Fuel On Board</label>
+                      <input id="fuel-on-board" name="fuelOnBoard" type="number" min="0" step="0.1" placeholder="Gallons" />
+                    </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="field-group">
+                  <legend>Arrival Details</legend>
+                  <div class="field-grid three">
+                    <div class="field">
+                      <label for="arrival-time">Time of Arrival</label>
+                      <input id="arrival-time" name="arrivalTime" type="time" />
+                    </div>
+                    <div class="field">
+                      <label for="arrival-latitude">Latitude</label>
+                      <input id="arrival-latitude" name="arrivalLatitude" type="text" placeholder="Arrival latitude" />
+                    </div>
+                    <div class="field">
+                      <label for="arrival-longitude">Longitude</label>
+                      <input id="arrival-longitude" name="arrivalLongitude" type="text" placeholder="Arrival longitude" />
+                    </div>
+                    <div class="field">
+                      <label for="arrival-odometer">Odometer</label>
+                      <input id="arrival-odometer" name="arrivalOdometer" type="number" min="0" step="0.1" placeholder="0.0" />
+                    </div>
+                    <div class="field">
+                      <label for="arrival-engine-hours">Engine Hr</label>
+                      <input id="arrival-engine-hours" name="arrivalEngineHours" type="number" min="0" step="0.1" placeholder="0.0" />
+                    </div>
+                    <div class="field">
+                      <label for="arrival-generator-hours">Generator Hr</label>
+                      <input id="arrival-generator-hours" name="arrivalGeneratorHours" type="number" min="0" step="0.1" placeholder="0.0" />
+                    </div>
+                    <div class="field">
+                      <label for="avg-gallons-hour">Avg Gal / Hr</label>
+                      <input id="avg-gallons-hour" name="avgGallonsHour" type="number" min="0" step="0.1" placeholder="0.0" />
+                    </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="field-group">
+                  <legend>Daily Summary</legend>
+                  <div class="field-grid three">
+                    <div class="field">
+                      <label for="travel-time">Travel Time</label>
+                      <input id="travel-time" name="travelTime" type="text" placeholder="2 hr 45 min" />
+                    </div>
+                    <div class="field">
+                      <label for="total-engine-time">Total Engine Time</label>
+                      <input id="total-engine-time" name="totalEngineTime" type="number" min="0" step="0.1" placeholder="Hours" />
+                    </div>
+                    <div class="field">
+                      <label for="total-nm-traveled">Total NM Traveled</label>
+                      <input id="total-nm-traveled" name="totalNmTraveled" type="number" min="0" step="0.1" placeholder="Nautical miles" />
+                    </div>
+                    <div class="field">
+                      <label for="total-generator-time">Total Generator Time</label>
+                      <input id="total-generator-time" name="totalGeneratorTime" type="number" min="0" step="0.1" placeholder="Hours" />
+                    </div>
+                    <div class="field">
+                      <label for="fuel-used">Fuel Used</label>
+                      <input id="fuel-used" name="fuelUsed" type="number" min="0" step="0.1" placeholder="Gallons" />
+                    </div>
+                    <div class="field">
+                      <label for="estimated-fuel-on-board">Est Fuel Onboard</label>
+                      <input id="estimated-fuel-on-board" name="estimatedFuelOnBoard" type="number" min="0" step="0.1" placeholder="Gallons" />
+                    </div>
+                    <div class="field">
+                      <label for="kts-per-gal">Kts Per Gal</label>
+                      <input id="kts-per-gal" name="ktsPerGal" type="number" min="0" step="0.1" placeholder="0.0" />
+                    </div>
+                    <div class="field">
+                      <label for="avg-speed">Avg Speed</label>
+                      <input id="avg-speed" name="avgSpeed" type="number" min="0" step="0.1" placeholder="Knots" />
+                    </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="field-group">
+                  <legend>Notes</legend>
+                  <div class="field-grid">
+                    <div class="field full">
+                      <label for="observations">Observations</label>
+                      <textarea id="observations" name="observations" placeholder="Weather, wildlife, notable conditions..."></textarea>
+                    </div>
+                    <div class="field full">
+                      <label for="cruising-notes">Cruising Notes</label>
+                      <textarea id="cruising-notes" name="cruisingNotes" placeholder="Narrative notes for the day..."></textarea>
+                    </div>
+                    <div class="field full">
+                      <label for="daily-summary">Daily Summary</label>
+                      <textarea id="daily-summary" name="dailySummary" placeholder="Maintenance, fuel, travel summary, next steps..."></textarea>
+                    </div>
+                  </div>
+                </fieldset>
+
+                <div class="form-actions">
+                  <button class="btn" type="submit">Save Log Entry</button>
+                  <button id="reset-form" class="btn ghost" type="button">Clear Form</button>
+                </div>
+                <p id="form-status" class="status-line" aria-live="polite">Ready for the first Maristela log entry.</p>
+              </form>
+            </section>
+
+            <section id="entries" class="panel" aria-labelledby="entries-title">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Logbook</p>
+                  <h2 id="entries-title">Saved Entries</h2>
+                  <p>Search, edit, delete, or export the entries saved in this browser.</p>
+                </div>
+                <div class="toolbar">
+                  <button id="export-csv" class="btn ghost" type="button">Export CSV</button>
+                  <button id="clear-all" class="btn danger" type="button">Clear All</button>
+                </div>
+              </div>
+
+              <div class="filter-row">
+                <div class="field">
+                  <label for="search-logs">Search Logs</label>
+                  <input id="search-logs" type="search" placeholder="Search route, crew, notes, weather..." />
+                </div>
+                <div class="field">
+                  <label for="sort-logs">Sort</label>
+                  <select id="sort-logs">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="distance">Most NM</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="entries-list" class="entries-list" aria-live="polite"></div>
+            </section>
+          </div>
         </div>
       </section>
     </main>
 
     <footer class="footer-band">
       <div class="container footer-inner">
-        <span>© 2026 Maristela Log Archive</span>
+        <span>© 2026 Maristela Digital Logbook</span>
         <a href="maristela.html">Return to Maristela Home</a>
       </div>
     </footer>
+
+    <script>
+      const STORAGE_KEY = "maristela-logbook-entries";
+      const form = document.getElementById("log-form");
+      const formStatus = document.getElementById("form-status");
+      const entriesList = document.getElementById("entries-list");
+      const searchInput = document.getElementById("search-logs");
+      const sortSelect = document.getElementById("sort-logs");
+      const exportButton = document.getElementById("export-csv");
+      const clearAllButton = document.getElementById("clear-all");
+      const resetFormButton = document.getElementById("reset-form");
+      const entryIdInput = document.getElementById("entry-id");
+      const dateInput = document.getElementById("log-date");
+      const dayOfWeekInput = document.getElementById("day-of-week");
+      const totalEntriesEl = document.getElementById("total-entries");
+      const totalNmEl = document.getElementById("total-nm");
+      const totalEngineEl = document.getElementById("total-engine");
+      const totalFuelEl = document.getElementById("total-fuel");
+
+      const fields = [
+        "date",
+        "dayOfWeek",
+        "onBoard",
+        "departingFrom",
+        "destination",
+        "forecast",
+        "departureTime",
+        "departureLatitude",
+        "departureLongitude",
+        "departureOdometer",
+        "departureEngineHours",
+        "departureGeneratorHours",
+        "fuelOnBoard",
+        "arrivalTime",
+        "arrivalLatitude",
+        "arrivalLongitude",
+        "arrivalOdometer",
+        "arrivalEngineHours",
+        "arrivalGeneratorHours",
+        "avgGallonsHour",
+        "travelTime",
+        "totalEngineTime",
+        "totalNmTraveled",
+        "totalGeneratorTime",
+        "fuelUsed",
+        "estimatedFuelOnBoard",
+        "ktsPerGal",
+        "avgSpeed",
+        "observations",
+        "cruisingNotes",
+        "dailySummary",
+      ];
+
+      let entries = [];
+
+      const escapeHtml = (value) => String(value || "").replace(/[&<>'"]/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;",
+      })[char]);
+
+      const newId = () => {
+        if (crypto && typeof crypto.randomUUID === "function") {
+          return crypto.randomUUID();
+        }
+
+        return `log-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      };
+
+      const parseNumber = (value) => {
+        const number = Number.parseFloat(value);
+        return Number.isFinite(number) ? number : 0;
+      };
+
+      const formatNumber = (value, suffix = "") => {
+        const number = parseNumber(value);
+        const display = Number.isInteger(number) ? String(number) : number.toFixed(1);
+        return `${display}${suffix}`;
+      };
+
+      const formatOptionalNumber = (value, suffix = "") => {
+        if (value === undefined || value === null || value === "") {
+          return "—";
+        }
+
+        return formatNumber(value, suffix);
+      };
+
+      const formatDate = (value) => {
+        if (!value) {
+          return "No date";
+        }
+
+        const [year, month, day] = value.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
+      };
+
+      const inferDayOfWeek = (value) => {
+        if (!value) {
+          return "";
+        }
+
+        const [year, month, day] = value.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(date);
+      };
+
+      const valueById = (id) => parseNumber(document.getElementById(id).value);
+      const setIfEmpty = (id, value) => {
+        const element = document.getElementById(id);
+        if (!element.value && value > 0) {
+          element.value = Number.isInteger(value) ? String(value) : value.toFixed(1);
+        }
+      };
+
+      const autoFillCalculatedFields = () => {
+        const totalNm = valueById("arrival-odometer") - valueById("departure-odometer");
+        const totalEngine = valueById("arrival-engine-hours") - valueById("departure-engine-hours");
+        const totalGenerator = valueById("arrival-generator-hours") - valueById("departure-generator-hours");
+        const fuelUsed = valueById("fuel-on-board") - valueById("estimated-fuel-on-board");
+
+        setIfEmpty("total-nm-traveled", totalNm);
+        setIfEmpty("total-engine-time", totalEngine);
+        setIfEmpty("total-generator-time", totalGenerator);
+        setIfEmpty("fuel-used", fuelUsed);
+
+        const currentFuelUsed = valueById("fuel-used");
+        const currentEngineTime = valueById("total-engine-time");
+        const currentNm = valueById("total-nm-traveled");
+
+        if (currentFuelUsed > 0 && currentEngineTime > 0) {
+          setIfEmpty("avg-gallons-hour", currentFuelUsed / currentEngineTime);
+        }
+
+        if (currentFuelUsed > 0 && currentNm > 0) {
+          setIfEmpty("kts-per-gal", currentNm / currentFuelUsed);
+        }
+      };
+
+      const loadEntries = () => {
+        try {
+          const storedEntries = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+          entries = Array.isArray(storedEntries) ? storedEntries : [];
+        } catch (error) {
+          entries = [];
+          formStatus.textContent = "Could not read saved entries. Starting fresh in this browser.";
+        }
+      };
+
+      const saveEntries = () => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      };
+
+      const entrySearchText = (entry) => fields.map((field) => entry[field] || "").join(" ").toLowerCase();
+
+      const filteredEntries = () => {
+        const query = searchInput.value.trim().toLowerCase();
+        const visibleEntries = query
+          ? entries.filter((entry) => entrySearchText(entry).includes(query))
+          : [...entries];
+
+        return visibleEntries.sort((left, right) => {
+          if (sortSelect.value === "oldest") {
+            return (left.date || "").localeCompare(right.date || "");
+          }
+
+          if (sortSelect.value === "distance") {
+            return parseNumber(right.totalNmTraveled) - parseNumber(left.totalNmTraveled);
+          }
+
+          return (right.date || "").localeCompare(left.date || "");
+        });
+      };
+
+      const updateSummary = () => {
+        const totalNm = entries.reduce((sum, entry) => sum + parseNumber(entry.totalNmTraveled), 0);
+        const totalEngine = entries.reduce((sum, entry) => sum + parseNumber(entry.totalEngineTime || entry.engineHours), 0);
+        const totalFuel = entries.reduce((sum, entry) => sum + parseNumber(entry.fuelUsed), 0);
+
+        totalEntriesEl.textContent = String(entries.length);
+        totalNmEl.textContent = formatNumber(totalNm, " NM");
+        totalEngineEl.textContent = formatNumber(totalEngine, " hr");
+        totalFuelEl.textContent = formatNumber(totalFuel, " gal");
+      };
+
+      const renderEntries = () => {
+        updateSummary();
+        const visibleEntries = filteredEntries();
+
+        if (!entries.length) {
+          entriesList.innerHTML = '<div class="empty-state">No log entries yet. Add the first Maristela voyage using the form.</div>';
+          return;
+        }
+
+        if (!visibleEntries.length) {
+          entriesList.innerHTML = '<div class="empty-state">No entries match that search.</div>';
+          return;
+        }
+
+        entriesList.innerHTML = visibleEntries.map((entry) => {
+          const route = `${entry.departingFrom || "Departure not set"} → ${entry.destination || "Destination not set"}`;
+          const noteBlocks = [
+            ["Observations", entry.observations],
+            ["Cruising Notes", entry.cruisingNotes],
+            ["Daily Summary", entry.dailySummary],
+          ].filter(([, value]) => value).map(([label, value]) => `<p><strong>${label}:</strong> ${escapeHtml(value)}</p>`).join("");
+
+          return `
+            <article class="log-entry-card">
+              <div class="entry-topline">
+                <div>
+                  <p class="eyebrow">${escapeHtml(entry.dayOfWeek || inferDayOfWeek(entry.date))}</p>
+                  <h3>${escapeHtml(formatDate(entry.date))}</h3>
+                  <p class="entry-route">${escapeHtml(route)}</p>
+                </div>
+                <div class="entry-actions">
+                  <button class="btn ghost" type="button" data-action="edit" data-id="${escapeHtml(entry.id)}">Edit</button>
+                  <button class="btn danger" type="button" data-action="delete" data-id="${escapeHtml(entry.id)}">Delete</button>
+                </div>
+              </div>
+              <div class="entry-meta-grid">
+                <div class="entry-meta"><span>On Board</span><strong>${escapeHtml(entry.onBoard || "—")}</strong></div>
+                <div class="entry-meta"><span>NM Traveled</span><strong>${escapeHtml(formatOptionalNumber(entry.totalNmTraveled, " NM"))}</strong></div>
+                <div class="entry-meta"><span>Total Engine</span><strong>${escapeHtml(formatOptionalNumber(entry.totalEngineTime || entry.engineHours, " hr"))}</strong></div>
+                <div class="entry-meta"><span>Fuel Used</span><strong>${escapeHtml(formatOptionalNumber(entry.fuelUsed, " gal"))}</strong></div>
+                <div class="entry-meta"><span>Departure</span><strong>${escapeHtml(entry.departureTime || "—")}</strong></div>
+                <div class="entry-meta"><span>Arrival</span><strong>${escapeHtml(entry.arrivalTime || "—")}</strong></div>
+                <div class="entry-meta"><span>Depart Odometer</span><strong>${escapeHtml(entry.departureOdometer || entry.odometer || "—")}</strong></div>
+                <div class="entry-meta"><span>Arrival Odometer</span><strong>${escapeHtml(entry.arrivalOdometer || "—")}</strong></div>
+                <div class="entry-meta"><span>Forecast</span><strong>${escapeHtml(entry.forecast || "—")}</strong></div>
+                <div class="entry-meta"><span>Fuel On Board</span><strong>${escapeHtml(formatOptionalNumber(entry.fuelOnBoard, " gal"))}</strong></div>
+                <div class="entry-meta"><span>Est Fuel Onboard</span><strong>${escapeHtml(formatOptionalNumber(entry.estimatedFuelOnBoard, " gal"))}</strong></div>
+                <div class="entry-meta"><span>Total Generator</span><strong>${escapeHtml(formatOptionalNumber(entry.totalGeneratorTime, " hr"))}</strong></div>
+                <div class="entry-meta"><span>Kts Per Gal</span><strong>${escapeHtml(formatOptionalNumber(entry.ktsPerGal))}</strong></div>
+                <div class="entry-meta"><span>Avg Speed</span><strong>${escapeHtml(formatOptionalNumber(entry.avgSpeed, " kt"))}</strong></div>
+                <div class="entry-meta"><span>Depart Position</span><strong>${escapeHtml([entry.departureLatitude || entry.latitude, entry.departureLongitude || entry.longitude].filter(Boolean).join(", ") || "—")}</strong></div>
+                <div class="entry-meta"><span>Arrival Position</span><strong>${escapeHtml([entry.arrivalLatitude, entry.arrivalLongitude].filter(Boolean).join(", ") || "—")}</strong></div>
+              </div>
+              ${noteBlocks ? `<div class="entry-notes">${noteBlocks}</div>` : ""}
+            </article>
+          `;
+        }).join("");
+      };
+
+      const clearForm = () => {
+        form.reset();
+        entryIdInput.value = "";
+        form.querySelector("button[type='submit']").textContent = "Save Log Entry";
+      };
+
+      const formDataToEntry = () => {
+        const data = new FormData(form);
+        const entry = { id: entryIdInput.value || newId(), updatedAt: new Date().toISOString() };
+        fields.forEach((field) => {
+          entry[field] = String(data.get(field) || "").trim();
+        });
+        return entry;
+      };
+
+      const fillForm = (entry) => {
+        entryIdInput.value = entry.id;
+        fields.forEach((field) => {
+          const element = form.elements[field];
+          if (element) {
+            element.value = entry[field] || "";
+          }
+        });
+        form.querySelector("button[type='submit']").textContent = "Update Log Entry";
+        formStatus.textContent = `Editing ${formatDate(entry.date)}.`;
+        document.getElementById("log-form").scrollIntoView({ behavior: "smooth", block: "start" });
+      };
+
+      const exportCsv = () => {
+        if (!entries.length) {
+          formStatus.textContent = "No entries to export yet.";
+          return;
+        }
+
+        const headers = ["date", ...fields.filter((field) => field !== "date")];
+        const csvRows = [headers.join(",")].concat(entries.map((entry) => headers.map((header) => {
+          const value = String(entry[header] || "").replace(/"/g, '""');
+          return `"${value}"`;
+        }).join(",")));
+        const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `maristela-logbook-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      };
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const entry = formDataToEntry();
+        const existingIndex = entries.findIndex((savedEntry) => savedEntry.id === entry.id);
+
+        if (existingIndex >= 0) {
+          entries[existingIndex] = { ...entries[existingIndex], ...entry };
+          formStatus.textContent = "Log entry updated.";
+        } else {
+          entries.push({ ...entry, createdAt: new Date().toISOString() });
+          formStatus.textContent = "Log entry saved.";
+        }
+
+        saveEntries();
+        clearForm();
+        renderEntries();
+      });
+
+      dateInput.addEventListener("change", () => {
+        if (!dayOfWeekInput.value) {
+          dayOfWeekInput.value = inferDayOfWeek(dateInput.value);
+        }
+      });
+
+      [
+        "departure-odometer",
+        "arrival-odometer",
+        "departure-engine-hours",
+        "arrival-engine-hours",
+        "departure-generator-hours",
+        "arrival-generator-hours",
+        "fuel-on-board",
+        "estimated-fuel-on-board",
+      ].forEach((id) => {
+        document.getElementById(id).addEventListener("input", autoFillCalculatedFields);
+      });
+
+      resetFormButton.addEventListener("click", () => {
+        clearForm();
+        formStatus.textContent = "Form cleared.";
+      });
+
+      entriesList.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const button = target.closest("button[data-action]");
+        if (!(button instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        const entry = entries.find((savedEntry) => savedEntry.id === button.dataset.id);
+        if (!entry) {
+          return;
+        }
+
+        if (button.dataset.action === "edit") {
+          fillForm(entry);
+          return;
+        }
+
+        if (button.dataset.action === "delete" && confirm("Delete this Maristela log entry?")) {
+          entries = entries.filter((savedEntry) => savedEntry.id !== entry.id);
+          saveEntries();
+          renderEntries();
+          formStatus.textContent = "Log entry deleted.";
+        }
+      });
+
+      searchInput.addEventListener("input", renderEntries);
+      sortSelect.addEventListener("change", renderEntries);
+      exportButton.addEventListener("click", exportCsv);
+      clearAllButton.addEventListener("click", () => {
+        if (!entries.length) {
+          formStatus.textContent = "No entries to clear.";
+          return;
+        }
+
+        if (confirm("Delete all Maristela log entries saved in this browser?")) {
+          entries = [];
+          saveEntries();
+          clearForm();
+          renderEntries();
+          formStatus.textContent = "All log entries cleared.";
+        }
+      });
+
+      loadEntries();
+      renderEntries();
+    </script>
   </body>
 </html>
