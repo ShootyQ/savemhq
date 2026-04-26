@@ -380,6 +380,68 @@
         background: rgba(255, 255, 255, 0.28);
       }
 
+      .active-journey-card {
+        display: grid;
+        gap: 0.7rem;
+        padding: 0.85rem;
+        border: 1px solid rgba(37, 55, 65, 0.14);
+        background: #fffaf0;
+      }
+
+      .active-journey-card.is-empty {
+        border-style: dashed;
+        background: rgba(255, 250, 240, 0.55);
+      }
+
+      .active-journey-card h4 {
+        margin: 0;
+        color: #243746;
+        font-family: "Cormorant Garamond", Georgia, serif;
+        font-size: 1.45rem;
+        line-height: 1;
+      }
+
+      .active-journey-card p {
+        margin: 0;
+        color: #586665;
+      }
+
+      .journey-note-form {
+        display: grid;
+        gap: 0.7rem;
+      }
+
+      .journey-note-list {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .journey-note-card {
+        padding: 0.72rem;
+        border: 1px solid rgba(37, 55, 65, 0.1);
+        background: rgba(255, 253, 247, 0.82);
+      }
+
+      .journey-note-card time {
+        display: block;
+        color: #756747;
+        font-size: 0.66rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .journey-note-card strong {
+        display: block;
+        margin-top: 0.18rem;
+        color: #243746;
+      }
+
+      .journey-note-card p {
+        margin: 0.28rem 0 0;
+        color: #586665;
+      }
+
       .trip-list {
         gap: 0.45rem;
       }
@@ -683,9 +745,9 @@
             <section class="panel" aria-labelledby="form-title">
               <div class="panel-header">
                 <div>
-                  <p class="eyebrow">New Entry</p>
+                  <p class="eyebrow">Active Journey Log</p>
                   <h2 id="form-title">Add Log Data</h2>
-                  <p>Use as much or as little detail as needed. Required fields are date and route.</p>
+                  <p>Start a journey first, then every daily log and timestamped note stays attached until the journey is ended.</p>
                 </div>
               </div>
 
@@ -694,10 +756,12 @@
 
                 <div class="trip-manager" aria-label="Trip manager">
                   <div>
-                    <p class="eyebrow">Trips</p>
-                    <h3>Group Logs By Trip</h3>
-                    <p class="status-line">Create a trip once, then attach every daily log to it.</p>
+                    <p class="eyebrow">Journey</p>
+                    <h3>Start A Journey First</h3>
+                    <p class="status-line">Daily logs and timestamped notes attach to the active journey until you end it.</p>
                   </div>
+
+                  <div id="active-journey-card" class="active-journey-card is-empty" aria-live="polite"></div>
 
                   <div class="field-grid">
                     <div class="field">
@@ -713,7 +777,7 @@
                       <input id="trip-start" type="date" />
                     </div>
                     <div class="field">
-                      <label for="trip-end">End Date</label>
+                      <label for="trip-end">End Date <span>(optional until finished)</span></label>
                       <input id="trip-end" type="date" />
                     </div>
                     <div class="field full">
@@ -722,8 +786,28 @@
                     </div>
                   </div>
                   <div class="form-actions">
-                    <button id="save-trip" class="btn ghost" type="button">Save Trip</button>
+                    <button id="save-trip" class="btn ghost" type="button">Start New Journey</button>
+                    <button id="end-trip" class="btn danger" type="button">End Current Journey</button>
                   </div>
+
+                  <div class="journey-note-form">
+                    <p class="eyebrow">Timestamped Notes</p>
+                    <div class="field-grid">
+                      <div class="field">
+                        <label for="journey-note-title">Note Title</label>
+                        <input id="journey-note-title" type="text" placeholder="Engine check, anchorage note, weather update..." />
+                      </div>
+                      <div class="field full">
+                        <label for="journey-note">Note</label>
+                        <textarea id="journey-note" placeholder="Add as many notes as needed throughout the day. Each note gets a timestamp."></textarea>
+                      </div>
+                    </div>
+                    <div class="form-actions">
+                      <button id="save-journey-note" class="btn ghost" type="button">Add Timestamped Note</button>
+                    </div>
+                    <div id="journey-notes-list" class="journey-note-list" aria-live="polite"></div>
+                  </div>
+
                   <div id="trip-list" class="trip-list" aria-live="polite"></div>
                 </div>
 
@@ -731,7 +815,7 @@
                   <legend>Trip Basics</legend>
                   <div class="field-grid">
                     <div class="field full">
-                      <label for="log-trip">Trip</label>
+                      <label for="log-trip">Journey</label>
                       <select id="log-trip" name="tripId"></select>
                     </div>
                     <div class="field">
@@ -942,6 +1026,7 @@
     <script>
       const STORAGE_KEY = "maristela-logbook-entries";
       const TRIPS_KEY = "maristela-logbook-trips";
+      const TRIP_NOTES_KEY = "maristela-logbook-trip-notes";
       const DEFAULT_TRIP_ID = "general";
       const form = document.getElementById("log-form");
       const formStatus = document.getElementById("form-status");
@@ -950,6 +1035,12 @@
       const tripFilter = document.getElementById("filter-trip");
       const logTripSelect = document.getElementById("log-trip");
       const saveTripButton = document.getElementById("save-trip");
+      const endTripButton = document.getElementById("end-trip");
+      const activeJourneyCard = document.getElementById("active-journey-card");
+      const saveJourneyNoteButton = document.getElementById("save-journey-note");
+      const journeyNoteTitleInput = document.getElementById("journey-note-title");
+      const journeyNoteInput = document.getElementById("journey-note");
+      const journeyNotesList = document.getElementById("journey-notes-list");
       const tripList = document.getElementById("trip-list");
       const sortSelect = document.getElementById("sort-logs");
       const exportButton = document.getElementById("export-csv");
@@ -999,7 +1090,8 @@
       ];
 
       let entries = [];
-  let trips = [];
+      let trips = [];
+      let tripNotes = [];
 
       const escapeHtml = (value) => String(value || "").replace(/[&<>'"]/g, (char) => ({
         "&": "&amp;",
@@ -1070,6 +1162,22 @@
 
       const tripDateRange = (trip) => [trip.startDate, trip.endDate].filter(Boolean).join(" → ") || trip.scope || "Open trip";
 
+      const activeJourney = () => trips.find((trip) => trip.id !== DEFAULT_TRIP_ID && trip.status === "active") || null;
+
+      const formatDateTime = (value) => {
+        if (!value) {
+          return "No timestamp";
+        }
+
+        return new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date(value));
+      };
+
       const valueById = (id) => parseNumber(document.getElementById(id).value);
       const setIfEmpty = (id, value) => {
         const element = document.getElementById(id);
@@ -1125,12 +1233,25 @@
         }
       };
 
+      const loadTripNotes = () => {
+        try {
+          const storedNotes = JSON.parse(localStorage.getItem(TRIP_NOTES_KEY) || "[]");
+          tripNotes = Array.isArray(storedNotes) ? storedNotes : [];
+        } catch (error) {
+          tripNotes = [];
+        }
+      };
+
       const saveEntries = () => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
       };
 
       const saveTrips = () => {
         localStorage.setItem(TRIPS_KEY, JSON.stringify(trips.filter((trip) => trip.id !== DEFAULT_TRIP_ID)));
+      };
+
+      const saveTripNotes = () => {
+        localStorage.setItem(TRIP_NOTES_KEY, JSON.stringify(tripNotes));
       };
 
       const renderTripOptions = () => {
@@ -1141,13 +1262,73 @@
       const renderTripList = () => {
         tripList.innerHTML = trips.map((trip) => {
           const count = entries.filter((entry) => (entry.tripId || DEFAULT_TRIP_ID) === trip.id).length;
+          const status = trip.status === "active" ? "Active" : trip.endedAt ? "Ended" : "Saved";
           return `
             <div class="trip-chip">
               <span><strong>${escapeHtml(trip.name)}</strong><span>${escapeHtml(tripDateRange(trip))}</span></span>
-              <span>${count} log${count === 1 ? "" : "s"}</span>
+              <span>${status} · ${count} log${count === 1 ? "" : "s"}</span>
             </div>
           `;
         }).join("");
+      };
+
+      const renderActiveJourney = () => {
+        const active = activeJourney();
+        if (!active) {
+          activeJourneyCard.classList.add("is-empty");
+          activeJourneyCard.innerHTML = `
+            <h4>No active journey</h4>
+            <p>Start a journey before adding logs. New daily logs will stay locked to that journey until it is ended.</p>
+          `;
+          endTripButton.disabled = true;
+          saveJourneyNoteButton.disabled = true;
+          logTripSelect.value = DEFAULT_TRIP_ID;
+          return;
+        }
+
+        activeJourneyCard.classList.remove("is-empty");
+        activeJourneyCard.innerHTML = `
+          <p class="eyebrow">Active Journey</p>
+          <h4>${escapeHtml(active.name)}</h4>
+          <p>${escapeHtml(tripDateRange(active))}</p>
+          ${active.notes ? `<p>${escapeHtml(active.notes)}</p>` : ""}
+        `;
+        endTripButton.disabled = false;
+        saveJourneyNoteButton.disabled = false;
+        logTripSelect.value = active.id;
+      };
+
+      const renderJourneyNotes = () => {
+        const active = activeJourney();
+        const relevantTripId = active ? active.id : tripFilter.value !== "all" ? tripFilter.value : "";
+        const notes = tripNotes
+          .filter((note) => relevantTripId && note.tripId === relevantTripId)
+          .sort((left, right) => (right.createdAt || "").localeCompare(left.createdAt || ""));
+
+        if (!relevantTripId) {
+          journeyNotesList.innerHTML = '<div class="empty-state">Start or select a journey to see timestamped notes.</div>';
+          return;
+        }
+
+        if (!notes.length) {
+          journeyNotesList.innerHTML = '<div class="empty-state">No timestamped notes for this journey yet.</div>';
+          return;
+        }
+
+        journeyNotesList.innerHTML = notes.map((note) => `
+          <article class="journey-note-card">
+            <time datetime="${escapeHtml(note.createdAt)}">${escapeHtml(formatDateTime(note.createdAt))}</time>
+            ${note.title ? `<strong>${escapeHtml(note.title)}</strong>` : ""}
+            <p>${escapeHtml(note.body)}</p>
+          </article>
+        `).join("");
+      };
+
+      const refreshJourneyUi = () => {
+        renderTripOptions();
+        renderActiveJourney();
+        renderTripList();
+        renderJourneyNotes();
       };
 
       const entrySearchText = (entry) => `${tripById(entry.tripId || DEFAULT_TRIP_ID).name} ${fields.map((field) => entry[field] || "").join(" ")}`.toLowerCase();
@@ -1255,16 +1436,21 @@
       const clearForm = () => {
         form.reset();
         entryIdInput.value = "";
-        logTripSelect.value = tripFilter && tripFilter.value !== "all" ? tripFilter.value : DEFAULT_TRIP_ID;
+        const active = activeJourney();
+        logTripSelect.value = active ? active.id : DEFAULT_TRIP_ID;
         form.querySelector("button[type='submit']").textContent = "Save Log Entry";
       };
 
       const formDataToEntry = () => {
         const data = new FormData(form);
+        const active = activeJourney();
         const entry = { id: entryIdInput.value || newId(), updatedAt: new Date().toISOString() };
         fields.forEach((field) => {
           entry[field] = String(data.get(field) || "").trim();
         });
+        if (active && !entryIdInput.value) {
+          entry.tripId = active.id;
+        }
         return entry;
       };
 
@@ -1303,6 +1489,13 @@
 
       form.addEventListener("submit", (event) => {
         event.preventDefault();
+        const active = activeJourney();
+        if (!entryIdInput.value && !active) {
+          formStatus.textContent = "Start a journey before saving a new log entry.";
+          document.getElementById("trip-name").focus();
+          return;
+        }
+
         const entry = formDataToEntry();
         const existingIndex = entries.findIndex((savedEntry) => savedEntry.id === entry.id);
 
@@ -1316,15 +1509,20 @@
 
         saveEntries();
         clearForm();
-        renderTripList();
+        refreshJourneyUi();
         renderEntries();
       });
 
       saveTripButton.addEventListener("click", () => {
+        if (activeJourney()) {
+          formStatus.textContent = "End the current journey before starting a new one.";
+          return;
+        }
+
         const nameInput = document.getElementById("trip-name");
         const name = nameInput.value.trim();
         if (!name) {
-          formStatus.textContent = "Add a trip name first.";
+          formStatus.textContent = "Add a journey name first.";
           nameInput.focus();
           return;
         }
@@ -1336,20 +1534,74 @@
           startDate: document.getElementById("trip-start").value,
           endDate: document.getElementById("trip-end").value,
           notes: document.getElementById("trip-notes").value.trim(),
+          status: "active",
+          startedAt: new Date().toISOString(),
           createdAt: new Date().toISOString(),
         };
 
         trips.push(trip);
         saveTrips();
-        renderTripOptions();
-        renderTripList();
+        refreshJourneyUi();
         logTripSelect.value = trip.id;
         tripFilter.value = trip.id;
         ["trip-name", "trip-scope", "trip-start", "trip-end", "trip-notes"].forEach((id) => {
           document.getElementById(id).value = "";
         });
-        formStatus.textContent = `Trip "${trip.name}" created. New logs will attach to it.`;
+        formStatus.textContent = `Journey "${trip.name}" started. New logs will attach to it.`;
         renderEntries();
+      });
+
+      endTripButton.addEventListener("click", () => {
+        const active = activeJourney();
+        if (!active) {
+          formStatus.textContent = "No active journey to end.";
+          return;
+        }
+
+        if (!confirm(`End journey "${active.name}"? New logs will require a new journey.`)) {
+          return;
+        }
+
+        const today = new Date().toISOString().slice(0, 10);
+        active.status = "ended";
+        active.endedAt = new Date().toISOString();
+        if (!active.endDate) {
+          active.endDate = today;
+        }
+        saveTrips();
+        clearForm();
+        refreshJourneyUi();
+        renderEntries();
+        formStatus.textContent = `Journey "${active.name}" ended.`;
+      });
+
+      saveJourneyNoteButton.addEventListener("click", () => {
+        const active = activeJourney();
+        const body = journeyNoteInput.value.trim();
+        if (!active) {
+          formStatus.textContent = "Start a journey before adding timestamped notes.";
+          document.getElementById("trip-name").focus();
+          return;
+        }
+
+        if (!body) {
+          formStatus.textContent = "Add note text first.";
+          journeyNoteInput.focus();
+          return;
+        }
+
+        tripNotes.push({
+          id: newId(),
+          tripId: active.id,
+          title: journeyNoteTitleInput.value.trim(),
+          body,
+          createdAt: new Date().toISOString(),
+        });
+        saveTripNotes();
+        journeyNoteTitleInput.value = "";
+        journeyNoteInput.value = "";
+        renderJourneyNotes();
+        formStatus.textContent = "Timestamped journey note added.";
       });
 
       dateInput.addEventListener("change", () => {
@@ -1400,7 +1652,7 @@
         if (button.dataset.action === "delete" && confirm("Delete this Maristela log entry?")) {
           entries = entries.filter((savedEntry) => savedEntry.id !== entry.id);
           saveEntries();
-          renderTripList();
+          refreshJourneyUi();
           renderEntries();
           formStatus.textContent = "Log entry deleted.";
         }
@@ -1409,6 +1661,7 @@
       searchInput.addEventListener("input", renderEntries);
       tripFilter.addEventListener("change", () => {
         clearForm();
+        renderJourneyNotes();
         renderEntries();
       });
       sortSelect.addEventListener("change", renderEntries);
@@ -1423,7 +1676,7 @@
           entries = [];
           saveEntries();
           clearForm();
-          renderTripList();
+          refreshJourneyUi();
           renderEntries();
           formStatus.textContent = "All log entries cleared.";
         }
@@ -1431,8 +1684,8 @@
 
       loadTrips();
       loadEntries();
-      renderTripOptions();
-      renderTripList();
+      loadTripNotes();
+      refreshJourneyUi();
       clearForm();
       renderEntries();
     </script>
