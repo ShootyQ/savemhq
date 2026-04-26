@@ -35,8 +35,9 @@
         min-width: 320px;
         color: var(--ink);
         background:
-          radial-gradient(42rem 22rem at 10% -8%, rgba(201, 164, 100, 0.22), transparent 64%),
-          linear-gradient(180deg, #102636 0 25rem, #efe5d7 25rem 100%);
+          radial-gradient(42rem 22rem at 10% -8%, rgba(201, 164, 100, 0.2), transparent 64%),
+          radial-gradient(38rem 22rem at 92% 6%, rgba(110, 146, 160, 0.24), transparent 68%),
+          var(--navy);
         font-family: "Inter", "Segoe UI", sans-serif;
         line-height: 1.6;
       }
@@ -138,15 +139,29 @@
       }
 
       .hero {
-        padding: clamp(2.2rem, 5vw, 5.4rem) 0 clamp(2.2rem, 5vw, 4.5rem);
+        position: relative;
+        overflow: hidden;
+        padding: clamp(2rem, 4vw, 4.4rem) 0 clamp(2.6rem, 5vw, 5rem);
         color: var(--paper);
+      }
+
+      .hero::before {
+        content: "";
+        position: absolute;
+        inset: auto 0 0;
+        height: 1px;
+        background: rgba(255, 245, 229, 0.18);
       }
 
       .hero-grid {
         display: grid;
-        grid-template-columns: minmax(0, 0.95fr) minmax(18rem, 0.8fr);
-        gap: clamp(1.4rem, 4vw, 4.2rem);
+        grid-template-columns: minmax(0, 0.88fr) minmax(20rem, 0.7fr);
+        gap: clamp(1.4rem, 4vw, 4rem);
         align-items: center;
+      }
+
+      .hero-grid > div:first-child {
+        max-width: 46rem;
       }
 
       .eyebrow {
@@ -167,10 +182,11 @@
       }
 
       h1 {
-        max-width: 48rem;
+        max-width: 44rem;
         color: #fff3dd;
-        font-size: clamp(4rem, 8.3vw, 8rem);
-        letter-spacing: -0.055em;
+        font-size: clamp(3.4rem, 6.4vw, 6.4rem);
+        line-height: 0.9;
+        letter-spacing: -0.045em;
       }
 
       h2 {
@@ -184,9 +200,9 @@
       }
 
       .hero p:not(.eyebrow) {
-        max-width: 42rem;
+        max-width: 36rem;
         margin: 1.25rem 0 0;
-        color: rgba(255, 245, 229, 0.86);
+        color: rgba(255, 245, 229, 0.82);
         font-size: 1.05rem;
       }
 
@@ -241,21 +257,26 @@
 
       .ship-photo {
         position: relative;
-        min-height: 25rem;
+        min-height: clamp(18rem, 31vw, 25rem);
         border: 1px solid rgba(255, 245, 229, 0.22);
         background:
-          linear-gradient(180deg, rgba(7, 24, 34, 0.08), rgba(7, 24, 34, 0.62)),
+          linear-gradient(180deg, rgba(7, 24, 34, 0.05), rgba(7, 24, 34, 0.7)),
           url("images/maristela/maristela-ship.jpg") center / cover no-repeat,
           linear-gradient(145deg, #516f7e, #102636);
         box-shadow: var(--shadow);
         overflow: hidden;
       }
 
+      .ship-photo::before,
+      .ship-photo::after {
+        pointer-events: none;
+      }
+
       .ship-photo::before {
         content: "Maristela";
         position: absolute;
-        left: 1.1rem;
-        bottom: 1rem;
+        left: 1.2rem;
+        bottom: 1.05rem;
         color: #fff1dc;
         font-family: "Cormorant Garamond", Georgia, serif;
         font-size: 2.15rem;
@@ -264,18 +285,14 @@
       }
 
       .ship-photo::after {
-        content: "Optional ship photo: images/maristela/maristela-ship.jpg";
+        content: "Captain Jonathan Carlson";
         position: absolute;
-        right: 1rem;
-        top: 1rem;
-        max-width: 13rem;
-        padding: 0.65rem 0.8rem;
-        color: rgba(255, 245, 229, 0.88);
-        border: 1px solid rgba(255, 245, 229, 0.25);
-        background: rgba(9, 28, 40, 0.54);
+        left: 1.25rem;
+        bottom: 3.45rem;
+        color: rgba(255, 245, 229, 0.76);
         font-size: 0.68rem;
         font-weight: 900;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.18em;
         text-transform: uppercase;
       }
 
