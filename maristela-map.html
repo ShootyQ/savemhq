@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maristela Route Map | Puget Sound</title>
+    <meta
+      name="description"
+      content="A nautical-style Puget Sound route map for Maristela with selectable trips, waypoints, route details, and chart-inspired styling."
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap");
+
+      :root {
+        --ink: #102837;
+        --navy: #0f2735;
+        --navy-soft: #17384a;
+        --water: #d7ecec;
+        --water-deep: #8fb7bd;
+        --paper: #fbf3e3;
+        --paper-soft: #efe5d1;
+        --land: #d9ceb1;
+        --land-deep: #b7aa85;
+        --gold: #bd9250;
+        --red: #a64035;
+        --line: rgba(18, 52, 69, 0.2);
+        --shadow: 0 26px 70px rgba(7, 26, 36, 0.24);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        color: var(--ink);
+        background:
+          radial-gradient(46rem 22rem at 8% -6%, rgba(189, 146, 80, 0.2), transparent 65%),
+          linear-gradient(180deg, #0f2735 0 21rem, #efe5d1 21rem 100%);
+        font-family: "Inter", "Segoe UI", sans-serif;
+        line-height: 1.6;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      button,
+      select {
+        font: inherit;
+      }
+
+      .skip-link {
+        position: absolute;
+        left: 1rem;
+        top: -8rem;
+        z-index: 50;
+        padding: 0.75rem 1rem;
+        color: var(--navy);
+        background: var(--paper);
+        font-weight: 800;
+        text-decoration: none;
+      }
+
+      .skip-link:focus-visible {
+        top: 1rem;
+      }
+
+      .container {
+        width: min(94rem, 92vw);
+        margin: 0 auto;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: 1.45rem 0;
+        color: var(--paper);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        width: 3rem;
+        height: 3rem;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(255, 250, 240, 0.48);
+        border-radius: 50%;
+        color: var(--gold);
+        font-size: 1.65rem;
+      }
+
+      .brand-copy {
+        display: grid;
+        gap: 0.05rem;
+        text-transform: uppercase;
+        line-height: 1;
+      }
+
+      .brand-copy strong {
+        color: #fff5e5;
+        font-size: 1.1rem;
+        font-weight: 900;
+        letter-spacing: 0.24em;
+      }
+
+      .brand-copy span {
+        color: rgba(255, 245, 229, 0.75);
+        font-size: 0.64rem;
+        font-weight: 800;
+        letter-spacing: 0.25em;
+      }
+
+      .topnav {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.8rem 1.4rem;
+      }
+
+      .topnav a {
+        color: rgba(255, 245, 229, 0.86);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.17em;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+
+      .hero {
+        padding: clamp(2.2rem, 5vw, 5rem) 0 clamp(2.5rem, 5vw, 4.6rem);
+        color: var(--paper);
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(20rem, 0.62fr);
+        gap: clamp(1.2rem, 4vw, 4rem);
+        align-items: end;
+      }
+
+      .eyebrow {
+        margin: 0 0 0.65rem;
+        color: var(--gold);
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        font-family: "Cormorant Garamond", Georgia, serif;
+        line-height: 1;
+      }
+
+      h1 {
+        max-width: 46rem;
+        color: #fff3dd;
+        font-size: clamp(3.5rem, 7.2vw, 7rem);
+        letter-spacing: -0.05em;
+      }
+
+      h2 {
+        color: #1b3342;
+        font-size: clamp(2rem, 3.8vw, 3.4rem);
+      }
+
+      h3 {
+        color: #213846;
+        font-size: clamp(1.35rem, 2.3vw, 2rem);
+      }
+
+      .hero p:not(.eyebrow) {
+        max-width: 42rem;
+        margin: 1.1rem 0 0;
+        color: rgba(255, 245, 229, 0.82);
+        font-size: 1.05rem;
+      }
+
+      .chart-card {
+        padding: 1rem;
+        border: 1px solid rgba(255, 245, 229, 0.24);
+        background: rgba(255, 245, 229, 0.08);
+        box-shadow: var(--shadow);
+      }
+
+      .chart-card strong {
+        display: block;
+        color: #fff5e5;
+        font-family: "Cormorant Garamond", Georgia, serif;
+        font-size: 2.25rem;
+        line-height: 1;
+      }
+
+      .chart-card span {
+        display: block;
+        margin-top: 0.45rem;
+        color: rgba(255, 245, 229, 0.78);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .map-section {
+        padding: clamp(2rem, 5vw, 4.5rem) 0 clamp(3rem, 6vw, 6rem);
+        background: var(--paper-soft);
+      }
+
+      .map-shell {
+        display: grid;
+        grid-template-columns: minmax(20rem, 0.42fr) minmax(0, 1fr);
+        gap: 1rem;
+        align-items: start;
+      }
+
+      .panel,
+      .map-card,
+      .detail-card {
+        border: 1px solid rgba(20, 49, 64, 0.16);
+        background: rgba(255, 250, 240, 0.82);
+        box-shadow: 0 18px 45px rgba(20, 49, 64, 0.12);
+      }
+
+      .panel {
+        display: grid;
+        gap: 1rem;
+        padding: clamp(1rem, 2vw, 1.35rem);
+      }
+
+      label {
+        color: #324d5b;
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      select {
+        width: 100%;
+        margin-top: 0.35rem;
+        padding: 0.78rem 0.85rem;
+        border: 1px solid rgba(20, 49, 64, 0.22);
+        background: #fffdf7;
+        color: var(--ink);
+      }
+
+      select:focus {
+        outline: 3px solid rgba(189, 146, 80, 0.24);
+        border-color: rgba(189, 146, 80, 0.76);
+      }
+
+      .trip-summary {
+        display: grid;
+        gap: 0.7rem;
+      }
+
+      .trip-summary p {
+        margin: 0;
+        color: #55666a;
+      }
+
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
+      }
+
+      .mini-stat {
+        padding: 0.75rem;
+        border: 1px solid rgba(20, 49, 64, 0.1);
+        background: #f8f1e6;
+      }
+
+      .mini-stat span {
+        display: block;
+        color: #756747;
+        font-size: 0.65rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .mini-stat strong {
+        display: block;
+        margin-top: 0.15rem;
+        color: #213846;
+      }
+
+      .waypoint-list {
+        display: grid;
+        gap: 0.5rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .waypoint-list li {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.6rem;
+        align-items: start;
+        padding: 0.65rem;
+        border: 1px solid rgba(20, 49, 64, 0.1);
+        background: #fffaf0;
+      }
+
+      .waypoint-number {
+        width: 1.65rem;
+        height: 1.65rem;
+        display: grid;
+        place-items: center;
+        color: #fff5e5;
+        background: var(--red);
+        border-radius: 50%;
+        font-size: 0.72rem;
+        font-weight: 900;
+      }
+
+      .waypoint-list strong {
+        display: block;
+        color: #1f3948;
+      }
+
+      .waypoint-list span:last-child {
+        color: #697471;
+        font-size: 0.86rem;
+      }
+
+      .map-card {
+        position: sticky;
+        top: 1rem;
+        overflow: hidden;
+        background: #f8f0dd;
+      }
+
+      .chart-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.9rem 1rem;
+        border-bottom: 1px solid rgba(20, 49, 64, 0.14);
+        background: #fff7e8;
+      }
+
+      .chart-toolbar p {
+        margin: 0;
+        color: #4d5f63;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      .chart-toolbar span {
+        color: #778275;
+        font-size: 0.76rem;
+        font-weight: 800;
+      }
+
+      .chart-wrap {
+        position: relative;
+        background:
+          radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.52), transparent 22rem),
+          linear-gradient(145deg, var(--water), var(--water-deep));
+      }
+
+      .chart-svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        min-height: 34rem;
+      }
+
+      .water-grid {
+        stroke: rgba(16, 47, 63, 0.14);
+        stroke-width: 1;
+      }
+
+      .depth-line {
+        fill: none;
+        stroke: rgba(16, 47, 63, 0.22);
+        stroke-width: 1.1;
+        stroke-dasharray: 7 7;
+      }
+
+      .land {
+        fill: var(--land);
+        stroke: rgba(85, 85, 67, 0.42);
+        stroke-width: 2;
+      }
+
+      .land-shadow {
+        fill: var(--land-deep);
+        opacity: 0.36;
+      }
+
+      .sound-label,
+      .place-label,
+      .lat-label {
+        fill: rgba(17, 40, 55, 0.72);
+        font-family: "Inter", "Segoe UI", sans-serif;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .sound-label {
+        font-size: 18px;
+        opacity: 0.52;
+      }
+
+      .place-label {
+        font-size: 13px;
+      }
+
+      .lat-label {
+        font-size: 10px;
+        opacity: 0.58;
+      }
+
+      .route-line {
+        fill: none;
+        stroke: var(--red);
+        stroke-width: 6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        filter: drop-shadow(0 4px 7px rgba(95, 23, 20, 0.25));
+      }
+
+      .route-line-underlay {
+        fill: none;
+        stroke: rgba(255, 250, 240, 0.92);
+        stroke-width: 11;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .waypoint-dot {
+        fill: #fffaf0;
+        stroke: var(--red);
+        stroke-width: 5;
+      }
+
+      .waypoint-text {
+        fill: var(--red);
+        font-size: 14px;
+        font-weight: 900;
+        text-anchor: middle;
+        dominant-baseline: central;
+      }
+
+      .compass-rose {
+        fill: none;
+        stroke: rgba(17, 40, 55, 0.58);
+        stroke-width: 2;
+      }
+
+      .compass-text {
+        fill: rgba(17, 40, 55, 0.72);
+        font-size: 14px;
+        font-weight: 900;
+        text-anchor: middle;
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      .detail-card {
+        padding: 1rem;
+      }
+
+      .detail-card p {
+        margin: 0.5rem 0 0;
+        color: #596b6e;
+      }
+
+      .footer-band {
+        background: var(--navy);
+        color: #d5dfdd;
+      }
+
+      .footer-inner {
+        min-height: 5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .footer-inner a {
+        color: #fff1dc;
+        text-decoration: none;
+      }
+
+      @media (max-width: 1050px) {
+        .hero-grid,
+        .map-shell,
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .map-card {
+          position: static;
+        }
+      }
+
+      @media (max-width: 700px) {
+        .container {
+          width: min(100% - 2rem, 94rem);
+        }
+
+        .topbar,
+        .footer-inner,
+        .chart-toolbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .topnav {
+          justify-content: flex-start;
+        }
+
+        h1 {
+          font-size: clamp(3rem, 16vw, 4.5rem);
+        }
+
+        .stat-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="container topbar">
+      <a class="brand" href="maristela.html" aria-label="Back to Maristela home">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span class="brand-copy"><strong>Maristela</strong><span>Puget Sound Routes</span></span>
+      </a>
+      <nav class="topnav" aria-label="Maristela pages">
+        <a href="maristela.html">Home</a>
+        <a href="maristela-logs.html">Logs</a>
+        <a href="#route-map" aria-current="page">Map</a>
+        <a href="index.html">SavemHQ</a>
+      </nav>
+    </header>
+
+    <main id="main-content">
+      <section class="hero" aria-label="Maristela Puget Sound map introduction">
+        <div class="container hero-grid">
+          <div>
+            <p class="eyebrow">Nautical Route Chart</p>
+            <h1>Puget Sound, Plotted.</h1>
+            <p>
+              Select a Maristela trip to trace the route across a chart-inspired map of Puget Sound, the San Juan Islands, Hood Canal, and nearby cruising waters.
+            </p>
+          </div>
+          <aside class="chart-card" aria-label="Chart note">
+            <strong>Chart 18400</strong>
+            <span>Styled route planning view — not for navigation</span>
+          </aside>
+        </div>
+      </section>
+
+      <section id="route-map" class="map-section" aria-label="Selectable Maristela route map">
+        <div class="container map-shell">
+          <aside class="panel">
+            <div>
+              <p class="eyebrow">Choose A Voyage</p>
+              <h2>Trip Routes</h2>
+            </div>
+
+            <div>
+              <label for="trip-select">Selected Trip</label>
+              <select id="trip-select"></select>
+            </div>
+
+            <div id="trip-summary" class="trip-summary" aria-live="polite"></div>
+
+            <div>
+              <p class="eyebrow">Waypoints</p>
+              <ol id="waypoint-list" class="waypoint-list"></ol>
+            </div>
+          </aside>
+
+          <section class="map-card" aria-label="Nautical Puget Sound map">
+            <div class="chart-toolbar">
+              <p id="chart-title">Maristela Route</p>
+              <span>Approximate plotting for display only</span>
+            </div>
+            <div class="chart-wrap">
+              <svg class="chart-svg" viewBox="0 0 1000 680" role="img" aria-labelledby="map-title map-desc">
+                <title id="map-title">Nautical-style Puget Sound route chart</title>
+                <desc id="map-desc">A stylized Puget Sound chart showing land masses, water, labels, and the selected Maristela route.</desc>
+
+                <g id="grid-layer"></g>
+
+                <path class="depth-line" d="M170 72 C255 170 248 270 315 360 S410 508 370 620" />
+                <path class="depth-line" d="M530 55 C490 148 536 238 505 324 S478 500 558 632" />
+                <path class="depth-line" d="M690 78 C642 190 700 255 666 363 S648 486 720 610" />
+                <path class="depth-line" d="M130 415 C220 390 310 418 378 470 S520 538 635 512" />
+
+                <path class="land-shadow" d="M0 0 H210 C172 80 190 124 144 185 C105 235 136 302 72 361 C41 390 50 468 0 520 Z" />
+                <path class="land" d="M0 0 H178 C152 70 164 132 120 176 C86 212 112 284 54 345 C24 377 38 452 0 502 Z" />
+
+                <path class="land-shadow" d="M805 0 H1000 V680 H838 C862 612 834 565 874 500 C914 437 880 386 925 322 C964 267 918 196 950 136 C972 94 950 45 805 0 Z" />
+                <path class="land" d="M840 0 H1000 V680 H870 C895 610 864 568 904 505 C943 443 912 392 953 335 C989 285 946 208 976 150 C995 112 965 50 840 0 Z" />
+
+                <path class="land" d="M362 92 C400 71 462 76 486 112 C510 149 476 190 431 184 C380 177 330 122 362 92 Z" />
+                <path class="land" d="M286 160 C320 135 365 144 386 176 C407 208 385 246 338 238 C296 231 256 184 286 160 Z" />
+                <path class="land" d="M445 232 C490 210 550 228 570 271 C590 314 548 360 492 347 C442 335 400 254 445 232 Z" />
+                <path class="land" d="M590 160 C632 129 700 142 722 189 C744 237 690 284 632 266 C584 251 556 185 590 160 Z" />
+                <path class="land" d="M610 420 C645 394 700 402 722 442 C744 483 702 530 648 520 C606 512 576 446 610 420 Z" />
+                <path class="land" d="M220 465 C268 432 340 446 366 500 C392 554 332 610 266 590 C210 574 176 496 220 465 Z" />
+
+                <text class="sound-label" x="360" y="380" transform="rotate(-72 360 380)">Puget Sound</text>
+                <text class="sound-label" x="650" y="350" transform="rotate(-70 650 350)">Whidbey Basin</text>
+                <text class="sound-label" x="245" y="552" transform="rotate(-22 245 552)">Hood Canal</text>
+                <text class="place-label" x="506" y="596">Seattle</text>
+                <text class="place-label" x="420" y="535">Bainbridge</text>
+                <text class="place-label" x="606" y="560">Tacoma</text>
+                <text class="place-label" x="742" y="498">Everett</text>
+                <text class="place-label" x="675" y="438">Port Townsend</text>
+                <text class="place-label" x="595" y="236">Friday Harbor</text>
+                <text class="place-label" x="706" y="298">Anacortes</text>
+                <text class="place-label" x="430" y="116">Victoria</text>
+
+                <g id="route-underlay"></g>
+                <g id="route-layer"></g>
+                <g id="waypoint-layer"></g>
+
+                <g transform="translate(920 92)">
+                  <circle class="compass-rose" cx="0" cy="0" r="42" />
+                  <path class="compass-rose" d="M0 -62 L9 -9 L62 0 L9 9 L0 62 L-9 9 L-62 0 L-9 -9 Z" />
+                  <text class="compass-text" x="0" y="-72">N</text>
+                </g>
+              </svg>
+            </div>
+          </section>
+        </div>
+
+        <div class="container detail-grid" aria-label="Map details">
+          <article class="detail-card">
+            <p class="eyebrow">Map Style</p>
+            <h3>Nautical Chart Look</h3>
+            <p>Muted water color, depth-style dashed contours, coordinate grid lines, land masses, port labels, and a compass rose.</p>
+          </article>
+          <article class="detail-card">
+            <p class="eyebrow">Routes</p>
+            <h3>Selectable Trips</h3>
+            <p>Each trip has route legs, approximate miles, notes, and numbered waypoints plotted on the chart.</p>
+          </article>
+          <article class="detail-card">
+            <p class="eyebrow">Next Step</p>
+            <h3>Real Log Sync</h3>
+            <p>The route list can later be connected to Maristela logbook entries or Firebase so trips can be added without editing this page.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer-band">
+      <div class="container footer-inner">
+        <span>© 2026 Maristela Route Map</span>
+        <a href="maristela.html">Return to Maristela Home</a>
+      </div>
+    </footer>
+
+    <script>
+      const points = {
+        seattle: { label: "Seattle", x: 514, y: 574, note: "Home waters" },
+        bainbridge: { label: "Bainbridge Island", x: 445, y: 536, note: "Across Elliott Bay" },
+        gigHarbor: { label: "Gig Harbor", x: 566, y: 608, note: "South Sound harbor" },
+        tacoma: { label: "Tacoma", x: 625, y: 604, note: "South Sound" },
+        portTownsend: { label: "Port Townsend", x: 660, y: 430, note: "Admiralty Inlet" },
+        everett: { label: "Everett", x: 735, y: 502, note: "Possession Sound" },
+        deceptionPass: { label: "Deception Pass", x: 733, y: 340, note: "Passage north" },
+        anacortes: { label: "Anacortes", x: 704, y: 302, note: "Gateway to the San Juans" },
+        fridayHarbor: { label: "Friday Harbor", x: 600, y: 235, note: "San Juan Island" },
+        roches: { label: "Roche Harbor", x: 546, y: 205, note: "North San Juan" },
+        victoria: { label: "Victoria, BC", x: 435, y: 112, note: "International stop" },
+        poulsbo: { label: "Poulsbo", x: 395, y: 480, note: "Liberty Bay" },
+        hoodCanal: { label: "Hood Canal", x: 295, y: 560, note: "Canal run" },
+      };
+
+      const trips = [
+        {
+          id: "san-juan-weekend",
+          title: "Seattle to Friday Harbor",
+          subtitle: "A classic Sound-to-San-Juans run through Admiralty Inlet.",
+          distance: "86 NM",
+          duration: "2 days",
+          season: "Summer",
+          route: ["seattle", "bainbridge", "portTownsend", "anacortes", "fridayHarbor"],
+        },
+        {
+          id: "south-sound-loop",
+          title: "South Sound Loop",
+          subtitle: "A protected-water loop from Seattle through Tacoma and Gig Harbor.",
+          distance: "58 NM",
+          duration: "1-2 days",
+          season: "Spring",
+          route: ["seattle", "bainbridge", "gigHarbor", "tacoma", "seattle"],
+        },
+        {
+          id: "whidbey-basin",
+          title: "Whidbey Basin Run",
+          subtitle: "North through Possession Sound, Deception Pass, and Anacortes.",
+          distance: "74 NM",
+          duration: "2 days",
+          season: "Late summer",
+          route: ["seattle", "everett", "deceptionPass", "anacortes"],
+        },
+        {
+          id: "san-juan-victoria",
+          title: "San Juan & Victoria Cruise",
+          subtitle: "A longer island route with a cross-border harbor stop.",
+          distance: "128 NM",
+          duration: "4 days",
+          season: "Summer",
+          route: ["seattle", "portTownsend", "fridayHarbor", "roches", "victoria"],
+        },
+        {
+          id: "hood-canal",
+          title: "Hood Canal & Poulsbo",
+          subtitle: "West-side cruising through Liberty Bay and Hood Canal waters.",
+          distance: "46 NM",
+          duration: "Weekend",
+          season: "Fall",
+          route: ["seattle", "bainbridge", "poulsbo", "hoodCanal"],
+        },
+      ];
+
+      const tripSelect = document.getElementById("trip-select");
+      const tripSummary = document.getElementById("trip-summary");
+      const waypointList = document.getElementById("waypoint-list");
+      const chartTitle = document.getElementById("chart-title");
+      const gridLayer = document.getElementById("grid-layer");
+      const routeUnderlay = document.getElementById("route-underlay");
+      const routeLayer = document.getElementById("route-layer");
+      const waypointLayer = document.getElementById("waypoint-layer");
+
+      const createSvgElement = (name) => document.createElementNS("http://www.w3.org/2000/svg", name);
+
+      const drawGrid = () => {
+        const fragment = document.createDocumentFragment();
+        for (let x = 80; x < 1000; x += 80) {
+          const line = createSvgElement("line");
+          line.setAttribute("class", "water-grid");
+          line.setAttribute("x1", x);
+          line.setAttribute("y1", 0);
+          line.setAttribute("x2", x);
+          line.setAttribute("y2", 680);
+          fragment.appendChild(line);
+        }
+
+        for (let y = 80; y < 680; y += 80) {
+          const line = createSvgElement("line");
+          line.setAttribute("class", "water-grid");
+          line.setAttribute("x1", 0);
+          line.setAttribute("y1", y);
+          line.setAttribute("x2", 1000);
+          line.setAttribute("y2", y);
+          fragment.appendChild(line);
+        }
+
+        ["48°30'N", "48°00'N", "47°30'N", "47°00'N"].forEach((label, index) => {
+          const text = createSvgElement("text");
+          text.setAttribute("class", "lat-label");
+          text.setAttribute("x", 18);
+          text.setAttribute("y", 92 + index * 150);
+          text.textContent = label;
+          fragment.appendChild(text);
+        });
+
+        gridLayer.appendChild(fragment);
+      };
+
+      const pointString = (route) => route.map((id) => `${points[id].x},${points[id].y}`).join(" ");
+
+      const renderTrip = (tripId) => {
+        const trip = trips.find((candidate) => candidate.id === tripId) || trips[0];
+        const routePoints = pointString(trip.route);
+        chartTitle.textContent = trip.title;
+        routeUnderlay.innerHTML = "";
+        routeLayer.innerHTML = "";
+        waypointLayer.innerHTML = "";
+
+        const underlay = createSvgElement("polyline");
+        underlay.setAttribute("class", "route-line-underlay");
+        underlay.setAttribute("points", routePoints);
+        routeUnderlay.appendChild(underlay);
+
+        const routeLine = createSvgElement("polyline");
+        routeLine.setAttribute("class", "route-line");
+        routeLine.setAttribute("points", routePoints);
+        routeLayer.appendChild(routeLine);
+
+        trip.route.forEach((id, index) => {
+          const point = points[id];
+          const dot = createSvgElement("circle");
+          dot.setAttribute("class", "waypoint-dot");
+          dot.setAttribute("cx", point.x);
+          dot.setAttribute("cy", point.y);
+          dot.setAttribute("r", 13);
+          waypointLayer.appendChild(dot);
+
+          const number = createSvgElement("text");
+          number.setAttribute("class", "waypoint-text");
+          number.setAttribute("x", point.x);
+          number.setAttribute("y", point.y + 1);
+          number.textContent = String(index + 1);
+          waypointLayer.appendChild(number);
+        });
+
+        tripSummary.innerHTML = `
+          <p>${trip.subtitle}</p>
+          <div class="stat-grid">
+            <div class="mini-stat"><span>Distance</span><strong>${trip.distance}</strong></div>
+            <div class="mini-stat"><span>Duration</span><strong>${trip.duration}</strong></div>
+            <div class="mini-stat"><span>Season</span><strong>${trip.season}</strong></div>
+            <div class="mini-stat"><span>Waypoints</span><strong>${trip.route.length}</strong></div>
+          </div>
+        `;
+
+        waypointList.innerHTML = trip.route.map((id, index) => {
+          const point = points[id];
+          return `
+            <li>
+              <span class="waypoint-number">${index + 1}</span>
+              <span><strong>${point.label}</strong><span>${point.note}</span></span>
+            </li>
+          `;
+        }).join("");
+      };
+
+      trips.forEach((trip) => {
+        const option = document.createElement("option");
+        option.value = trip.id;
+        option.textContent = trip.title;
+        tripSelect.appendChild(option);
+      });
+
+      tripSelect.addEventListener("change", () => renderTrip(tripSelect.value));
+      drawGrid();
+      renderTrip(trips[0].id);
+    </script>
+  </body>
+</html>
