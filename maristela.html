@@ -257,157 +257,6 @@
         box-shadow: none;
       }
 
-      .hero-yacht {
-        position: absolute;
-        right: min(3vw, 2.8rem);
-        bottom: 3.7rem;
-        width: min(72vw, 68rem);
-        height: 28rem;
-        z-index: 1;
-        pointer-events: none;
-        filter: drop-shadow(0 26px 28px rgba(0, 0, 0, 0.42));
-      }
-
-      .mast {
-        position: absolute;
-        bottom: 12.8rem;
-        width: 2px;
-        background: rgba(224, 207, 177, 0.76);
-        box-shadow: 0 0 0 1px rgba(18, 40, 56, 0.22);
-      }
-
-      .mast.one {
-        left: 31%;
-        height: 24rem;
-      }
-
-      .mast.two {
-        left: 39%;
-        height: 20rem;
-      }
-
-      .mast.three {
-        left: 50%;
-        height: 15rem;
-      }
-
-      .rail {
-        position: absolute;
-        right: 0;
-        bottom: 15.15rem;
-        width: 45%;
-        height: 3.8rem;
-        border-top: 3px solid rgba(23, 38, 45, 0.82);
-        border-left: 3px solid rgba(23, 38, 45, 0.72);
-        transform: skewX(-16deg);
-      }
-
-      .rail::before,
-      .rail::after {
-        content: "";
-        position: absolute;
-        top: -0.2rem;
-        bottom: -0.2rem;
-        width: 2px;
-        background: rgba(23, 38, 45, 0.72);
-      }
-
-      .rail::before {
-        left: 35%;
-      }
-
-      .rail::after {
-        right: 18%;
-      }
-
-      .cabin {
-        position: absolute;
-        left: 31%;
-        right: 24%;
-        bottom: 12.2rem;
-        height: 8rem;
-        background: linear-gradient(180deg, #eee2c7, #d7c3a0);
-        border: 3px solid rgba(26, 40, 48, 0.28);
-        border-radius: 3.2rem 2.1rem 0.6rem 0.6rem;
-        transform: skewX(-7deg);
-        box-shadow: inset 0 -1.1rem 0 rgba(79, 71, 61, 0.1);
-      }
-
-      .cabin::before {
-        content: "";
-        position: absolute;
-        left: 3.4rem;
-        right: 3.4rem;
-        top: 1.18rem;
-        height: 3.15rem;
-        background:
-          linear-gradient(90deg, #132d3d 0 17%, transparent 17% 21%, #132d3d 21% 41%, transparent 41% 46%, #132d3d 46% 66%, transparent 66% 71%, #132d3d 71% 100%);
-        border-radius: 0.5rem;
-        opacity: 0.9;
-      }
-
-      .cabin::after {
-        content: "";
-        position: absolute;
-        left: 10%;
-        right: 18%;
-        top: -2.2rem;
-        height: 2.4rem;
-        border: 3px solid rgba(22, 37, 48, 0.75);
-        border-bottom: 0;
-        border-radius: 2.4rem 2.4rem 0 0;
-      }
-
-      .hull {
-        position: absolute;
-        left: 9%;
-        right: 1%;
-        bottom: 5rem;
-        height: 10.4rem;
-        background: linear-gradient(180deg, #f4ead6 0 70%, #d0d0c4 70% 100%);
-        clip-path: polygon(0 18%, 82% 4%, 100% 26%, 93% 59%, 47% 83%, 10% 78%);
-        border-bottom: 0.85rem solid #102633;
-      }
-
-      .hull::before {
-        content: "";
-        position: absolute;
-        left: 29%;
-        right: 20%;
-        top: 39%;
-        height: 1.6rem;
-        background:
-          radial-gradient(circle, #142a36 0 35%, transparent 38%) 0 0 / 6.2rem 1.6rem repeat-x;
-        opacity: 0.95;
-      }
-
-      .hull::after {
-        content: "";
-        position: absolute;
-        right: 11%;
-        top: 8%;
-        width: 9.6rem;
-        height: 2rem;
-        border: 3px solid rgba(20, 42, 54, 0.88);
-        border-bottom: 0;
-        transform: rotate(-4deg);
-      }
-
-      .dock {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 5.7rem;
-        background:
-          linear-gradient(90deg, rgba(255, 255, 255, 0.07), transparent 12% 88%, rgba(255, 255, 255, 0.07)),
-          repeating-linear-gradient(90deg, rgba(30, 32, 28, 0.5) 0 0.7rem, transparent 0.7rem 7.2rem),
-          linear-gradient(180deg, #364132, #151b17);
-        transform: perspective(30rem) rotateX(54deg) translateY(2rem);
-        transform-origin: bottom;
-        opacity: 0.82;
-      }
-
       .stats-band {
         background: var(--cream);
         color: var(--ink);
@@ -833,14 +682,6 @@
           padding-bottom: 24rem;
         }
 
-        .hero-yacht {
-          width: 95vw;
-          right: -7vw;
-          bottom: 1rem;
-          transform: scale(0.82);
-          transform-origin: bottom right;
-        }
-
         .stats-inner,
         .split-feature,
         .voyage-inner {
@@ -892,12 +733,6 @@
 
         .hero-inner {
           padding-bottom: 18.5rem;
-        }
-
-        .hero-yacht {
-          transform: scale(0.58);
-          right: -30vw;
-          bottom: -0.8rem;
         }
 
         .stats-inner,
@@ -976,15 +811,6 @@
           </div>
         </div>
 
-        <div class="hero-yacht" aria-hidden="true">
-          <span class="mast one"></span>
-          <span class="mast two"></span>
-          <span class="mast three"></span>
-          <span class="rail"></span>
-          <span class="cabin"></span>
-          <span class="hull"></span>
-          <span class="dock"></span>
-        </div>
       </section>
 
       <section id="yacht" class="stats-band" aria-label="Maristela journey statistics">
