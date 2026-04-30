@@ -466,6 +466,167 @@
         font-size: 0.82rem;
       }
 
+      .trip-entry-group {
+        display: grid;
+        gap: 0.9rem;
+        padding: 1rem;
+        border: 1px solid rgba(37, 55, 65, 0.14);
+        background: rgba(255, 250, 240, 0.86);
+        box-shadow: 0 16px 42px rgba(37, 55, 65, 0.1);
+      }
+
+      .trip-entry-header {
+        display: grid;
+        gap: 0.65rem;
+        padding-bottom: 0.9rem;
+        border-bottom: 1px solid rgba(37, 55, 65, 0.1);
+      }
+
+      .trip-entry-header-top {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .trip-entry-header h3 {
+        margin: 0;
+      }
+
+      .trip-entry-header p {
+        margin: 0.2rem 0 0;
+        color: #586665;
+      }
+
+      .trip-entry-status {
+        align-self: start;
+        padding: 0.45rem 0.7rem;
+        border: 1px solid rgba(37, 55, 65, 0.14);
+        color: #243746;
+        font-size: 0.68rem;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        background: #fffdf7;
+      }
+
+      .trip-entry-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.55rem;
+      }
+
+      .trip-entry-meta {
+        padding: 0.62rem;
+        border: 1px solid rgba(37, 55, 65, 0.1);
+        background: rgba(255, 255, 255, 0.6);
+      }
+
+      .trip-entry-meta span {
+        display: block;
+        color: #756747;
+        font-size: 0.66rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .trip-entry-meta strong {
+        display: block;
+        margin-top: 0.18rem;
+        color: #243746;
+      }
+
+      .trip-entry-days {
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .trip-entry-notes {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .trip-inline-note-card {
+        padding: 0.72rem;
+        border: 1px solid rgba(37, 55, 65, 0.1);
+        background: rgba(255, 253, 247, 0.82);
+      }
+
+      .trip-inline-note-card time {
+        display: block;
+        color: #756747;
+        font-size: 0.66rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .trip-inline-note-card strong {
+        display: block;
+        margin-top: 0.18rem;
+        color: #243746;
+      }
+
+      .trip-inline-note-card p {
+        margin: 0.28rem 0 0;
+        color: #586665;
+      }
+
+      .check-builder {
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      .check-builder-list {
+        display: grid;
+        gap: 0.6rem;
+      }
+
+      .check-builder-card {
+        display: grid;
+        gap: 0.4rem;
+        padding: 0.8rem;
+        border: 1px solid rgba(37, 55, 65, 0.11);
+        background: rgba(255, 253, 247, 0.82);
+      }
+
+      .check-builder-card-top {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 0.8rem;
+      }
+
+      .check-builder-card strong {
+        color: #243746;
+      }
+
+      .check-builder-card p {
+        margin: 0;
+        color: #586665;
+        white-space: pre-wrap;
+      }
+
+      .check-builder-card time {
+        color: #756747;
+        font-size: 0.68rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .check-builder-card-meta {
+        color: #687574;
+        font-size: 0.8rem;
+      }
+
+      .builder-inline-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+      }
+
       .field-group {
         display: grid;
         gap: 0.7rem;
@@ -805,6 +966,10 @@
                       <input id="trip-name" type="text" placeholder="Alaska shakedown / San Juans / Around the world" />
                     </div>
                     <div class="field">
+                      <label for="trip-travelers">Who Was On The Trip</label>
+                      <input id="trip-travelers" type="text" placeholder="Captain and crew" />
+                    </div>
+                    <div class="field">
                       <label for="trip-scope">Trip Scope</label>
                       <input id="trip-scope" type="text" placeholder="3 days, month long, extended voyage..." />
                     </div>
@@ -987,6 +1152,44 @@
                   </div>
                 </fieldset>
 
+                <fieldset class="field-group check-builder">
+                  <legend>Progress Checks</legend>
+                  <div class="field-grid three">
+                    <div class="field">
+                      <label for="progress-check-time">Check Time</label>
+                      <input id="progress-check-time" type="time" />
+                    </div>
+                    <div class="field">
+                      <label for="progress-check-location">Where Were You</label>
+                      <input id="progress-check-location" type="text" placeholder="Waypoint, bay, pass, marina..." />
+                    </div>
+                    <div class="field">
+                      <label for="progress-check-status">Progress Status</label>
+                      <input id="progress-check-status" type="text" placeholder="Underway, anchored, tied up..." />
+                    </div>
+                    <div class="field">
+                      <label for="progress-check-speed">Speed</label>
+                      <input id="progress-check-speed" type="number" min="0" step="0.1" placeholder="7.5" />
+                    </div>
+                    <div class="field">
+                      <label for="progress-check-distance">Distance</label>
+                      <input id="progress-check-distance" type="number" min="0" step="0.1" placeholder="12.4 NM" />
+                    </div>
+                    <div class="field">
+                      <label for="progress-check-fuel-burn">Fuel Burn</label>
+                      <input id="progress-check-fuel-burn" type="number" min="0" step="0.1" placeholder="2.1 gal/hr" />
+                    </div>
+                    <div class="field full">
+                      <label for="progress-check-note">Progress Note</label>
+                      <textarea id="progress-check-note" placeholder="Route update, weather change, stop, delay, or anything worth noting."></textarea>
+                    </div>
+                  </div>
+                  <div class="builder-inline-actions">
+                    <button id="add-progress-check" class="btn ghost" type="button">Add Progress Check</button>
+                  </div>
+                  <div id="progress-check-list" class="check-builder-list" aria-live="polite"></div>
+                </fieldset>
+
                 <fieldset class="field-group">
                   <legend>Systems Status</legend>
                   <div class="field-grid three">
@@ -1146,6 +1349,15 @@
                   </div>
                 </fieldset>
 
+                <fieldset class="field-group check-builder">
+                  <legend>Saved System Check Snapshots</legend>
+                  <p class="status-line">Use the systems and engine sections above as a snapshot draft, then add as many checks as needed for the day.</p>
+                  <div class="builder-inline-actions">
+                    <button id="add-system-check" class="btn ghost" type="button">Add System Check Snapshot</button>
+                  </div>
+                  <div id="system-check-list" class="check-builder-list" aria-live="polite"></div>
+                </fieldset>
+
                 <fieldset class="field-group">
                   <legend>Notes</legend>
                   <div class="field-grid">
@@ -1220,8 +1432,11 @@
 
     <script>
       const STORAGE_KEY = "maristela-logbook-entries";
+      const DAYS_KEY = "maristela-logbook-days";
       const TRIPS_KEY = "maristela-logbook-trips";
       const TRIP_NOTES_KEY = "maristela-logbook-trip-notes";
+      const STORAGE_SCHEMA_KEY = "maristela-logbook-schema-version";
+      const STORAGE_SCHEMA_VERSION = 2;
       const DEFAULT_TRIP_ID = "general";
       const form = document.getElementById("log-form");
       const formStatus = document.getElementById("form-status");
@@ -1232,11 +1447,16 @@
       const saveTripButton = document.getElementById("save-trip");
       const endTripButton = document.getElementById("end-trip");
       const activeJourneyCard = document.getElementById("active-journey-card");
+      const tripTravelersInput = document.getElementById("trip-travelers");
       const saveJourneyNoteButton = document.getElementById("save-journey-note");
       const journeyNoteTitleInput = document.getElementById("journey-note-title");
       const journeyNoteInput = document.getElementById("journey-note");
       const journeyNotesList = document.getElementById("journey-notes-list");
       const tripList = document.getElementById("trip-list");
+      const addProgressCheckButton = document.getElementById("add-progress-check");
+      const progressCheckList = document.getElementById("progress-check-list");
+      const addSystemCheckButton = document.getElementById("add-system-check");
+      const systemCheckList = document.getElementById("system-check-list");
       const sortSelect = document.getElementById("sort-logs");
       const exportButton = document.getElementById("export-csv");
       const clearAllButton = document.getElementById("clear-all");
@@ -1248,6 +1468,13 @@
       const totalNmEl = document.getElementById("total-nm");
       const totalEngineEl = document.getElementById("total-engine");
       const totalFuelEl = document.getElementById("total-fuel");
+      const progressCheckTimeInput = document.getElementById("progress-check-time");
+      const progressCheckLocationInput = document.getElementById("progress-check-location");
+      const progressCheckStatusInput = document.getElementById("progress-check-status");
+      const progressCheckSpeedInput = document.getElementById("progress-check-speed");
+      const progressCheckDistanceInput = document.getElementById("progress-check-distance");
+      const progressCheckFuelBurnInput = document.getElementById("progress-check-fuel-burn");
+      const progressCheckNoteInput = document.getElementById("progress-check-note");
 
       const fields = [
         "tripId",
@@ -1453,8 +1680,11 @@
       const selectedCheckLabels = (entry, labels) => labels.filter(([field]) => Boolean(entry[field])).map(([, label]) => label).join(", ");
 
       let entries = [];
+      let days = [];
       let trips = [];
       let tripNotes = [];
+      let currentProgressChecks = [];
+      let currentSystemChecks = [];
 
       const escapeHtml = (value) => String(value || "").replace(/[&<>'"]/g, (char) => ({
         "&": "&amp;",
@@ -1517,13 +1747,404 @@
         scope: "Ongoing",
         startDate: "",
         endDate: "",
+        travelers: "",
         notes: "Catch-all trip for logs that are not part of a named voyage yet.",
         createdAt: "",
       });
 
+      const normalizeTripRecord = (trip = {}) => ({
+        ...trip,
+        id: String(trip.id || "").trim() || newId(),
+        name: String(trip.name || "Untitled Journey").trim(),
+        scope: String(trip.scope || "").trim(),
+        startDate: String(trip.startDate || "").trim(),
+        endDate: String(trip.endDate || "").trim(),
+        travelers: String(trip.travelers || trip.onBoard || "").trim(),
+        notes: String(trip.notes || "").trim(),
+        status: String(trip.status || "").trim() || (trip.id === DEFAULT_TRIP_ID ? "default" : "saved"),
+        startedAt: String(trip.startedAt || "").trim(),
+        endedAt: String(trip.endedAt || "").trim(),
+        createdAt: String(trip.createdAt || "").trim(),
+        updatedAt: String(trip.updatedAt || trip.createdAt || "").trim(),
+      });
+
+      const cloneCheckEntry = (entry = {}) => JSON.parse(JSON.stringify(entry));
+
+      const legacySystemCheckSnapshot = (entry = {}) => {
+        const checks = {};
+
+        checkboxFields.forEach((field) => {
+          if (entry[field]) {
+            checks[field] = true;
+          }
+        });
+
+        const readings = [
+          "dieselStarboard",
+          "dieselCenter",
+          "dieselPort",
+          "waterPortPct",
+          "waterStarboardPct",
+          "holdingTankPct",
+          "batteryHousePct",
+          "batteryBowThrusterPct",
+          "batteryGenStartPct",
+          "oilAdded",
+          "broken",
+          "repaired",
+          "engineCheckTime",
+          "engineCheckKts",
+          "engineCheckRpm",
+          "engineCheckOilPsi",
+          "engineCheckCoolantTemp",
+          "engineCheckPowerPct",
+          "engineCheckFuelBurn",
+          "engineCheckSeaState",
+          "engineCheckKtsPerGal",
+          "engineRoomTemp",
+          "engineRoomCheckNotes",
+        ].reduce((accumulator, field) => {
+          const value = String(entry[field] || "").trim();
+          if (value) {
+            accumulator[field] = value;
+          }
+          return accumulator;
+        }, {});
+
+        if (!Object.keys(checks).length && !Object.keys(readings).length) {
+          return [];
+        }
+
+        return [{
+          id: newId(),
+          type: "legacy-migration",
+          recordedAt: String(entry.updatedAt || entry.createdAt || "").trim(),
+          checks,
+          readings,
+          notes: String(entry.engineRoomCheckNotes || entry.dailySummary || "").trim(),
+        }];
+      };
+
+      const progressDraftHasContent = () => [
+        progressCheckTimeInput.value,
+        progressCheckLocationInput.value,
+        progressCheckStatusInput.value,
+        progressCheckSpeedInput.value,
+        progressCheckDistanceInput.value,
+        progressCheckFuelBurnInput.value,
+        progressCheckNoteInput.value,
+      ].some((value) => String(value || "").trim());
+
+      const clearProgressDraft = () => {
+        [
+          progressCheckTimeInput,
+          progressCheckLocationInput,
+          progressCheckStatusInput,
+          progressCheckSpeedInput,
+          progressCheckDistanceInput,
+          progressCheckFuelBurnInput,
+          progressCheckNoteInput,
+        ].forEach((element) => {
+          element.value = "";
+        });
+      };
+
+      const clearSystemDraft = () => {
+        [
+          "dieselStarboard",
+          "dieselCenter",
+          "dieselPort",
+          "waterPortPct",
+          "waterStarboardPct",
+          "holdingTankPct",
+          "batteryHousePct",
+          "batteryBowThrusterPct",
+          "batteryGenStartPct",
+          "oilAdded",
+          "broken",
+          "repaired",
+          "engineCheckTime",
+          "engineCheckKts",
+          "engineCheckRpm",
+          "engineCheckOilPsi",
+          "engineCheckCoolantTemp",
+          "engineCheckPowerPct",
+          "engineCheckFuelBurn",
+          "engineCheckSeaState",
+          "engineCheckKtsPerGal",
+          "engineRoomTemp",
+          "engineRoomCheckNotes",
+        ].forEach((field) => {
+          const element = form.elements[field];
+          if (element) {
+            element.value = "";
+          }
+        });
+
+        checkboxFields.forEach((field) => {
+          const element = form.elements[field];
+          if (element instanceof HTMLInputElement) {
+            element.checked = false;
+          }
+        });
+      };
+
+      const currentSystemDraft = () => {
+        const checks = {};
+        checkboxFields.forEach((field) => {
+          const element = form.elements[field];
+          if (element instanceof HTMLInputElement && element.checked) {
+            checks[field] = true;
+          }
+        });
+
+        const readings = [
+          "dieselStarboard",
+          "dieselCenter",
+          "dieselPort",
+          "waterPortPct",
+          "waterStarboardPct",
+          "holdingTankPct",
+          "batteryHousePct",
+          "batteryBowThrusterPct",
+          "batteryGenStartPct",
+          "oilAdded",
+          "broken",
+          "repaired",
+          "engineCheckTime",
+          "engineCheckKts",
+          "engineCheckRpm",
+          "engineCheckOilPsi",
+          "engineCheckCoolantTemp",
+          "engineCheckPowerPct",
+          "engineCheckFuelBurn",
+          "engineCheckSeaState",
+          "engineCheckKtsPerGal",
+          "engineRoomTemp",
+          "engineRoomCheckNotes",
+        ].reduce((accumulator, field) => {
+          const element = form.elements[field];
+          const value = element ? String(element.value || "").trim() : "";
+          if (value) {
+            accumulator[field] = value;
+          }
+          return accumulator;
+        }, {});
+
+        return {
+          id: newId(),
+          type: "manual",
+          recordedAt: new Date().toISOString(),
+          checks,
+          readings,
+          notes: String(readings.engineRoomCheckNotes || "").trim(),
+        };
+      };
+
+      const systemDraftHasContent = () => {
+        const draft = currentSystemDraft();
+        return Boolean(Object.keys(draft.checks).length || Object.keys(draft.readings).length);
+      };
+
+      const renderProgressChecksEditor = () => {
+        if (!currentProgressChecks.length) {
+          progressCheckList.innerHTML = '<div class="empty-state">No progress checks added for this day yet.</div>';
+          return;
+        }
+
+        progressCheckList.innerHTML = currentProgressChecks.map((check) => {
+          const meta = [check.location, check.status].filter(Boolean).join(" · ");
+          const metrics = [
+            check.speed ? `Speed ${check.speed}` : "",
+            check.distanceNm ? `Distance ${check.distanceNm} NM` : "",
+            check.fuelBurn ? `Fuel ${check.fuelBurn}` : "",
+          ].filter(Boolean).join(" · ");
+
+          return `
+            <article class="check-builder-card">
+              <div class="check-builder-card-top">
+                <div>
+                  <time datetime="${escapeHtml(check.recordedAt || "")}">${escapeHtml(check.recordedAt ? formatDateTime(check.recordedAt) : "Logged")}</time>
+                  <strong>${escapeHtml(check.location || check.status || "Progress Check")}</strong>
+                </div>
+                <button class="btn danger" type="button" data-remove-progress-check="${escapeHtml(check.id)}">Remove</button>
+              </div>
+              ${meta ? `<div class="check-builder-card-meta">${escapeHtml(meta)}</div>` : ""}
+              ${metrics ? `<div class="check-builder-card-meta">${escapeHtml(metrics)}</div>` : ""}
+              ${check.note ? `<p>${escapeHtml(check.note)}</p>` : ""}
+            </article>
+          `;
+        }).join("");
+      };
+
+      const renderSystemChecksEditor = () => {
+        if (!currentSystemChecks.length) {
+          systemCheckList.innerHTML = '<div class="empty-state">No saved system check snapshots for this day yet.</div>';
+          return;
+        }
+
+        systemCheckList.innerHTML = currentSystemChecks.map((check) => {
+          const checkNames = Object.keys(check.checks || {})
+            .map((field) => engineRoomCheckFields.concat(vesselSystemCheckFields).find(([id]) => id === field))
+            .filter(Boolean)
+            .map(([, label]) => label)
+            .join(", ");
+          const readingSummary = [
+            check.readings?.engineCheckRpm ? `RPM ${check.readings.engineCheckRpm}` : "",
+            check.readings?.engineCheckKts ? `${check.readings.engineCheckKts} kts` : "",
+            check.readings?.engineCheckOilPsi ? `Oil ${check.readings.engineCheckOilPsi}` : "",
+            check.readings?.engineCheckCoolantTemp ? `Coolant ${check.readings.engineCheckCoolantTemp}` : "",
+          ].filter(Boolean).join(" · ");
+
+          return `
+            <article class="check-builder-card">
+              <div class="check-builder-card-top">
+                <div>
+                  <time datetime="${escapeHtml(check.recordedAt || "")}">${escapeHtml(check.recordedAt ? formatDateTime(check.recordedAt) : "Logged")}</time>
+                  <strong>${escapeHtml(checkNames || "System Check Snapshot")}</strong>
+                </div>
+                <button class="btn danger" type="button" data-remove-system-check="${escapeHtml(check.id)}">Remove</button>
+              </div>
+              ${readingSummary ? `<div class="check-builder-card-meta">${escapeHtml(readingSummary)}</div>` : ""}
+              ${check.notes ? `<p>${escapeHtml(check.notes)}</p>` : ""}
+            </article>
+          `;
+        }).join("");
+      };
+
+      const legacyProgressSnapshot = (entry = {}) => {
+        const details = [entry.observations, entry.cruisingNotes, entry.dailySummary]
+          .map((value) => String(value || "").trim())
+          .filter(Boolean)
+          .join("\n\n");
+
+        if (!details && !entry.departureTime && !entry.arrivalTime && !entry.destination) {
+          return [];
+        }
+
+        return [{
+          id: newId(),
+          type: "legacy-summary",
+          recordedAt: String(entry.updatedAt || entry.createdAt || "").trim(),
+          location: String(entry.destination || entry.departingFrom || "").trim(),
+          note: details,
+          metrics: {
+            totalNmTraveled: String(entry.totalNmTraveled || "").trim(),
+            avgSpeed: String(entry.avgSpeed || "").trim(),
+            fuelUsed: String(entry.fuelUsed || "").trim(),
+          },
+        }];
+      };
+
+      const migrateLegacyEntryToDay = (entry = {}) => ({
+        id: String(entry.id || "").trim() || newId(),
+        tripId: String(entry.tripId || DEFAULT_TRIP_ID).trim() || DEFAULT_TRIP_ID,
+        date: String(entry.date || "").trim(),
+        dayOfWeek: String(entry.dayOfWeek || inferDayOfWeek(entry.date) || "").trim(),
+        startTime: String(entry.departureTime || "").trim(),
+        endTime: String(entry.arrivalTime || "").trim(),
+        departingFrom: String(entry.departingFrom || "").trim(),
+        destination: String(entry.destination || "").trim(),
+        travelersOverride: String(entry.onBoard || "").trim(),
+        forecast: String(entry.forecast || "").trim(),
+        fuelStart: String(entry.fuelOnBoard || "").trim(),
+        fuelEnd: String(entry.estimatedFuelOnBoard || "").trim(),
+        departure: {
+          latitude: String(entry.departureLatitude || "").trim(),
+          longitude: String(entry.departureLongitude || "").trim(),
+          odometer: String(entry.departureOdometer || "").trim(),
+          engineHours: String(entry.departureEngineHours || "").trim(),
+          generatorHours: String(entry.departureGeneratorHours || "").trim(),
+        },
+        arrival: {
+          latitude: String(entry.arrivalLatitude || "").trim(),
+          longitude: String(entry.arrivalLongitude || "").trim(),
+          odometer: String(entry.arrivalOdometer || "").trim(),
+          engineHours: String(entry.arrivalEngineHours || "").trim(),
+          generatorHours: String(entry.arrivalGeneratorHours || "").trim(),
+        },
+        summary: {
+          travelTime: String(entry.travelTime || "").trim(),
+          totalEngineTime: String(entry.totalEngineTime || "").trim(),
+          totalNmTraveled: String(entry.totalNmTraveled || "").trim(),
+          totalGeneratorTime: String(entry.totalGeneratorTime || "").trim(),
+          fuelUsed: String(entry.fuelUsed || "").trim(),
+          avgGallonsHour: String(entry.avgGallonsHour || "").trim(),
+          ktsPerGal: String(entry.ktsPerGal || "").trim(),
+          avgSpeed: String(entry.avgSpeed || "").trim(),
+        },
+        notes: {
+          observations: String(entry.observations || "").trim(),
+          cruisingNotes: String(entry.cruisingNotes || "").trim(),
+          dailySummary: String(entry.dailySummary || "").trim(),
+        },
+        progressChecks: legacyProgressSnapshot(entry),
+        systemChecks: legacySystemCheckSnapshot(entry),
+        sourceEntryId: String(entry.id || "").trim(),
+        createdAt: String(entry.createdAt || "").trim(),
+        updatedAt: String(entry.updatedAt || entry.createdAt || "").trim(),
+      });
+
+      const upsertDayFromEntry = (entry = {}) => {
+        const nextDay = migrateLegacyEntryToDay(entry);
+        const existingIndex = days.findIndex((day) => {
+          const sourceEntryId = String(day.sourceEntryId || day.id || "").trim();
+          return sourceEntryId === nextDay.sourceEntryId || day.id === nextDay.id;
+        });
+
+        if (existingIndex >= 0) {
+          const existingDay = days[existingIndex] || {};
+          days[existingIndex] = {
+            ...existingDay,
+            ...nextDay,
+            progressChecks: currentProgressChecks.length
+              ? currentProgressChecks.map((check) => cloneCheckEntry(check))
+              : (Array.isArray(existingDay.progressChecks) && existingDay.progressChecks.length
+                ? existingDay.progressChecks
+                : nextDay.progressChecks),
+            systemChecks: currentSystemChecks.length
+              ? currentSystemChecks.map((check) => cloneCheckEntry(check))
+              : (Array.isArray(existingDay.systemChecks) && existingDay.systemChecks.length
+                ? existingDay.systemChecks
+                : nextDay.systemChecks),
+          };
+          return;
+        }
+
+        if (currentProgressChecks.length) {
+          nextDay.progressChecks = currentProgressChecks.map((check) => cloneCheckEntry(check));
+        }
+
+        if (currentSystemChecks.length) {
+          nextDay.systemChecks = currentSystemChecks.map((check) => cloneCheckEntry(check));
+        }
+
+        days.push(nextDay);
+      };
+
+      const removeDayForEntry = (entryId = "") => {
+        const normalizedEntryId = String(entryId || "").trim();
+        if (!normalizedEntryId) {
+          return;
+        }
+
+        days = days.filter((day) => {
+          const sourceEntryId = String(day.sourceEntryId || day.id || "").trim();
+          return sourceEntryId !== normalizedEntryId && String(day.id || "").trim() !== normalizedEntryId;
+        });
+      };
+
+      const loadSchemaVersion = () => Number.parseInt(localStorage.getItem(STORAGE_SCHEMA_KEY) || "1", 10) || 1;
+
+      const saveSchemaVersion = () => {
+        localStorage.setItem(STORAGE_SCHEMA_KEY, String(STORAGE_SCHEMA_VERSION));
+      };
+
       const tripById = (tripId) => trips.find((trip) => trip.id === tripId) || defaultTrip();
 
       const tripDateRange = (trip) => [trip.startDate, trip.endDate].filter(Boolean).join(" → ") || trip.scope || "Open trip";
+
+      const tripTravelersLabel = (trip) => String(trip.travelers || "").trim() || "Crew not listed";
 
       const activeJourney = () => trips.find((trip) => trip.id !== DEFAULT_TRIP_ID && trip.status === "active") || null;
 
@@ -1583,10 +2204,19 @@
         }
       };
 
+      const loadDays = () => {
+        try {
+          const storedDays = JSON.parse(localStorage.getItem(DAYS_KEY) || "[]");
+          days = Array.isArray(storedDays) ? storedDays : [];
+        } catch (error) {
+          days = [];
+        }
+      };
+
       const loadTrips = () => {
         try {
           const storedTrips = JSON.parse(localStorage.getItem(TRIPS_KEY) || "[]");
-          trips = Array.isArray(storedTrips) ? storedTrips : [];
+          trips = Array.isArray(storedTrips) ? storedTrips.map((trip) => normalizeTripRecord(trip)) : [];
         } catch (error) {
           trips = [];
         }
@@ -1594,6 +2224,23 @@
         if (!trips.some((trip) => trip.id === DEFAULT_TRIP_ID)) {
           trips.unshift(defaultTrip());
         }
+      };
+
+      const migrateLegacyStorage = () => {
+        const currentVersion = loadSchemaVersion();
+
+        if (currentVersion >= STORAGE_SCHEMA_VERSION && days.length) {
+          return;
+        }
+
+        if (!days.length && entries.length) {
+          days = entries.map((entry) => migrateLegacyEntryToDay(entry));
+          localStorage.setItem(DAYS_KEY, JSON.stringify(days));
+        }
+
+        trips = trips.map((trip) => normalizeTripRecord(trip));
+        saveTrips();
+        saveSchemaVersion();
       };
 
       const loadTripNotes = () => {
@@ -1607,6 +2254,10 @@
 
       const saveEntries = () => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      };
+
+      const saveDays = () => {
+        localStorage.setItem(DAYS_KEY, JSON.stringify(days));
       };
 
       const saveTrips = () => {
@@ -1628,8 +2279,12 @@
           const status = trip.status === "active" ? "Active" : trip.endedAt ? "Ended" : "Saved";
           return `
             <div class="trip-chip">
-              <span><strong>${escapeHtml(trip.name)}</strong><span>${escapeHtml(tripDateRange(trip))}</span></span>
-              <span>${status} · ${count} log${count === 1 ? "" : "s"}</span>
+              <span>
+                <strong>${escapeHtml(trip.name)}</strong>
+                <span>${escapeHtml(tripDateRange(trip))}</span>
+                <span>${escapeHtml(tripTravelersLabel(trip))}</span>
+              </span>
+              <span>${status} · ${count} day${count === 1 ? "" : "s"}</span>
             </div>
           `;
         }).join("");
@@ -1654,6 +2309,7 @@
           <p class="eyebrow">Active Journey</p>
           <h4>${escapeHtml(active.name)}</h4>
           <p>${escapeHtml(tripDateRange(active))}</p>
+          <p><strong>On Trip:</strong> ${escapeHtml(tripTravelersLabel(active))}</p>
           ${active.notes ? `<p>${escapeHtml(active.notes)}</p>` : ""}
         `;
         endTripButton.disabled = false;
@@ -1687,6 +2343,132 @@
         `).join("");
       };
 
+      const notesForTrip = (tripId) => tripNotes
+        .filter((note) => note.tripId === tripId)
+        .sort((left, right) => (right.createdAt || "").localeCompare(left.createdAt || ""));
+
+      const renderEntryCard = (entry, trip) => {
+        const dayRecord = days.find((day) => {
+          const sourceEntryId = String(day.sourceEntryId || day.id || "").trim();
+          return sourceEntryId === String(entry.id || "").trim();
+        }) || null;
+        const progressChecks = Array.isArray(dayRecord?.progressChecks) ? dayRecord.progressChecks : [];
+        const systemChecks = Array.isArray(dayRecord?.systemChecks) ? dayRecord.systemChecks : [];
+        const checkTimeline = [
+          progressChecks.length ? `
+            <div class="entry-note-group">
+              <strong>Progress Checks</strong>
+              <p>${escapeHtml(progressChecks.map((check) => {
+                const parts = [check.recordedAt ? formatDateTime(check.recordedAt) : "Logged", check.location, check.note]
+                  .map((value) => String(value || "").trim())
+                  .filter(Boolean);
+                return parts.join(" · ");
+              }).join("\n"))}</p>
+            </div>
+          ` : "",
+          systemChecks.length ? `
+            <div class="entry-note-group">
+              <strong>System Checks</strong>
+              <p>${escapeHtml(systemChecks.map((check) => {
+                const checkNames = Object.keys(check.checks || {})
+                  .map((field) => engineRoomCheckFields.concat(vesselSystemCheckFields).find(([id]) => id === field))
+                  .filter(Boolean)
+                  .map(([, label]) => label)
+                  .join(", ");
+                const parts = [check.recordedAt ? formatDateTime(check.recordedAt) : "Logged", checkNames, check.notes]
+                  .map((value) => String(value || "").trim())
+                  .filter(Boolean);
+                return parts.join(" · ");
+              }).join("\n"))}</p>
+            </div>
+          ` : "",
+        ].filter(Boolean).join("");
+        const route = `${entry.departingFrom || "Departure not set"} → ${entry.destination || "Destination not set"}`;
+        const noteBlocks = [
+          ["Observations", entry.observations],
+          ["Cruising Notes", entry.cruisingNotes],
+          ["Daily Summary", entry.dailySummary],
+          [
+            "Systems Status",
+            entryDetailLine(entry, [
+              ["dieselStarboard", "Diesel STBD", " gal"],
+              ["dieselCenter", "Diesel Center", " gal"],
+              ["dieselPort", "Diesel Port", " gal"],
+              ["waterPortPct", "Water Port", "%"],
+              ["waterStarboardPct", "Water STBD", "%"],
+              ["holdingTankPct", "Holding Tank", "%"],
+              ["batteryHousePct", "House Batt", "%"],
+              ["batteryBowThrusterPct", "Bow Thruster Batt", "%"],
+              ["batteryGenStartPct", "Gen Start Batt", "%"],
+            ]),
+          ],
+          ["Oil Added", entry.oilAdded],
+          ["Broken", entry.broken],
+          ["Repaired", entry.repaired],
+          [
+            "Engine Performance",
+            entryDetailLine(entry, [
+              ["engineCheckTime", "Time"],
+              ["engineCheckKts", "Kts"],
+              ["engineCheckRpm", "RPM"],
+              ["engineCheckOilPsi", "Oil PSI"],
+              ["engineCheckCoolantTemp", "Coolant Temp"],
+              ["engineCheckPowerPct", "% Power", "%"],
+              ["engineCheckFuelBurn", "Fuel"],
+              ["engineCheckSeaState", "Seast"],
+              ["engineCheckKtsPerGal", "Kts/Gal"],
+              ["engineRoomTemp", "Eng Rm Temp"],
+            ]),
+          ],
+          ["Engine Room Check Notes", entry.engineRoomCheckNotes],
+          ["Engine Room Checks", selectedCheckLabels(entry, engineRoomCheckFields)],
+          ["System Checks", selectedCheckLabels(entry, vesselSystemCheckFields)],
+        ].filter(([, value]) => value).map(([label, value]) => `
+          <div class="entry-note-group">
+            <strong>${escapeHtml(label)}</strong>
+            <p>${escapeHtml(value)}</p>
+          </div>
+        `).join("");
+
+        return `
+          <article class="log-entry-card">
+            <div class="entry-topline">
+              <div>
+                <p class="eyebrow">${escapeHtml(trip.name)} · ${escapeHtml(entry.dayOfWeek || inferDayOfWeek(entry.date))}</p>
+                <h3>${escapeHtml(formatDate(entry.date))}</h3>
+                <p class="entry-route">${escapeHtml(route)}</p>
+              </div>
+              <div class="entry-actions">
+                <button class="btn ghost" type="button" data-action="edit" data-id="${escapeHtml(entry.id)}">Edit</button>
+                <button class="btn danger" type="button" data-action="delete" data-id="${escapeHtml(entry.id)}">Delete</button>
+              </div>
+            </div>
+            <div class="entry-meta-grid">
+              <div class="entry-meta"><span>On Board</span><strong>${escapeHtml(entry.onBoard || tripTravelersLabel(trip))}</strong></div>
+              <div class="entry-meta"><span>NM Traveled</span><strong>${escapeHtml(formatOptionalNumber(entry.totalNmTraveled, " NM"))}</strong></div>
+              <div class="entry-meta"><span>Total Engine</span><strong>${escapeHtml(formatOptionalNumber(entry.totalEngineTime || entry.engineHours, " hr"))}</strong></div>
+              <div class="entry-meta"><span>Fuel Used</span><strong>${escapeHtml(formatOptionalNumber(entry.fuelUsed, " gal"))}</strong></div>
+              <div class="entry-meta"><span>Progress Checks</span><strong>${escapeHtml(String(progressChecks.length || 0))}</strong></div>
+              <div class="entry-meta"><span>System Checks</span><strong>${escapeHtml(String(systemChecks.length || 0))}</strong></div>
+              <div class="entry-meta"><span>Departure</span><strong>${escapeHtml(entry.departureTime || "—")}</strong></div>
+              <div class="entry-meta"><span>Arrival</span><strong>${escapeHtml(entry.arrivalTime || "—")}</strong></div>
+              <div class="entry-meta"><span>Depart Odometer</span><strong>${escapeHtml(entry.departureOdometer || entry.odometer || "—")}</strong></div>
+              <div class="entry-meta"><span>Arrival Odometer</span><strong>${escapeHtml(entry.arrivalOdometer || "—")}</strong></div>
+              <div class="entry-meta"><span>Forecast</span><strong>${escapeHtml(entry.forecast || "—")}</strong></div>
+              <div class="entry-meta"><span>Fuel On Board</span><strong>${escapeHtml(formatOptionalNumber(entry.fuelOnBoard, " gal"))}</strong></div>
+              <div class="entry-meta"><span>Est Fuel Onboard</span><strong>${escapeHtml(formatOptionalNumber(entry.estimatedFuelOnBoard, " gal"))}</strong></div>
+              <div class="entry-meta"><span>Total Generator</span><strong>${escapeHtml(formatOptionalNumber(entry.totalGeneratorTime, " hr"))}</strong></div>
+              <div class="entry-meta"><span>Kts Per Gal</span><strong>${escapeHtml(formatOptionalNumber(entry.ktsPerGal))}</strong></div>
+              <div class="entry-meta"><span>Avg Speed</span><strong>${escapeHtml(formatOptionalNumber(entry.avgSpeed, " kt"))}</strong></div>
+              <div class="entry-meta"><span>Depart Position</span><strong>${escapeHtml([entry.departureLatitude || entry.latitude, entry.departureLongitude || entry.longitude].filter(Boolean).join(", ") || "—")}</strong></div>
+              <div class="entry-meta"><span>Arrival Position</span><strong>${escapeHtml([entry.arrivalLatitude, entry.arrivalLongitude].filter(Boolean).join(", ") || "—")}</strong></div>
+            </div>
+            ${checkTimeline ? `<div class="entry-notes">${checkTimeline}</div>` : ""}
+            ${noteBlocks ? `<div class="entry-notes">${noteBlocks}</div>` : ""}
+          </article>
+        `;
+      };
+
       const refreshJourneyUi = () => {
         renderTripOptions();
         renderActiveJourney();
@@ -1694,7 +2476,27 @@
         renderJourneyNotes();
       };
 
-      const entrySearchText = (entry) => `${tripById(entry.tripId || DEFAULT_TRIP_ID).name} ${fields.map((field) => entry[field] || "").join(" ")}`.toLowerCase();
+      const dayRecordForEntry = (entry = {}) => days.find((day) => {
+        const sourceEntryId = String(day.sourceEntryId || day.id || "").trim();
+        return sourceEntryId === String(entry.id || "").trim();
+      }) || null;
+
+      const entrySearchText = (entry) => {
+        const trip = tripById(entry.tripId || DEFAULT_TRIP_ID);
+        const dayRecord = dayRecordForEntry(entry);
+        const progressSearch = Array.isArray(dayRecord?.progressChecks)
+          ? dayRecord.progressChecks.map((check) => [check.location, check.status, check.note, check.speed, check.distanceNm, check.fuelBurn].join(" ")).join(" ")
+          : "";
+        const systemSearch = Array.isArray(dayRecord?.systemChecks)
+          ? dayRecord.systemChecks.map((check) => [
+            Object.keys(check.checks || {}).join(" "),
+            Object.values(check.readings || {}).join(" "),
+            check.notes,
+          ].join(" ")).join(" ")
+          : "";
+
+        return `${trip.name} ${trip.travelers || ""} ${fields.map((field) => entry[field] || "").join(" ")} ${progressSearch} ${systemSearch}`.toLowerCase();
+      };
 
       const entriesForSelectedTrip = () => {
         if (!tripFilter || tripFilter.value === "all") {
@@ -1750,88 +2552,62 @@
           return;
         }
 
-        entriesList.innerHTML = visibleEntries.map((entry) => {
-          const trip = tripById(entry.tripId || DEFAULT_TRIP_ID);
-          const route = `${entry.departingFrom || "Departure not set"} → ${entry.destination || "Destination not set"}`;
-          const noteBlocks = [
-            ["Observations", entry.observations],
-            ["Cruising Notes", entry.cruisingNotes],
-            ["Daily Summary", entry.dailySummary],
-            [
-              "Systems Status",
-              entryDetailLine(entry, [
-                ["dieselStarboard", "Diesel STBD", " gal"],
-                ["dieselCenter", "Diesel Center", " gal"],
-                ["dieselPort", "Diesel Port", " gal"],
-                ["waterPortPct", "Water Port", "%"],
-                ["waterStarboardPct", "Water STBD", "%"],
-                ["holdingTankPct", "Holding Tank", "%"],
-                ["batteryHousePct", "House Batt", "%"],
-                ["batteryBowThrusterPct", "Bow Thruster Batt", "%"],
-                ["batteryGenStartPct", "Gen Start Batt", "%"],
-              ]),
-            ],
-            ["Oil Added", entry.oilAdded],
-            ["Broken", entry.broken],
-            ["Repaired", entry.repaired],
-            [
-              "Engine Performance",
-              entryDetailLine(entry, [
-                ["engineCheckTime", "Time"],
-                ["engineCheckKts", "Kts"],
-                ["engineCheckRpm", "RPM"],
-                ["engineCheckOilPsi", "Oil PSI"],
-                ["engineCheckCoolantTemp", "Coolant Temp"],
-                ["engineCheckPowerPct", "% Power", "%"],
-                ["engineCheckFuelBurn", "Fuel"],
-                ["engineCheckSeaState", "Seast"],
-                ["engineCheckKtsPerGal", "Kts/Gal"],
-                ["engineRoomTemp", "Eng Rm Temp"],
-              ]),
-            ],
-            ["Engine Room Check Notes", entry.engineRoomCheckNotes],
-            ["Engine Room Checks", selectedCheckLabels(entry, engineRoomCheckFields)],
-            ["System Checks", selectedCheckLabels(entry, vesselSystemCheckFields)],
-          ].filter(([, value]) => value).map(([label, value]) => `
-            <div class="entry-note-group">
-              <strong>${escapeHtml(label)}</strong>
-              <p>${escapeHtml(value)}</p>
-            </div>
-          `).join("");
+        const groupedEntries = visibleEntries.reduce((accumulator, entry) => {
+          const tripId = String(entry.tripId || DEFAULT_TRIP_ID).trim() || DEFAULT_TRIP_ID;
+          if (!accumulator[tripId]) {
+            accumulator[tripId] = [];
+          }
+          accumulator[tripId].push(entry);
+          return accumulator;
+        }, {});
+
+        const orderedTripIds = Object.keys(groupedEntries).sort((left, right) => {
+          const leftTrip = tripById(left);
+          const rightTrip = tripById(right);
+          const leftDate = String(leftTrip.startDate || leftTrip.createdAt || "");
+          const rightDate = String(rightTrip.startDate || rightTrip.createdAt || "");
+          return rightDate.localeCompare(leftDate);
+        });
+
+        entriesList.innerHTML = orderedTripIds.map((tripId) => {
+          const trip = tripById(tripId);
+          const tripEntries = groupedEntries[tripId].sort((left, right) => (right.date || "").localeCompare(left.date || ""));
+          const tripScopedNotes = notesForTrip(tripId);
+          const status = trip.status === "active" ? "Active Trip" : trip.endedAt ? "Ended Trip" : "Saved Trip";
 
           return `
-            <article class="log-entry-card">
-              <div class="entry-topline">
-                <div>
-                  <p class="eyebrow">${escapeHtml(trip.name)} · ${escapeHtml(entry.dayOfWeek || inferDayOfWeek(entry.date))}</p>
-                  <h3>${escapeHtml(formatDate(entry.date))}</h3>
-                  <p class="entry-route">${escapeHtml(route)}</p>
+            <section class="trip-entry-group">
+              <header class="trip-entry-header">
+                <div class="trip-entry-header-top">
+                  <div>
+                    <p class="eyebrow">Trip</p>
+                    <h3>${escapeHtml(trip.name)}</h3>
+                    <p>${escapeHtml(trip.notes || "No trip notes yet.")}</p>
+                  </div>
+                  <span class="trip-entry-status">${escapeHtml(status)}</span>
                 </div>
-                <div class="entry-actions">
-                  <button class="btn ghost" type="button" data-action="edit" data-id="${escapeHtml(entry.id)}">Edit</button>
-                  <button class="btn danger" type="button" data-action="delete" data-id="${escapeHtml(entry.id)}">Delete</button>
+                <div class="trip-entry-meta-grid">
+                  <div class="trip-entry-meta"><span>Begin Date</span><strong>${escapeHtml(formatDate(trip.startDate))}</strong></div>
+                  <div class="trip-entry-meta"><span>End Date</span><strong>${escapeHtml(trip.endDate ? formatDate(trip.endDate) : (trip.status === "active" ? "Open" : "—"))}</strong></div>
+                  <div class="trip-entry-meta"><span>Who Was On The Trip</span><strong>${escapeHtml(tripTravelersLabel(trip))}</strong></div>
+                  <div class="trip-entry-meta"><span>Logged Days</span><strong>${escapeHtml(String(tripEntries.length))}</strong></div>
                 </div>
+                ${tripScopedNotes.length ? `
+                  <div class="trip-entry-notes">
+                    ${tripScopedNotes.slice(0, 3).map((note) => `
+                      <article class="trip-inline-note-card">
+                        <time datetime="${escapeHtml(note.createdAt)}">${escapeHtml(formatDateTime(note.createdAt))}</time>
+                        ${note.title ? `<strong>${escapeHtml(note.title)}</strong>` : ""}
+                        <p>${escapeHtml(note.body)}</p>
+                      </article>
+                    `).join("")}
+                  </div>
+                ` : ""}
+              </header>
+              <div class="trip-entry-days">
+                ${tripEntries.map((entry) => renderEntryCard(entry, trip)).join("")}
               </div>
-              <div class="entry-meta-grid">
-                <div class="entry-meta"><span>On Board</span><strong>${escapeHtml(entry.onBoard || "—")}</strong></div>
-                <div class="entry-meta"><span>NM Traveled</span><strong>${escapeHtml(formatOptionalNumber(entry.totalNmTraveled, " NM"))}</strong></div>
-                <div class="entry-meta"><span>Total Engine</span><strong>${escapeHtml(formatOptionalNumber(entry.totalEngineTime || entry.engineHours, " hr"))}</strong></div>
-                <div class="entry-meta"><span>Fuel Used</span><strong>${escapeHtml(formatOptionalNumber(entry.fuelUsed, " gal"))}</strong></div>
-                <div class="entry-meta"><span>Departure</span><strong>${escapeHtml(entry.departureTime || "—")}</strong></div>
-                <div class="entry-meta"><span>Arrival</span><strong>${escapeHtml(entry.arrivalTime || "—")}</strong></div>
-                <div class="entry-meta"><span>Depart Odometer</span><strong>${escapeHtml(entry.departureOdometer || entry.odometer || "—")}</strong></div>
-                <div class="entry-meta"><span>Arrival Odometer</span><strong>${escapeHtml(entry.arrivalOdometer || "—")}</strong></div>
-                <div class="entry-meta"><span>Forecast</span><strong>${escapeHtml(entry.forecast || "—")}</strong></div>
-                <div class="entry-meta"><span>Fuel On Board</span><strong>${escapeHtml(formatOptionalNumber(entry.fuelOnBoard, " gal"))}</strong></div>
-                <div class="entry-meta"><span>Est Fuel Onboard</span><strong>${escapeHtml(formatOptionalNumber(entry.estimatedFuelOnBoard, " gal"))}</strong></div>
-                <div class="entry-meta"><span>Total Generator</span><strong>${escapeHtml(formatOptionalNumber(entry.totalGeneratorTime, " hr"))}</strong></div>
-                <div class="entry-meta"><span>Kts Per Gal</span><strong>${escapeHtml(formatOptionalNumber(entry.ktsPerGal))}</strong></div>
-                <div class="entry-meta"><span>Avg Speed</span><strong>${escapeHtml(formatOptionalNumber(entry.avgSpeed, " kt"))}</strong></div>
-                <div class="entry-meta"><span>Depart Position</span><strong>${escapeHtml([entry.departureLatitude || entry.latitude, entry.departureLongitude || entry.longitude].filter(Boolean).join(", ") || "—")}</strong></div>
-                <div class="entry-meta"><span>Arrival Position</span><strong>${escapeHtml([entry.arrivalLatitude, entry.arrivalLongitude].filter(Boolean).join(", ") || "—")}</strong></div>
-              </div>
-              ${noteBlocks ? `<div class="entry-notes">${noteBlocks}</div>` : ""}
-            </article>
+            </section>
           `;
         }).join("");
       };
@@ -1839,9 +2615,15 @@
       const clearForm = () => {
         form.reset();
         entryIdInput.value = "";
+        currentProgressChecks = [];
+        currentSystemChecks = [];
+        clearProgressDraft();
+        clearSystemDraft();
         const active = activeJourney();
         logTripSelect.value = active ? active.id : DEFAULT_TRIP_ID;
         form.querySelector("button[type='submit']").textContent = "Save Log Entry";
+        renderProgressChecksEditor();
+        renderSystemChecksEditor();
       };
 
       const formDataToEntry = () => {
@@ -1864,6 +2646,10 @@
       };
 
       const fillForm = (entry) => {
+        const dayRecord = days.find((day) => {
+          const sourceEntryId = String(day.sourceEntryId || day.id || "").trim();
+          return sourceEntryId === String(entry.id || "").trim();
+        }) || null;
         entryIdInput.value = entry.id;
         fields.forEach((field) => {
           const element = form.elements[field];
@@ -1876,6 +2662,15 @@
             element.value = entry[field] || "";
           }
         });
+        currentProgressChecks = Array.isArray(dayRecord?.progressChecks)
+          ? dayRecord.progressChecks.map((check) => cloneCheckEntry(check))
+          : [];
+        currentSystemChecks = Array.isArray(dayRecord?.systemChecks)
+          ? dayRecord.systemChecks.map((check) => cloneCheckEntry(check))
+          : [];
+        clearProgressDraft();
+        renderProgressChecksEditor();
+        renderSystemChecksEditor();
         form.querySelector("button[type='submit']").textContent = "Update Log Entry";
         formStatus.textContent = `Editing ${formatDate(entry.date)}.`;
         document.getElementById("log-form").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1888,9 +2683,41 @@
           return;
         }
 
-        const headers = ["tripName", "date", ...fields.filter((field) => field !== "date")];
+        const headers = [
+          "tripName",
+          "tripTravelers",
+          "tripStartDate",
+          "tripEndDate",
+          "date",
+          ...fields.filter((field) => field !== "date"),
+          "progressChecks",
+          "systemChecks",
+        ];
         const csvRows = [headers.join(",")].concat(exportEntries.map((entry) => headers.map((header) => {
-          const value = String(header === "tripName" ? tripById(entry.tripId || DEFAULT_TRIP_ID).name : entry[header] || "").replace(/"/g, '""');
+          const trip = tripById(entry.tripId || DEFAULT_TRIP_ID);
+          const dayRecord = dayRecordForEntry(entry);
+          const progressSummary = Array.isArray(dayRecord?.progressChecks)
+            ? dayRecord.progressChecks.map((check) => [check.recordedAt ? formatDateTime(check.recordedAt) : "Logged", check.location, check.status, check.note].filter(Boolean).join(" | ")).join(" || ")
+            : "";
+          const systemSummary = Array.isArray(dayRecord?.systemChecks)
+            ? dayRecord.systemChecks.map((check) => {
+              const labels = Object.keys(check.checks || {})
+                .map((field) => engineRoomCheckFields.concat(vesselSystemCheckFields).find(([id]) => id === field))
+                .filter(Boolean)
+                .map(([, label]) => label)
+                .join("; ");
+              return [check.recordedAt ? formatDateTime(check.recordedAt) : "Logged", labels, check.notes].filter(Boolean).join(" | ");
+            }).join(" || ")
+            : "";
+          const exportValue = {
+            tripName: trip.name,
+            tripTravelers: trip.travelers || "",
+            tripStartDate: trip.startDate || "",
+            tripEndDate: trip.endDate || "",
+            progressChecks: progressSummary,
+            systemChecks: systemSummary,
+          };
+          const value = String(Object.prototype.hasOwnProperty.call(exportValue, header) ? exportValue[header] : (entry[header] || "")).replace(/"/g, '""');
           return `"${value}"`;
         }).join(",")));
         const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8" });
@@ -1910,6 +2737,29 @@
           return;
         }
 
+        if (progressDraftHasContent()) {
+          currentProgressChecks.push({
+            id: newId(),
+            recordedAt: dateInput.value && progressCheckTimeInput.value
+              ? new Date(`${dateInput.value}T${progressCheckTimeInput.value}`).toISOString()
+              : new Date().toISOString(),
+            location: progressCheckLocationInput.value.trim(),
+            status: progressCheckStatusInput.value.trim(),
+            speed: progressCheckSpeedInput.value.trim(),
+            distanceNm: progressCheckDistanceInput.value.trim(),
+            fuelBurn: progressCheckFuelBurnInput.value.trim(),
+            note: progressCheckNoteInput.value.trim(),
+          });
+          clearProgressDraft();
+          renderProgressChecksEditor();
+        }
+
+        if (systemDraftHasContent()) {
+          currentSystemChecks.push(currentSystemDraft());
+          clearSystemDraft();
+          renderSystemChecksEditor();
+        }
+
         const entry = formDataToEntry();
         const existingIndex = entries.findIndex((savedEntry) => savedEntry.id === entry.id);
 
@@ -1921,7 +2771,9 @@
           formStatus.textContent = "Log entry saved.";
         }
 
+        upsertDayFromEntry(existingIndex >= 0 ? entries[existingIndex] : entries[entries.length - 1]);
         saveEntries();
+        saveDays();
         clearForm();
         refreshJourneyUi();
         renderEntries();
@@ -1944,6 +2796,7 @@
         const trip = {
           id: newId(),
           name,
+          travelers: tripTravelersInput.value.trim(),
           scope: document.getElementById("trip-scope").value.trim(),
           startDate: document.getElementById("trip-start").value,
           endDate: document.getElementById("trip-end").value,
@@ -1958,7 +2811,7 @@
         refreshJourneyUi();
         logTripSelect.value = trip.id;
         tripFilter.value = trip.id;
-        ["trip-name", "trip-scope", "trip-start", "trip-end", "trip-notes"].forEach((id) => {
+        ["trip-name", "trip-travelers", "trip-scope", "trip-start", "trip-end", "trip-notes"].forEach((id) => {
           document.getElementById(id).value = "";
         });
         formStatus.textContent = `Journey "${trip.name}" started. New logs will attach to it.`;
@@ -2018,6 +2871,43 @@
         formStatus.textContent = "Timestamped journey note added.";
       });
 
+      addProgressCheckButton.addEventListener("click", () => {
+        if (!progressDraftHasContent()) {
+          formStatus.textContent = "Add at least one progress check detail first.";
+          progressCheckTimeInput.focus();
+          return;
+        }
+
+        currentProgressChecks.push({
+          id: newId(),
+          recordedAt: dateInput.value && progressCheckTimeInput.value
+            ? new Date(`${dateInput.value}T${progressCheckTimeInput.value}`).toISOString()
+            : new Date().toISOString(),
+          location: progressCheckLocationInput.value.trim(),
+          status: progressCheckStatusInput.value.trim(),
+          speed: progressCheckSpeedInput.value.trim(),
+          distanceNm: progressCheckDistanceInput.value.trim(),
+          fuelBurn: progressCheckFuelBurnInput.value.trim(),
+          note: progressCheckNoteInput.value.trim(),
+        });
+        clearProgressDraft();
+        renderProgressChecksEditor();
+        formStatus.textContent = "Progress check added to this day draft.";
+      });
+
+      addSystemCheckButton.addEventListener("click", () => {
+        if (!systemDraftHasContent()) {
+          formStatus.textContent = "Add at least one system or engine check detail first.";
+          document.getElementById("engine-check-time").focus();
+          return;
+        }
+
+        currentSystemChecks.push(currentSystemDraft());
+        clearSystemDraft();
+        renderSystemChecksEditor();
+        formStatus.textContent = "System check snapshot added to this day draft.";
+      });
+
       dateInput.addEventListener("change", () => {
         if (!dayOfWeekInput.value) {
           dayOfWeekInput.value = inferDayOfWeek(dateInput.value);
@@ -2065,11 +2955,45 @@
 
         if (button.dataset.action === "delete" && confirm("Delete this Maristela log entry?")) {
           entries = entries.filter((savedEntry) => savedEntry.id !== entry.id);
+          removeDayForEntry(entry.id);
           saveEntries();
+          saveDays();
           refreshJourneyUi();
           renderEntries();
           formStatus.textContent = "Log entry deleted.";
         }
+      });
+
+      progressCheckList.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const button = target.closest("button[data-remove-progress-check]");
+        if (!(button instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        currentProgressChecks = currentProgressChecks.filter((check) => check.id !== button.dataset.removeProgressCheck);
+        renderProgressChecksEditor();
+        formStatus.textContent = "Progress check removed from this day draft.";
+      });
+
+      systemCheckList.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const button = target.closest("button[data-remove-system-check]");
+        if (!(button instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        currentSystemChecks = currentSystemChecks.filter((check) => check.id !== button.dataset.removeSystemCheck);
+        renderSystemChecksEditor();
+        formStatus.textContent = "System check snapshot removed from this day draft.";
       });
 
       searchInput.addEventListener("input", renderEntries);
@@ -2088,7 +3012,9 @@
 
         if (confirm("Delete all Maristela log entries saved in this browser?")) {
           entries = [];
+          days = [];
           saveEntries();
+          saveDays();
           clearForm();
           refreshJourneyUi();
           renderEntries();
@@ -2098,6 +3024,9 @@
 
       loadTrips();
       loadEntries();
+      loadDays();
+      migrateLegacyStorage();
+      saveDays();
       loadTripNotes();
       refreshJourneyUi();
       clearForm();
