@@ -493,6 +493,12 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
+      .check-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.6rem;
+      }
+
       .field {
         display: grid;
         gap: 0.35rem;
@@ -500,6 +506,27 @@
 
       .field.full {
         grid-column: 1 / -1;
+      }
+
+      .check-item {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        min-height: 3rem;
+        padding: 0.65rem 0.75rem;
+        border: 1px solid rgba(37, 55, 65, 0.11);
+        background: #fffdf7;
+        color: #344b59;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .check-item input {
+        width: auto;
+        margin: 0;
+        padding: 0;
+        accent-color: #243746;
       }
 
       label {
@@ -604,6 +631,15 @@
       .entry-notes p {
         margin: 0;
         color: #526262;
+      }
+
+      .entry-note-group {
+        display: grid;
+        gap: 0.28rem;
+      }
+
+      .entry-note-group strong {
+        color: #243746;
       }
 
       .footer-band {
@@ -952,6 +988,165 @@
                 </fieldset>
 
                 <fieldset class="field-group">
+                  <legend>Systems Status</legend>
+                  <div class="field-grid three">
+                    <div class="field">
+                      <label for="diesel-starboard">Diesel STBD <span>(gal)</span></label>
+                      <input id="diesel-starboard" name="dieselStarboard" type="number" min="0" step="0.1" placeholder="230" />
+                    </div>
+                    <div class="field">
+                      <label for="diesel-center">Diesel Center <span>(gal)</span></label>
+                      <input id="diesel-center" name="dieselCenter" type="number" min="0" step="0.1" placeholder="80" />
+                    </div>
+                    <div class="field">
+                      <label for="diesel-port">Diesel Port <span>(gal)</span></label>
+                      <input id="diesel-port" name="dieselPort" type="number" min="0" step="0.1" placeholder="120" />
+                    </div>
+                    <div class="field">
+                      <label for="water-port-pct">Water Port <span>(%)</span></label>
+                      <input id="water-port-pct" name="waterPortPct" type="number" min="0" max="100" step="1" placeholder="90" />
+                    </div>
+                    <div class="field">
+                      <label for="water-starboard-pct">Water STBD <span>(%)</span></label>
+                      <input id="water-starboard-pct" name="waterStarboardPct" type="number" min="0" max="100" step="1" placeholder="100" />
+                    </div>
+                    <div class="field">
+                      <label for="holding-tank-pct">Holding Tank <span>(%)</span></label>
+                      <input id="holding-tank-pct" name="holdingTankPct" type="number" min="0" max="100" step="1" placeholder="40" />
+                    </div>
+                    <div class="field">
+                      <label for="battery-house-pct">Battery House <span>(%)</span></label>
+                      <input id="battery-house-pct" name="batteryHousePct" type="number" min="0" max="100" step="1" placeholder="100" />
+                    </div>
+                    <div class="field">
+                      <label for="battery-bow-thruster-pct">Battery Bow Thruster <span>(%)</span></label>
+                      <input id="battery-bow-thruster-pct" name="batteryBowThrusterPct" type="number" min="0" max="100" step="1" placeholder="100" />
+                    </div>
+                    <div class="field">
+                      <label for="battery-gen-start-pct">Battery Gen Start <span>(%)</span></label>
+                      <input id="battery-gen-start-pct" name="batteryGenStartPct" type="number" min="0" max="100" step="1" placeholder="100" />
+                    </div>
+                    <div class="field full">
+                      <label for="oil-added">Oil Added</label>
+                      <textarea id="oil-added" name="oilAdded" placeholder="What oil was added, how much, or none."></textarea>
+                    </div>
+                    <div class="field full">
+                      <label for="broken">Broken</label>
+                      <textarea id="broken" name="broken" placeholder="Anything not working on this check."></textarea>
+                    </div>
+                    <div class="field full">
+                      <label for="repaired">Repaired</label>
+                      <textarea id="repaired" name="repaired" placeholder="Repairs completed or follow-up needed."></textarea>
+                    </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="field-group">
+                  <legend>Engine Room Check</legend>
+                  <div class="check-grid">
+                    <label class="check-item"><input name="checkJdOil" type="checkbox" value="Yes" /> JD Oil</label>
+                    <label class="check-item"><input name="checkJdCoolant" type="checkbox" value="Yes" /> JD Coolant</label>
+                    <label class="check-item"><input name="checkJdTransOil" type="checkbox" value="Yes" /> JD Trans Oil</label>
+                    <label class="check-item"><input name="checkJdRawWater" type="checkbox" value="Yes" /> JD Raw H2O</label>
+                    <label class="check-item"><input name="checkJdBelt" type="checkbox" value="Yes" /> JD Belt</label>
+                    <label class="check-item"><input name="checkJdFuelFilter" type="checkbox" value="Yes" /> JD Fuel Filter</label>
+                    <label class="check-item"><input name="checkGenOil" type="checkbox" value="Yes" /> Gen Oil</label>
+                    <label class="check-item"><input name="checkGenCoolant" type="checkbox" value="Yes" /> Gen Coolant</label>
+                    <label class="check-item"><input name="checkGenRawWater" type="checkbox" value="Yes" /> Gen Raw H2O</label>
+                    <label class="check-item"><input name="checkGenBelt" type="checkbox" value="Yes" /> Gen Belt</label>
+                    <label class="check-item"><input name="checkGenFuelFilter" type="checkbox" value="Yes" /> Gen Fuel Filter</label>
+                  </div>
+                </fieldset>
+
+                <fieldset class="field-group">
+                  <legend>Engine Performance</legend>
+                  <div class="field-grid three">
+                    <div class="field">
+                      <label for="engine-check-time">Time</label>
+                      <input id="engine-check-time" name="engineCheckTime" type="time" />
+                    </div>
+                    <div class="field">
+                      <label for="engine-check-kts">Kts</label>
+                      <input id="engine-check-kts" name="engineCheckKts" type="number" min="0" step="0.1" placeholder="7.5" />
+                    </div>
+                    <div class="field">
+                      <label for="engine-check-rpm">RPM</label>
+                      <input id="engine-check-rpm" name="engineCheckRpm" type="number" min="0" step="1" placeholder="1800" />
+                    </div>
+                    <div class="field">
+                      <label for="engine-check-oil-psi">Oil PSI</label>
+                      <input id="engine-check-oil-psi" name="engineCheckOilPsi" type="number" min="0" step="0.1" placeholder="46" />
+                    </div>
+                    <div class="field">
+                      <label for="engine-check-coolant-temp">Coolant Temp</label>
+                      <input id="engine-check-coolant-temp" name="engineCheckCoolantTemp" type="number" min="0" step="0.1" placeholder="168" />
+                    </div>
+                    <div class="field">
+                      <label for="engine-check-power-pct">% Power</label>
+                      <input id="engine-check-power-pct" name="engineCheckPowerPct" type="number" min="0" max="100" step="1" placeholder="22" />
+                    </div>
+                    <div class="field">
+                      <label for="engine-check-fuel-burn">Fuel</label>
+                      <input id="engine-check-fuel-burn" name="engineCheckFuelBurn" type="number" min="0" step="0.1" placeholder="2.1" />
+                    </div>
+                    <div class="field">
+                      <label for="engine-check-sea-state">Seast</label>
+                      <input id="engine-check-sea-state" name="engineCheckSeaState" type="text" placeholder="Calm, slight, choppy..." />
+                    </div>
+                    <div class="field">
+                      <label for="engine-check-kts-per-gal">Kts / Gal</label>
+                      <input id="engine-check-kts-per-gal" name="engineCheckKtsPerGal" type="number" min="0" step="0.1" placeholder="3.3" />
+                    </div>
+                    <div class="field">
+                      <label for="engine-room-temp">Eng Rm Temp</label>
+                      <input id="engine-room-temp" name="engineRoomTemp" type="number" min="0" step="0.1" placeholder="99" />
+                    </div>
+                    <div class="field full">
+                      <label for="engine-room-check-notes">Eng Rm Check</label>
+                      <textarea id="engine-room-check-notes" name="engineRoomCheckNotes" placeholder="Performance notes, alarms, smells, vibration, anything notable."></textarea>
+                    </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="field-group">
+                  <legend>System Check</legend>
+                  <div class="check-grid">
+                    <label class="check-item"><input name="checkGpsDisplay" type="checkbox" value="Yes" /> GPS Display</label>
+                    <label class="check-item"><input name="checkRadar" type="checkbox" value="Yes" /> Radar</label>
+                    <label class="check-item"><input name="checkVhfRadio" type="checkbox" value="Yes" /> VHF Radio</label>
+                    <label class="check-item"><input name="checkDepthGauge" type="checkbox" value="Yes" /> Depth Gauge</label>
+                    <label class="check-item"><input name="checkRefrigerator" type="checkbox" value="Yes" /> Refrigerator</label>
+                    <label class="check-item"><input name="checkAutopilot" type="checkbox" value="Yes" /> Autopilot</label>
+                    <label class="check-item"><input name="checkSalonTv" type="checkbox" value="Yes" /> Salon TV</label>
+                    <label class="check-item"><input name="checkBilgePumps" type="checkbox" value="Yes" /> Bilge Pumps</label>
+                    <label class="check-item"><input name="checkWindlass" type="checkbox" value="Yes" /> Windlass</label>
+                    <label class="check-item"><input name="checkAnchorWash" type="checkbox" value="Yes" /> Anchor Wash</label>
+                    <label class="check-item"><input name="checkCockpitWash" type="checkbox" value="Yes" /> Cockpit Wash</label>
+                    <label class="check-item"><input name="checkWatermaker" type="checkbox" value="Yes" /> Watermaker</label>
+                    <label class="check-item"><input name="checkWaterSystem" type="checkbox" value="Yes" /> Water System</label>
+                    <label class="check-item"><input name="checkToilets" type="checkbox" value="Yes" /> Toilets</label>
+                    <label class="check-item"><input name="checkHeadVent" type="checkbox" value="Yes" /> Head Vent</label>
+                    <label class="check-item"><input name="checkShowers" type="checkbox" value="Yes" /> Showers</label>
+                    <label class="check-item"><input name="checkFuelTransfer" type="checkbox" value="Yes" /> Fuel Transfer</label>
+                    <label class="check-item"><input name="checkMainEngineStart" type="checkbox" value="Yes" /> Main Engine Start</label>
+                    <label class="check-item"><input name="checkAcStartPump" type="checkbox" value="Yes" /> A/C Start Pump</label>
+                    <label class="check-item"><input name="checkIceMaker" type="checkbox" value="Yes" /> Ice Maker</label>
+                    <label class="check-item"><input name="checkStove" type="checkbox" value="Yes" /> Stove</label>
+                    <label class="check-item"><input name="checkPropane" type="checkbox" value="Yes" /> Propane</label>
+                    <label class="check-item"><input name="checkDishwasher" type="checkbox" value="Yes" /> Dishwasher</label>
+                    <label class="check-item"><input name="checkFlybridgeInstruments" type="checkbox" value="Yes" /> Flybridge Instr.</label>
+                    <label class="check-item"><input name="checkWheelhouseInstruments" type="checkbox" value="Yes" /> Wheelhouse Instr.</label>
+                    <label class="check-item"><input name="checkNavLights" type="checkbox" value="Yes" /> Nav Lights</label>
+                    <label class="check-item"><input name="checkDinghy" type="checkbox" value="Yes" /> Dinghy</label>
+                    <label class="check-item"><input name="checkDavit" type="checkbox" value="Yes" /> Davit</label>
+                    <label class="check-item"><input name="checkBbq" type="checkbox" value="Yes" /> BBQ</label>
+                    <label class="check-item"><input name="checkDockmaster" type="checkbox" value="Yes" /> Dockmaster</label>
+                    <label class="check-item"><input name="checkBilgesDry" type="checkbox" value="Yes" /> Bilges Dry</label>
+                    <label class="check-item"><input name="checkLazarette" type="checkbox" value="Yes" /> Lazarette Check</label>
+                  </div>
+                </fieldset>
+
+                <fieldset class="field-group">
                   <legend>Notes</legend>
                   <div class="field-grid">
                     <div class="field full">
@@ -1084,10 +1279,178 @@
         "estimatedFuelOnBoard",
         "ktsPerGal",
         "avgSpeed",
+        "dieselStarboard",
+        "dieselCenter",
+        "dieselPort",
+        "waterPortPct",
+        "waterStarboardPct",
+        "holdingTankPct",
+        "batteryHousePct",
+        "batteryBowThrusterPct",
+        "batteryGenStartPct",
+        "oilAdded",
+        "broken",
+        "repaired",
+        "checkJdOil",
+        "checkJdCoolant",
+        "checkJdTransOil",
+        "checkJdRawWater",
+        "checkJdBelt",
+        "checkJdFuelFilter",
+        "checkGenOil",
+        "checkGenCoolant",
+        "checkGenRawWater",
+        "checkGenBelt",
+        "checkGenFuelFilter",
+        "engineCheckTime",
+        "engineCheckKts",
+        "engineCheckRpm",
+        "engineCheckOilPsi",
+        "engineCheckCoolantTemp",
+        "engineCheckPowerPct",
+        "engineCheckFuelBurn",
+        "engineCheckSeaState",
+        "engineCheckKtsPerGal",
+        "engineRoomTemp",
+        "engineRoomCheckNotes",
+        "checkGpsDisplay",
+        "checkRadar",
+        "checkVhfRadio",
+        "checkDepthGauge",
+        "checkRefrigerator",
+        "checkAutopilot",
+        "checkSalonTv",
+        "checkBilgePumps",
+        "checkWindlass",
+        "checkAnchorWash",
+        "checkCockpitWash",
+        "checkWatermaker",
+        "checkWaterSystem",
+        "checkToilets",
+        "checkHeadVent",
+        "checkShowers",
+        "checkFuelTransfer",
+        "checkMainEngineStart",
+        "checkAcStartPump",
+        "checkIceMaker",
+        "checkStove",
+        "checkPropane",
+        "checkDishwasher",
+        "checkFlybridgeInstruments",
+        "checkWheelhouseInstruments",
+        "checkNavLights",
+        "checkDinghy",
+        "checkDavit",
+        "checkBbq",
+        "checkDockmaster",
+        "checkBilgesDry",
+        "checkLazarette",
         "observations",
         "cruisingNotes",
         "dailySummary",
       ];
+
+      const checkboxFields = new Set([
+        "checkJdOil",
+        "checkJdCoolant",
+        "checkJdTransOil",
+        "checkJdRawWater",
+        "checkJdBelt",
+        "checkJdFuelFilter",
+        "checkGenOil",
+        "checkGenCoolant",
+        "checkGenRawWater",
+        "checkGenBelt",
+        "checkGenFuelFilter",
+        "checkGpsDisplay",
+        "checkRadar",
+        "checkVhfRadio",
+        "checkDepthGauge",
+        "checkRefrigerator",
+        "checkAutopilot",
+        "checkSalonTv",
+        "checkBilgePumps",
+        "checkWindlass",
+        "checkAnchorWash",
+        "checkCockpitWash",
+        "checkWatermaker",
+        "checkWaterSystem",
+        "checkToilets",
+        "checkHeadVent",
+        "checkShowers",
+        "checkFuelTransfer",
+        "checkMainEngineStart",
+        "checkAcStartPump",
+        "checkIceMaker",
+        "checkStove",
+        "checkPropane",
+        "checkDishwasher",
+        "checkFlybridgeInstruments",
+        "checkWheelhouseInstruments",
+        "checkNavLights",
+        "checkDinghy",
+        "checkDavit",
+        "checkBbq",
+        "checkDockmaster",
+        "checkBilgesDry",
+        "checkLazarette",
+      ]);
+
+      const engineRoomCheckFields = [
+        ["checkJdOil", "JD Oil"],
+        ["checkJdCoolant", "JD Coolant"],
+        ["checkJdTransOil", "JD Trans Oil"],
+        ["checkJdRawWater", "JD Raw H2O"],
+        ["checkJdBelt", "JD Belt"],
+        ["checkJdFuelFilter", "JD Fuel Filter"],
+        ["checkGenOil", "Gen Oil"],
+        ["checkGenCoolant", "Gen Coolant"],
+        ["checkGenRawWater", "Gen Raw H2O"],
+        ["checkGenBelt", "Gen Belt"],
+        ["checkGenFuelFilter", "Gen Fuel Filter"],
+      ];
+
+      const vesselSystemCheckFields = [
+        ["checkGpsDisplay", "GPS Display"],
+        ["checkRadar", "Radar"],
+        ["checkVhfRadio", "VHF Radio"],
+        ["checkDepthGauge", "Depth Gauge"],
+        ["checkRefrigerator", "Refrigerator"],
+        ["checkAutopilot", "Autopilot"],
+        ["checkSalonTv", "Salon TV"],
+        ["checkBilgePumps", "Bilge Pumps"],
+        ["checkWindlass", "Windlass"],
+        ["checkAnchorWash", "Anchor Wash"],
+        ["checkCockpitWash", "Cockpit Wash"],
+        ["checkWatermaker", "Watermaker"],
+        ["checkWaterSystem", "Water System"],
+        ["checkToilets", "Toilets"],
+        ["checkHeadVent", "Head Vent"],
+        ["checkShowers", "Showers"],
+        ["checkFuelTransfer", "Fuel Transfer"],
+        ["checkMainEngineStart", "Main Engine Start"],
+        ["checkAcStartPump", "A/C Start Pump"],
+        ["checkIceMaker", "Ice Maker"],
+        ["checkStove", "Stove"],
+        ["checkPropane", "Propane"],
+        ["checkDishwasher", "Dishwasher"],
+        ["checkFlybridgeInstruments", "Flybridge Instr."],
+        ["checkWheelhouseInstruments", "Wheelhouse Instr."],
+        ["checkNavLights", "Nav Lights"],
+        ["checkDinghy", "Dinghy"],
+        ["checkDavit", "Davit"],
+        ["checkBbq", "BBQ"],
+        ["checkDockmaster", "Dockmaster"],
+        ["checkBilgesDry", "Bilges Dry"],
+        ["checkLazarette", "Lazarette Check"],
+      ];
+
+      const entryDetailLine = (entry, labels) => labels.map(([field, label, suffix]) => {
+        const value = String(entry[field] || "").trim();
+        return value ? `${label}: ${value}${suffix || ""}` : "";
+      }).filter(Boolean).join(" · ");
+
+      const selectedCheckLabels = (entry, labels) => labels.filter(([field]) => Boolean(entry[field])).map(([, label]) => label).join(", ");
 
       let entries = [];
       let trips = [];
@@ -1394,7 +1757,47 @@
             ["Observations", entry.observations],
             ["Cruising Notes", entry.cruisingNotes],
             ["Daily Summary", entry.dailySummary],
-          ].filter(([, value]) => value).map(([label, value]) => `<p><strong>${label}:</strong> ${escapeHtml(value)}</p>`).join("");
+            [
+              "Systems Status",
+              entryDetailLine(entry, [
+                ["dieselStarboard", "Diesel STBD", " gal"],
+                ["dieselCenter", "Diesel Center", " gal"],
+                ["dieselPort", "Diesel Port", " gal"],
+                ["waterPortPct", "Water Port", "%"],
+                ["waterStarboardPct", "Water STBD", "%"],
+                ["holdingTankPct", "Holding Tank", "%"],
+                ["batteryHousePct", "House Batt", "%"],
+                ["batteryBowThrusterPct", "Bow Thruster Batt", "%"],
+                ["batteryGenStartPct", "Gen Start Batt", "%"],
+              ]),
+            ],
+            ["Oil Added", entry.oilAdded],
+            ["Broken", entry.broken],
+            ["Repaired", entry.repaired],
+            [
+              "Engine Performance",
+              entryDetailLine(entry, [
+                ["engineCheckTime", "Time"],
+                ["engineCheckKts", "Kts"],
+                ["engineCheckRpm", "RPM"],
+                ["engineCheckOilPsi", "Oil PSI"],
+                ["engineCheckCoolantTemp", "Coolant Temp"],
+                ["engineCheckPowerPct", "% Power", "%"],
+                ["engineCheckFuelBurn", "Fuel"],
+                ["engineCheckSeaState", "Seast"],
+                ["engineCheckKtsPerGal", "Kts/Gal"],
+                ["engineRoomTemp", "Eng Rm Temp"],
+              ]),
+            ],
+            ["Engine Room Check Notes", entry.engineRoomCheckNotes],
+            ["Engine Room Checks", selectedCheckLabels(entry, engineRoomCheckFields)],
+            ["System Checks", selectedCheckLabels(entry, vesselSystemCheckFields)],
+          ].filter(([, value]) => value).map(([label, value]) => `
+            <div class="entry-note-group">
+              <strong>${escapeHtml(label)}</strong>
+              <p>${escapeHtml(value)}</p>
+            </div>
+          `).join("");
 
           return `
             <article class="log-entry-card">
@@ -1446,6 +1849,12 @@
         const active = activeJourney();
         const entry = { id: entryIdInput.value || newId(), updatedAt: new Date().toISOString() };
         fields.forEach((field) => {
+          if (checkboxFields.has(field)) {
+            const element = form.elements[field];
+            entry[field] = element instanceof HTMLInputElement && element.checked ? "Yes" : "";
+            return;
+          }
+
           entry[field] = String(data.get(field) || "").trim();
         });
         if (active && !entryIdInput.value) {
@@ -1458,6 +1867,11 @@
         entryIdInput.value = entry.id;
         fields.forEach((field) => {
           const element = form.elements[field];
+          if (element instanceof HTMLInputElement && element.type === "checkbox") {
+            element.checked = Boolean(entry[field]);
+            return;
+          }
+
           if (element) {
             element.value = entry[field] || "";
           }
