@@ -573,6 +573,120 @@ service cloud.firestore {
         && sightingId == (dayId + "__" + request.resource.data.birdId);
     }
 
+    function isTriathlonViewer() {
+      return isAdmin() || isApprovedForSection("triathlon");
+    }
+
+    function isTriathlonManager() {
+      return isAdmin();
+    }
+
+    function triathlonWeightEntryKeysAreAllowed(seasonId) {
+      return request.resource.data.keys().hasAll([
+        "seasonId",
+        "weight",
+        "unit",
+        "measuredAt",
+        "note",
+        "createdByUid",
+        "createdByLabel",
+        "createdAt",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "seasonId",
+        "weight",
+        "unit",
+        "measuredAt",
+        "note",
+        "createdByUid",
+        "createdByLabel",
+        "createdAt",
+        "updatedAt"
+      ])
+        && request.resource.data.seasonId == seasonId
+        && request.resource.data.weight is number
+        && request.resource.data.weight > 0
+        && ["lb", "kg"].hasAny([request.resource.data.unit])
+        && request.resource.data.measuredAt is timestamp
+        && request.resource.data.note is string
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.createdByLabel is string;
+    }
+
+    function triathlonCheckinKeysAreAllowed(seasonId) {
+      return request.resource.data.keys().hasAll([
+        "seasonId",
+        "dateKey",
+        "sleepHours",
+        "waist",
+        "energy",
+        "nutrition",
+        "recovery",
+        "notes",
+        "createdByUid",
+        "createdByLabel",
+        "createdAt",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "seasonId",
+        "dateKey",
+        "sleepHours",
+        "waist",
+        "energy",
+        "nutrition",
+        "recovery",
+        "notes",
+        "createdByUid",
+        "createdByLabel",
+        "createdAt",
+        "updatedAt"
+      ])
+        && request.resource.data.seasonId == seasonId
+        && request.resource.data.dateKey is string
+        && (request.resource.data.sleepHours == null || request.resource.data.sleepHours is number)
+        && (request.resource.data.waist == null || request.resource.data.waist is number)
+        && ["", "low", "steady", "strong"].hasAny([request.resource.data.energy])
+        && request.resource.data.nutrition is string
+        && request.resource.data.recovery is string
+        && request.resource.data.notes is string
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.createdByLabel is string;
+    }
+
+    function triathlonPhotoKeysAreAllowed(seasonId) {
+      return request.resource.data.keys().hasAll([
+        "seasonId",
+        "photoType",
+        "photoUrl",
+        "photoPath",
+        "caption",
+        "takenAt",
+        "uploadedByUid",
+        "uploadedByLabel",
+        "createdAt",
+        "updatedAt"
+      ]) && request.resource.data.keys().hasOnly([
+        "seasonId",
+        "photoType",
+        "photoUrl",
+        "photoPath",
+        "caption",
+        "takenAt",
+        "uploadedByUid",
+        "uploadedByLabel",
+        "createdAt",
+        "updatedAt"
+      ])
+        && request.resource.data.seasonId == seasonId
+        && ["progress", "training"].hasAny([request.resource.data.photoType])
+        && request.resource.data.photoUrl is string
+        && request.resource.data.photoPath is string
+        && request.resource.data.caption is string
+        && request.resource.data.takenAt is timestamp
+        && request.resource.data.uploadedByUid == request.auth.uid
+        && request.resource.data.uploadedByLabel is string;
+    }
+
     match /competitions/{year}/months/{month} {
       allow read: if true;
       allow create: if isAdmin() || (
@@ -659,6 +773,66 @@ service cloud.firestore {
       );
 
       allow delete: if isAdmin();
+    }
+
+    match /triathlonSeasons/{seasonId} {
+      allow read: if isTriathlonViewer();
+      allow create, update, delete: if isTriathlonManager();
+    }
+
+    match /triathlonSeasons/{seasonId}/profile/{profileId} {
+      allow read: if isTriathlonViewer();
+      allow create, update, delete: if isTriathlonManager();
+    }
+
+    match /triathlonSeasons/{seasonId}/weightEntries/{entryId} {
+      allow read: if isTriathlonViewer();
+      allow create, update: if isTriathlonManager()
+        && triathlonWeightEntryKeysAreAllowed(seasonId);
+      allow delete: if isTriathlonManager();
+    }
+
+    match /triathlonSeasons/{seasonId}/checkins/{entryId} {
+      allow read: if isTriathlonViewer();
+      allow create, update: if isTriathlonManager()
+        && triathlonCheckinKeysAreAllowed(seasonId);
+      allow delete: if isTriathlonManager();
+    }
+
+    match /triathlonSeasons/{seasonId}/progressPhotos/{photoId} {
+      allow read: if isTriathlonViewer();
+      allow create, update: if isTriathlonManager()
+        && triathlonPhotoKeysAreAllowed(seasonId);
+      allow delete: if isTriathlonManager();
+    }
+
+    match /triathlonSeasons/{seasonId}/measurements/{entryId} {
+      allow read: if isTriathlonViewer();
+      allow create, update, delete: if isTriathlonManager();
+    }
+
+    match /triathlonSeasons/{seasonId}/nutritionLogs/{entryId} {
+      allow read: if isTriathlonViewer();
+      allow create, update, delete: if isTriathlonManager();
+    }
+
+    match /triathlonSeasons/{seasonId}/recoveryLogs/{entryId} {
+      allow read: if isTriathlonViewer();
+      allow create, update, delete: if isTriathlonManager();
+    }
+
+    match /triathlonSeasons/{seasonId}/stravaActivities/{activityId} {
+      allow read: if isTriathlonViewer();
+      allow create, update, delete: if isTriathlonManager();
+    }
+
+    match /triathlonSeasons/{seasonId}/integrations/{integrationId} {
+      allow read: if isTriathlonViewer() && integrationId == "stravaPublic";
+      allow create, update, delete: if isTriathlonManager() && integrationId == "stravaPublic";
+    }
+
+    match /triathlonSecrets/{secretId} {
+      allow read, write: if false;
     }
 
     match /roadTrips/{tripId} {

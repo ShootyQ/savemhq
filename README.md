@@ -16,6 +16,43 @@ This is a static site.
 - Shared header/auth runtime: `js/auth-shared.js`, `js/header-shell.js`
 - Road trip hub and live map: `carlsons-road-trip.html`, `js/road-trip-shared.js`
 - Road trip games hub and bingo state: `carlsons-road-trip-games.html`, `carlsons-kids-said-it-bingo.html`, `js/road-trip-games-shared.js`
+- Triathlon tracker: `triathlon-tracker.html`, `js/triathlon-tracker.js`, Firebase Functions in `functions/`
+
+## Triathlon Tracker Setup
+
+`triathlon-tracker.html` is a private-by-approval dashboard for the August 22 triathlon build. It supports:
+
+- Manual weigh-ins with timestamped history and a lightweight trend chart.
+- Daily check-ins for notes, measurements, nutrition, sleep, and recovery.
+- Progress and training photo uploads to Firebase Storage.
+- Strava OAuth and manual activity sync through Firebase Functions.
+
+Access uses the existing approval system. Add the `triathlon` section to an approved user's `loginApprovals/{uid}.accessSections`, or sign in as the admin account.
+
+### Strava OAuth
+
+Create a Strava API app, then configure the callback URL to the deployed `handleStravaCallback` Function URL.
+
+Set the Strava client secret with Firebase Secret Manager:
+
+```bash
+firebase functions:secrets:set STRAVA_CLIENT_SECRET
+```
+
+The Functions code also expects these string params. The Firebase CLI will prompt for them during deploy if they are not already configured:
+
+- `STRAVA_CLIENT_ID`
+- `STRAVA_REDIRECT_URI`
+- `TRIATHLON_DASHBOARD_URL`
+- Secret: `STRAVA_CLIENT_SECRET`
+
+The Strava client secret and refresh tokens must stay server-side. Do not put them in browser JavaScript or client-readable Firestore docs.
+
+Deploy the full tracker backend rules with:
+
+```bash
+firebase deploy --only firestore:rules,storage,functions
+```
 
 ## 2026 Competition UX Notes
 

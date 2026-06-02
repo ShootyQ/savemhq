@@ -12,6 +12,11 @@ service firebase.storage {
       );
     }
 
+    function isTriathlonPhotoUploader() {
+      return isAuthed()
+        && request.auth.token.email == "andrewpcarlson85@gmail.com";
+    }
+
     match /roadTrips/{tripId}/photo-proof/{challengeId}/{fileName} {
       allow read: if true;
       allow write: if isRoadTripPhotoUploader()
@@ -24,6 +29,16 @@ service firebase.storage {
     match /roadTrips/{tripId}/events/{eventType}/{fileName} {
       allow read: if true;
       allow write: if isRoadTripPhotoUploader()
+        && (
+          request.resource == null
+          || request.resource.contentType.matches("image/.*")
+        );
+    }
+
+    match /triathlon/{seasonId}/{photoType}/{fileName} {
+      allow read: if isAuthed();
+      allow write: if isTriathlonPhotoUploader()
+        && ["progress", "training"].hasAny([photoType])
         && (
           request.resource == null
           || request.resource.contentType.matches("image/.*")

@@ -50,6 +50,11 @@ export const ACCESS_SECTIONS = [
     label: "Road Trip",
     description: "Use the interactive road-trip pages and game controls.",
   },
+  {
+    id: "triathlon",
+    label: "Triathlon Tracker",
+    description: "View and manage race training, weight, photos, check-ins, and Strava sync.",
+  },
 ];
 
 const ACCESS_SECTION_IDS = new Set(ACCESS_SECTIONS.map((section) => section.id));

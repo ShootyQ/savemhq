@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Triathlon Tracker | SavemHQ</title>
+    <meta
+      name="description"
+      content="A private SavemHQ triathlon dashboard for race countdown, weigh-ins, progress photos, check-ins, and Strava training sync."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="triathlon">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div id="site-header-root"></div>
+
+    <main id="main-content">
+      <section class="hero section triathlon-hero">
+        <div class="container hero-inner trip-hero-grid">
+          <div class="home-hero-copy">
+            <p class="tagline">August 22 Race Build</p>
+            <h1>Triathlon Tracker</h1>
+            <p class="subheadline">
+              Weight, training, check-ins, photos, and Strava activity history in one private race-day dashboard.
+            </p>
+            <div class="hero-surface triathlon-race-card">
+              <div>
+                <p class="section-kicker">Race Countdown</p>
+                <strong id="triathlon-countdown">-- days</strong>
+              </div>
+              <p id="triathlon-auth-status" class="small-note">Checking access...</p>
+            </div>
+            <div class="hero-actions trip-live-links">
+              <a class="btn btn-primary" href="#triathlon-dashboard">Open Dashboard</a>
+              <a class="btn btn-secondary" href="#triathlon-photos">Progress Photos</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="triathlon-dashboard" class="section section-card">
+        <div class="container">
+          <div id="triathlon-locked" class="project-card triathlon-access-card">
+            <p class="section-kicker">Private Dashboard</p>
+            <h2>Sign In To View The Tracker</h2>
+            <p id="triathlon-locked-message">Use Google Login above. Approved triathlon users can view this dashboard.</p>
+          </div>
+
+          <div id="triathlon-app" class="triathlon-app hidden">
+            <div class="triathlon-dashboard-grid">
+              <article class="project-card triathlon-summary-card">
+                <p class="section-kicker">Race Snapshot</p>
+                <h2>Today At A Glance</h2>
+                <div class="trip-stat-grid triathlon-stat-grid" aria-live="polite">
+                  <div class="trip-stat-chip">
+                    <span class="small-note">Current weight</span>
+                    <strong id="triathlon-current-weight">--</strong>
+                  </div>
+                  <div class="trip-stat-chip">
+                    <span class="small-note">Since start</span>
+                    <strong id="triathlon-weight-change">--</strong>
+                  </div>
+                  <div class="trip-stat-chip">
+                    <span class="small-note">Goal gap</span>
+                    <strong id="triathlon-goal-gap">--</strong>
+                  </div>
+                  <div class="trip-stat-chip">
+                    <span class="small-note">Latest check-in</span>
+                    <strong id="triathlon-latest-checkin">--</strong>
+                  </div>
+                </div>
+              </article>
+
+              <article class="project-card triathlon-strava-card">
+                <div class="triathlon-card-heading">
+                  <div>
+                    <p class="section-kicker">Strava</p>
+                    <h2>Training Sync</h2>
+                  </div>
+                  <span id="triathlon-strava-pill" class="status-chip">Not connected</span>
+                </div>
+                <p id="triathlon-strava-status" class="small-note">OAuth Functions are scaffolded separately so Strava secrets stay server-side.</p>
+                <div class="form-actions">
+                  <button id="triathlon-strava-connect" class="btn btn-primary" type="button">Connect Strava</button>
+                  <button id="triathlon-strava-sync" class="btn btn-secondary" type="button">Sync Now</button>
+                  <button id="triathlon-strava-disconnect" class="btn btn-secondary" type="button">Disconnect</button>
+                </div>
+              </article>
+            </div>
+
+            <div class="triathlon-work-grid">
+              <article class="project-card triathlon-panel">
+                <div class="triathlon-card-heading">
+                  <div>
+                    <p class="section-kicker">Weight</p>
+                    <h2>Weigh-In Log</h2>
+                  </div>
+                  <span class="small-note">Pounds by default</span>
+                </div>
+                <form id="triathlon-weight-form" class="trip-log-form triathlon-form">
+                  <div class="trip-log-field">
+                    <label for="triathlon-weight-value">Weight</label>
+                    <input id="triathlon-weight-value" class="trip-text-input" type="number" min="1" step="0.1" inputmode="decimal" placeholder="218.4" required />
+                  </div>
+                  <div class="trip-log-field">
+                    <label for="triathlon-weight-time">Measured at</label>
+                    <input id="triathlon-weight-time" class="trip-text-input" type="datetime-local" required />
+                  </div>
+                  <div class="trip-log-field triathlon-form-wide">
+                    <label for="triathlon-weight-note">Note</label>
+                    <textarea id="triathlon-weight-note" maxlength="220" placeholder="Optional note"></textarea>
+                  </div>
+                  <div class="form-actions triathlon-form-wide">
+                    <button id="triathlon-weight-submit" class="btn btn-primary" type="submit">Save Weigh-In</button>
+                  </div>
+                </form>
+                <p id="triathlon-weight-status" class="small-note" aria-live="polite"></p>
+                <div id="triathlon-weight-chart" class="triathlon-chart" aria-live="polite"></div>
+                <div id="triathlon-weight-list" class="triathlon-log-list" aria-live="polite"></div>
+              </article>
+
+              <article class="project-card triathlon-panel">
+                <div class="triathlon-card-heading">
+                  <div>
+                    <p class="section-kicker">Daily Check-In</p>
+                    <h2>Body, Food, Recovery</h2>
+                  </div>
+                </div>
+                <form id="triathlon-checkin-form" class="trip-log-form triathlon-form">
+                  <div class="trip-log-field">
+                    <label for="triathlon-checkin-date">Date</label>
+                    <input id="triathlon-checkin-date" class="trip-text-input" type="date" required />
+                  </div>
+                  <div class="trip-log-field">
+                    <label for="triathlon-sleep-hours">Sleep hours</label>
+                    <input id="triathlon-sleep-hours" class="trip-text-input" type="number" min="0" step="0.25" inputmode="decimal" placeholder="7.5" />
+                  </div>
+                  <div class="trip-log-field">
+                    <label for="triathlon-waist">Waist</label>
+                    <input id="triathlon-waist" class="trip-text-input" type="number" min="0" step="0.1" inputmode="decimal" placeholder="inches" />
+                  </div>
+                  <div class="trip-log-field">
+                    <label for="triathlon-energy">Energy</label>
+                    <select id="triathlon-energy" class="trip-text-input">
+                      <option value="">Pick one</option>
+                      <option value="low">Low</option>
+                      <option value="steady">Steady</option>
+                      <option value="strong">Strong</option>
+                    </select>
+                  </div>
+                  <div class="trip-log-field triathlon-form-wide">
+                    <label for="triathlon-nutrition">Nutrition / meals</label>
+                    <textarea id="triathlon-nutrition" maxlength="420" placeholder="Meals, hydration, wins, rough spots"></textarea>
+                  </div>
+                  <div class="trip-log-field triathlon-form-wide">
+                    <label for="triathlon-recovery">Recovery / soreness</label>
+                    <textarea id="triathlon-recovery" maxlength="420" placeholder="Sleep, soreness, stretching, mood"></textarea>
+                  </div>
+                  <div class="trip-log-field triathlon-form-wide">
+                    <label for="triathlon-checkin-notes">Notes</label>
+                    <textarea id="triathlon-checkin-notes" maxlength="520" placeholder="Anything else worth remembering"></textarea>
+                  </div>
+                  <div class="form-actions triathlon-form-wide">
+                    <button id="triathlon-checkin-submit" class="btn btn-primary" type="submit">Save Check-In</button>
+                  </div>
+                </form>
+                <p id="triathlon-checkin-status" class="small-note" aria-live="polite"></p>
+                <div id="triathlon-checkin-list" class="triathlon-log-list" aria-live="polite"></div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="triathlon-photos" class="section triathlon-private-section hidden">
+        <div class="container triathlon-photo-layout">
+          <article class="project-card triathlon-panel">
+            <p class="section-kicker">Photos</p>
+            <h2>Progress And Training Shots</h2>
+            <form id="triathlon-photo-form" class="trip-log-form triathlon-form">
+              <div class="trip-log-field">
+                <label for="triathlon-photo-type">Photo type</label>
+                <select id="triathlon-photo-type" class="trip-text-input" required>
+                  <option value="progress">Progress</option>
+                  <option value="training">Training</option>
+                </select>
+              </div>
+              <div class="trip-log-field">
+                <label for="triathlon-photo-time">Taken at</label>
+                <input id="triathlon-photo-time" class="trip-text-input" type="datetime-local" required />
+              </div>
+              <div class="trip-log-field triathlon-form-wide">
+                <label for="triathlon-photo-caption">Caption</label>
+                <textarea id="triathlon-photo-caption" maxlength="220" placeholder="Optional caption"></textarea>
+              </div>
+              <div class="trip-log-field triathlon-form-wide">
+                <label for="triathlon-photo-file">Upload photo</label>
+                <input id="triathlon-photo-file" class="trip-text-input" type="file" accept="image/*" />
+                <p class="small-note">Large photos are compressed before upload.</p>
+              </div>
+              <div class="form-actions triathlon-form-wide">
+                <button id="triathlon-photo-submit" class="btn btn-primary" type="submit">Upload Photo</button>
+              </div>
+            </form>
+            <p id="triathlon-photo-status" class="small-note" aria-live="polite"></p>
+          </article>
+
+          <section class="project-card triathlon-panel triathlon-gallery-panel">
+            <div class="triathlon-card-heading">
+              <div>
+                <p class="section-kicker">Gallery</p>
+                <h2>Visual Timeline</h2>
+              </div>
+              <div class="triathlon-filter-row" aria-label="Photo filters">
+                <button class="btn btn-secondary triathlon-photo-filter is-active" type="button" data-filter="all">All</button>
+                <button class="btn btn-secondary triathlon-photo-filter" type="button" data-filter="progress">Progress</button>
+                <button class="btn btn-secondary triathlon-photo-filter" type="button" data-filter="training">Training</button>
+              </div>
+            </div>
+            <div id="triathlon-photo-gallery" class="triathlon-photo-gallery" aria-live="polite"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="section section-card triathlon-private-section hidden">
+        <div class="container">
+          <article class="project-card triathlon-panel">
+            <p class="section-kicker">Activity</p>
+            <h2>Recent Strava Workouts</h2>
+            <div class="trip-stat-grid triathlon-stat-grid" aria-live="polite">
+              <div class="trip-stat-chip">
+                <span class="small-note">Run this week</span>
+                <strong id="triathlon-week-run">--</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Bike this week</span>
+                <strong id="triathlon-week-bike">--</strong>
+              </div>
+              <div class="trip-stat-chip">
+                <span class="small-note">Swim this week</span>
+                <strong id="triathlon-week-swim">--</strong>
+              </div>
+            </div>
+            <div id="triathlon-activity-list" class="triathlon-log-list" aria-live="polite"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Triathlon Tracker for the August 22 race build.</p>
+        <nav aria-label="Footer">
+          <ul class="footer-nav">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#triathlon-dashboard">Dashboard</a></li>
+            <li><a href="#triathlon-photos">Photos</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initHeaderAuth } from "./js/auth-shared.js";
+      import { mountSiteHeader } from "./js/header-component.js";
+      import { initHeaderShell } from "./js/header-shell.js";
+      import { initRevealMotion } from "./js/reveal-motion.js";
+      import { initTriathlonTracker } from "./js/triathlon-tracker.js";
+
+      mountSiteHeader({
+        brandHref: "index.html",
+        navLinks: [
+          { label: "Home", href: "index.html" },
+          { label: "Dashboard", href: "#triathlon-dashboard" },
+          { label: "Photos", href: "#triathlon-photos" },
+          { label: "Road Trip", href: "carlsons-road-trip.html" },
+        ],
+      });
+
+      initHeaderShell();
+      initTriathlonTracker({ initHeaderAuth });
+      initRevealMotion();
+    </script>
+  </body>
+</html>
