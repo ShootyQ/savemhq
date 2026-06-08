@@ -8,6 +8,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import {
   deleteObject,
@@ -245,6 +246,11 @@ const normalizeCheckin = (id, data) => ({
   sleepHours: data?.sleepHours == null ? null : Number(data.sleepHours),
   waist: data?.waist == null ? null : Number(data.waist),
   energy: String(data?.energy || ""),
+  manualWorkoutCount: data?.manualWorkoutCount == null ? 0 : Number(data.manualWorkoutCount),
+  waterComplete: data?.waterComplete === true,
+  pagesComplete: data?.pagesComplete === true,
+  mealComplete: data?.mealComplete === true,
+  sugarComplete: data?.sugarComplete === true,
   waterGallons: data?.waterGallons == null ? null : Number(data.waterGallons),
   pagesRead: data?.pagesRead == null ? null : Number(data.pagesRead),
   mealsEaten: data?.mealsEaten == null ? null : Number(data.mealsEaten),
@@ -302,47 +308,117 @@ const consumeStravaCallbackStatus = () => {
 
 const getSelectedProgressDate = () => state.selectedProgressDate || formatDateInput();
 
+const getCheckinForDate = (dateKey) => state.checkins
+  .filter((entry) => entry.dateKey === dateKey)
+  .sort((left, right) => (toDate(right.createdAt)?.getTime() || 0) - (toDate(left.createdAt)?.getTime() || 0))[0] || null;
+
+const baseCheckinPayload = (dateKey, existing = null) => ({
+  seasonId: SEASON_ID,
+  dateKey,
+  sleepHours: existing?.sleepHours ?? null,
+  waist: existing?.waist ?? null,
+  energy: existing?.energy ?? "",
+  manualWorkoutCount: Number.isFinite(existing?.manualWorkoutCount) ? Math.max(0, Math.round(existing.manualWorkoutCount)) : 0,
+  waterComplete: existing?.waterComplete === true,
+  pagesComplete: existing?.pagesComplete === true,
+  mealComplete: existing?.mealComplete === true,
+  sugarComplete: existing?.sugarComplete === true,
+  waterGallons: existing?.waterGallons ?? null,
+  pagesRead: existing?.pagesRead ?? null,
+  mealsEaten: existing?.mealsEaten ?? null,
+  sugarGrams: existing?.sugarGrams ?? null,
+  nutrition: existing?.nutrition ?? "",
+  recovery: existing?.recovery ?? "",
+  notes: existing?.notes ?? "",
+  createdByUid: String(existing?.createdByUid || state.user?.uid || ""),
+  createdByLabel: String(existing?.createdByLabel || signedInLabel()),
+  createdAt: existing?.createdAt || serverTimestamp(),
+  updatedAt: serverTimestamp(),
+});
+
+const saveCheckinForDate = async (dateKey, patch = {}) => {
+  const targetDateKey = String(dateKey || "").trim();
+  if (!targetDateKey) {
+    throw new Error("missing-date");
+  }
+
+  const existing = getCheckinForDate(targetDateKey);
+  const payload = {
+    ...baseCheckinPayload(targetDateKey, existing),
+    ...patch,
+    seasonId: SEASON_ID,
+    dateKey: targetDateKey,
+    createdByUid: String(existing?.createdByUid || state.user?.uid || ""),
+    createdByLabel: String(existing?.createdByLabel || signedInLabel()),
+    createdAt: existing?.createdAt || serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(doc(checkinsCollection, targetDateKey), payload, { merge: true });
+  state.selectedProgressDate = targetDateKey;
+  if (elements.progressDate) {
+    elements.progressDate.value = targetDateKey;
+  }
+  if (elements.checkinDate) {
+    elements.checkinDate.value = targetDateKey;
+  }
+};
+
 const getProgressSummary = (dateKey = getSelectedProgressDate()) => {
   const targetDateKey = String(dateKey || formatDateInput()).trim();
-  const checkin = state.checkins.find((entry) => entry.dateKey === targetDateKey) || null;
+  const checkin = getCheckinForDate(targetDateKey);
   const activities = state.activities
     .filter((activity) => dateKeyForValue(activity.startDateLocal || activity.startDate) === targetDateKey)
     .sort((left, right) => (toDate(right.startDateLocal || right.startDate)?.getTime() || 0) - (toDate(left.startDateLocal || left.startDate)?.getTime() || 0));
   const qualifyingWorkouts = activities.filter((activity) => Number(activity.movingTimeSeconds || 0) >= DAILY_WORKOUT_MINUTES * 60);
   const progressPhotos = state.photos.filter((photo) => photo.photoType === "progress" && dateKeyForValue(photo.takenAt) === targetDateKey);
+  const manualWorkoutCount = Math.max(0, Math.min(DAILY_WORKOUT_TARGET, Math.round(Number(checkin?.manualWorkoutCount || 0))));
+  const totalWorkoutCount = Math.max(qualifyingWorkouts.length, manualWorkoutCount);
+  const waterDone = checkin?.waterComplete === true || Number(checkin?.waterGallons) >= DAILY_WATER_TARGET_GALLONS;
+  const pagesDone = checkin?.pagesComplete === true || Number(checkin?.pagesRead) >= DAILY_PAGES_TARGET;
+  const mealDone = checkin?.mealComplete === true || Number(checkin?.mealsEaten) === 1;
+  const sugarDone = checkin?.sugarComplete === true || (Number.isFinite(checkin?.sugarGrams) && Number(checkin.sugarGrams) < DAILY_SUGAR_TARGET_GRAMS);
 
   const items = [
     {
+      key: "workouts",
       label: "45 minute workouts",
-      value: `${qualifyingWorkouts.length}/${DAILY_WORKOUT_TARGET}`,
-      note: qualifyingWorkouts.length ? `${activities.length} synced Strava activit${activities.length === 1 ? "y" : "ies"}` : "Needs synced workouts",
-      complete: qualifyingWorkouts.length >= DAILY_WORKOUT_TARGET,
+      value: `${totalWorkoutCount}/${DAILY_WORKOUT_TARGET}`,
+      note: qualifyingWorkouts.length
+        ? `Strava ${qualifyingWorkouts.length}/${DAILY_WORKOUT_TARGET}${manualWorkoutCount ? ` · manual ${manualWorkoutCount}` : ""}`
+        : (manualWorkoutCount ? `Manual ${manualWorkoutCount}/${DAILY_WORKOUT_TARGET}` : "Needs synced workouts or quick logs"),
+      complete: totalWorkoutCount >= DAILY_WORKOUT_TARGET,
     },
     {
+      key: "water",
       label: "Water",
-      value: checkin?.waterGallons == null ? "--" : `${formatMaybeNumber(checkin.waterGallons, 2)} gal`,
+      value: waterDone ? "Checked off" : (checkin?.waterGallons == null ? "--" : `${formatMaybeNumber(checkin.waterGallons, 2)} gal`),
       note: `Target ${DAILY_WATER_TARGET_GALLONS} gallon`,
-      complete: Number(checkin?.waterGallons) >= DAILY_WATER_TARGET_GALLONS,
+      complete: waterDone,
     },
     {
+      key: "pages",
       label: "Read 10 pages",
-      value: checkin?.pagesRead == null ? "--" : `${Math.round(checkin.pagesRead)} pages`,
+      value: pagesDone ? "Checked off" : (checkin?.pagesRead == null ? "--" : `${Math.round(checkin.pagesRead)} pages`),
       note: `Target ${DAILY_PAGES_TARGET} pages`,
-      complete: Number(checkin?.pagesRead) >= DAILY_PAGES_TARGET,
+      complete: pagesDone,
     },
     {
+      key: "meal",
       label: "One meal",
-      value: checkin?.mealsEaten == null ? "--" : `${Math.round(checkin.mealsEaten)} meal${Math.round(checkin.mealsEaten) === 1 ? "" : "s"}`,
+      value: mealDone ? "Checked off" : (checkin?.mealsEaten == null ? "--" : `${Math.round(checkin.mealsEaten)} meal${Math.round(checkin.mealsEaten) === 1 ? "" : "s"}`),
       note: "Fasting target",
-      complete: Number(checkin?.mealsEaten) === 1,
+      complete: mealDone,
     },
     {
+      key: "sugar",
       label: "Sugar under 10g",
-      value: checkin?.sugarGrams == null ? "--" : `${formatMaybeNumber(checkin.sugarGrams, 1)} g`,
+      value: sugarDone ? "Checked off" : (checkin?.sugarGrams == null ? "--" : `${formatMaybeNumber(checkin.sugarGrams, 1)} g`),
       note: `Stay under ${DAILY_SUGAR_TARGET_GRAMS} g`,
-      complete: Number.isFinite(checkin?.sugarGrams) && Number(checkin.sugarGrams) < DAILY_SUGAR_TARGET_GRAMS,
+      complete: sugarDone,
     },
     {
+      key: "photo",
       label: "Progress photo",
       value: progressPhotos.length ? `${progressPhotos.length} logged` : "Open",
       note: progressPhotos[0] ? formatDateTime(progressPhotos[0].takenAt) : "Upload a progress photo",
@@ -355,6 +431,8 @@ const getProgressSummary = (dateKey = getSelectedProgressDate()) => {
     checkin,
     activities,
     qualifyingWorkouts,
+    manualWorkoutCount,
+    totalWorkoutCount,
     progressPhotos,
     items,
     completedCount: items.filter((item) => item.complete).length,
@@ -499,7 +577,7 @@ const renderCheckins = () => {
           ].filter(Boolean).join(" · ") || "Daily check-in"}</p>
           <div class="triathlon-inline-progress">
             <span class="status-chip ${dailySummary.completedCount >= 5 ? "is-live" : ""}">${dailySummary.completedCount}/${dailySummary.items.length} complete</span>
-            <span class="small-note">Water ${entry.waterGallons == null ? "--" : `${formatMaybeNumber(entry.waterGallons, 2)} gal`} · Read ${entry.pagesRead == null ? "--" : `${Math.round(entry.pagesRead)} pages`} · Meals ${entry.mealsEaten == null ? "--" : Math.round(entry.mealsEaten)} · Sugar ${entry.sugarGrams == null ? "--" : `${formatMaybeNumber(entry.sugarGrams, 1)} g`} · Workouts ${dailySummary.qualifyingWorkouts.length}/${DAILY_WORKOUT_TARGET} · Photo ${dailySummary.progressPhotos.length ? "yes" : "no"}</span>
+            <span class="small-note">Water ${entry.waterComplete ? "done" : (entry.waterGallons == null ? "--" : `${formatMaybeNumber(entry.waterGallons, 2)} gal`)} · Read ${entry.pagesComplete ? "done" : (entry.pagesRead == null ? "--" : `${Math.round(entry.pagesRead)} pages`)} · Meal ${entry.mealComplete ? "done" : (entry.mealsEaten == null ? "--" : Math.round(entry.mealsEaten))} · Sugar ${entry.sugarComplete ? "done" : (entry.sugarGrams == null ? "--" : `${formatMaybeNumber(entry.sugarGrams, 1)} g`)} · Workouts ${dailySummary.totalWorkoutCount}/${DAILY_WORKOUT_TARGET} · Photo ${dailySummary.progressPhotos.length ? "yes" : "no"}</span>
           </div>
           ${entry.nutrition ? `<p><strong>Nutrition:</strong> ${escapeHtml(entry.nutrition)}</p>` : ""}
           ${entry.recovery ? `<p><strong>Recovery:</strong> ${escapeHtml(entry.recovery)}</p>` : ""}
@@ -523,9 +601,9 @@ const renderDailyProgress = () => {
   }
 
   const dailySummary = getProgressSummary(selectedDate);
-  setText(elements.progressWorkouts, `${dailySummary.qualifyingWorkouts.length}/${DAILY_WORKOUT_TARGET}`);
-  setText(elements.progressHydration, `${dailySummary.checkin?.waterGallons == null ? "--" : `${formatMaybeNumber(dailySummary.checkin.waterGallons, 2)} gal`} / ${dailySummary.checkin?.pagesRead == null ? "--" : `${Math.round(dailySummary.checkin.pagesRead)} p`}`);
-  setText(elements.progressNutrition, `${dailySummary.checkin?.mealsEaten == null ? "--" : `${Math.round(dailySummary.checkin.mealsEaten)} meal`} / ${dailySummary.checkin?.sugarGrams == null ? "--" : `${formatMaybeNumber(dailySummary.checkin.sugarGrams, 1)} g`}`);
+  setText(elements.progressWorkouts, `${dailySummary.totalWorkoutCount}/${DAILY_WORKOUT_TARGET}`);
+  setText(elements.progressHydration, `${dailySummary.checkin?.waterComplete ? "done" : (dailySummary.checkin?.waterGallons == null ? "--" : `${formatMaybeNumber(dailySummary.checkin.waterGallons, 2)} gal`)} / ${dailySummary.checkin?.pagesComplete ? "done" : (dailySummary.checkin?.pagesRead == null ? "--" : `${Math.round(dailySummary.checkin.pagesRead)} p`)}`);
+  setText(elements.progressNutrition, `${dailySummary.checkin?.mealComplete ? "done" : (dailySummary.checkin?.mealsEaten == null ? "--" : `${Math.round(dailySummary.checkin.mealsEaten)} meal`)} / ${dailySummary.checkin?.sugarComplete ? "done" : (dailySummary.checkin?.sugarGrams == null ? "--" : `${formatMaybeNumber(dailySummary.checkin.sugarGrams, 1)} g`)}`);
   setText(elements.progressPhoto, dailySummary.progressPhotos.length ? `${dailySummary.progressPhotos.length} logged` : "Open");
 
   elements.progressGrid.innerHTML = dailySummary.items.map((item) => `
@@ -534,6 +612,18 @@ const renderDailyProgress = () => {
       <strong>${escapeHtml(item.label)}</strong>
       <div class="triathlon-progress-value">${escapeHtml(item.value)}</div>
       <p class="small-note">${escapeHtml(item.note)}</p>
+      ${state.canManage ? `
+        <div class="triathlon-progress-actions">
+          ${item.key === "workouts" ? `
+            <button class="btn btn-secondary triathlon-quick-action" type="button" data-action="workout-dec">-1</button>
+            <button class="btn btn-primary triathlon-quick-action" type="button" data-action="workout-inc">+1 workout</button>
+          ` : item.key === "photo" ? `
+            <a class="btn btn-secondary" href="#triathlon-photos">Upload photo</a>
+          ` : `
+            <button class="btn ${item.complete ? "btn-secondary" : "btn-primary"} triathlon-quick-action" type="button" data-action="${item.key}-toggle">${item.complete ? "Undo" : "Check off"}</button>
+          `}
+        </div>
+      ` : ""}
     </article>
   `).join("");
 
@@ -788,9 +878,7 @@ const submitCheckin = async (event) => {
     const pagesRead = elements.pagesRead.value ? Number(elements.pagesRead.value) : null;
     const mealsEaten = elements.mealsEaten.value ? Number(elements.mealsEaten.value) : null;
     const sugarGrams = elements.sugarGrams.value ? Number(elements.sugarGrams.value) : null;
-    await addDoc(checkinsCollection, {
-      seasonId: SEASON_ID,
-      dateKey,
+    await saveCheckinForDate(dateKey, {
       sleepHours: Number.isFinite(sleepHours) ? sleepHours : null,
       waist: Number.isFinite(waist) ? waist : null,
       energy: String(elements.energy.value || "").trim(),
@@ -798,13 +886,13 @@ const submitCheckin = async (event) => {
       pagesRead: Number.isFinite(pagesRead) ? pagesRead : null,
       mealsEaten: Number.isFinite(mealsEaten) ? mealsEaten : null,
       sugarGrams: Number.isFinite(sugarGrams) ? sugarGrams : null,
+      waterComplete: Number.isFinite(waterGallons) ? waterGallons >= DAILY_WATER_TARGET_GALLONS : undefined,
+      pagesComplete: Number.isFinite(pagesRead) ? pagesRead >= DAILY_PAGES_TARGET : undefined,
+      mealComplete: Number.isFinite(mealsEaten) ? mealsEaten === 1 : undefined,
+      sugarComplete: Number.isFinite(sugarGrams) ? sugarGrams < DAILY_SUGAR_TARGET_GRAMS : undefined,
       nutrition: String(elements.nutrition.value || "").trim(),
       recovery: String(elements.recovery.value || "").trim(),
       notes: String(elements.checkinNotes.value || "").trim(),
-      createdByUid: state.user.uid,
-      createdByLabel: signedInLabel(),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
     });
 
     elements.checkinForm.reset();
@@ -819,6 +907,29 @@ const submitCheckin = async (event) => {
   } finally {
     setDisabled([elements.checkinSubmit], false);
   }
+};
+
+const handleQuickProgressAction = async (action) => {
+  ensureCanManage();
+  const selectedDate = getSelectedProgressDate();
+  const summary = getProgressSummary(selectedDate);
+  const existing = summary.checkin;
+  const patches = {
+    "workout-inc": { manualWorkoutCount: Math.min(DAILY_WORKOUT_TARGET, summary.manualWorkoutCount + 1) },
+    "workout-dec": { manualWorkoutCount: Math.max(0, summary.manualWorkoutCount - 1) },
+    "water-toggle": { waterComplete: !(existing?.waterComplete === true) },
+    "pages-toggle": { pagesComplete: !(existing?.pagesComplete === true) },
+    "meal-toggle": { mealComplete: !(existing?.mealComplete === true) },
+    "sugar-toggle": { sugarComplete: !(existing?.sugarComplete === true) },
+  };
+  const patch = patches[action];
+  if (!patch) {
+    return;
+  }
+
+  setText(elements.checkinStatus, "Saving quick checkoff...");
+  await saveCheckinForDate(selectedDate, patch);
+  setText(elements.checkinStatus, "Daily progress updated.");
 };
 
 const sanitizeStorageFileName = (value = "") => String(value || "")
@@ -1086,6 +1197,17 @@ const bindEvents = () => {
     button.addEventListener("click", () => {
       state.photoFilter = button.dataset.filter || "all";
       renderPhotos();
+    });
+  });
+
+  elements.progressGrid?.addEventListener("click", (event) => {
+    const button = event.target.closest(".triathlon-quick-action");
+    if (!button?.dataset.action) {
+      return;
+    }
+
+    handleQuickProgressAction(button.dataset.action).catch((error) => {
+      setText(elements.checkinStatus, `Could not update daily progress (${error.message || error.code || "unknown"}).`);
     });
   });
 

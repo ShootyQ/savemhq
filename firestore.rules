@@ -620,6 +620,11 @@ service cloud.firestore {
         "sleepHours",
         "waist",
         "energy",
+        "manualWorkoutCount",
+        "waterComplete",
+        "pagesComplete",
+        "mealComplete",
+        "sugarComplete",
         "waterGallons",
         "pagesRead",
         "mealsEaten",
@@ -637,6 +642,11 @@ service cloud.firestore {
         "sleepHours",
         "waist",
         "energy",
+        "manualWorkoutCount",
+        "waterComplete",
+        "pagesComplete",
+        "mealComplete",
+        "sugarComplete",
         "waterGallons",
         "pagesRead",
         "mealsEaten",
@@ -654,6 +664,11 @@ service cloud.firestore {
         && (request.resource.data.sleepHours == null || request.resource.data.sleepHours is number)
         && (request.resource.data.waist == null || request.resource.data.waist is number)
         && ["", "low", "steady", "strong"].hasAny([request.resource.data.energy])
+        && (request.resource.data.manualWorkoutCount == null || (request.resource.data.manualWorkoutCount is number && request.resource.data.manualWorkoutCount >= 0))
+        && request.resource.data.waterComplete is bool
+        && request.resource.data.pagesComplete is bool
+        && request.resource.data.mealComplete is bool
+        && request.resource.data.sugarComplete is bool
         && (request.resource.data.waterGallons == null || (request.resource.data.waterGallons is number && request.resource.data.waterGallons >= 0))
         && (request.resource.data.pagesRead == null || (request.resource.data.pagesRead is number && request.resource.data.pagesRead >= 0))
         && (request.resource.data.mealsEaten == null || (request.resource.data.mealsEaten is number && request.resource.data.mealsEaten >= 0))

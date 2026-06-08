@@ -1069,6 +1069,17 @@ body[data-page="triathlon"] .hero-inner {
   color: var(--sea-deep);
 }
 
+.triathlon-progress-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.triathlon-progress-actions .btn {
+  flex: 1 1 auto;
+}
+
 .triathlon-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
