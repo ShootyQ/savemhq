@@ -33,6 +33,13 @@ Access uses the existing approval system. Add the `triathlon` section to an appr
 
 Create a Strava API app, then configure the callback URL to the deployed `handleStravaCallback` Function URL.
 
+Use these values consistently:
+
+- Strava app `Authorization Callback Domain`: the Functions host domain only, for example `us-central1-your-project.cloudfunctions.net`
+- Function param `STRAVA_REDIRECT_URI`: the full deployed `handleStravaCallback` URL
+- Function param `TRIATHLON_DASHBOARD_URL`: your tracker page URL, for example `https://savemhq.com/triathlon-tracker.html`
+- Function param `STRAVA_CLIENT_ID`: the numeric client id from the Strava app settings
+
 Set the Strava client secret with Firebase Secret Manager:
 
 ```bash
@@ -53,6 +60,8 @@ Deploy the full tracker backend rules with:
 ```bash
 firebase deploy --only firestore:rules,storage,functions
 ```
+
+After deploy, sign in as the triathlon manager on the tracker page, click `Connect Strava`, approve the app, then click `Sync Now` to pull activities into `triathlonSeasons/2026-andrew-august-22/stravaActivities`.
 
 ## 2026 Competition UX Notes
 

@@ -59,6 +59,7 @@ const defaultState = {
   photos: [],
   activities: [],
   stravaStatus: null,
+  stravaNotice: "",
   photoFilter: "all",
   selectedProgressDate: "",
   unsubscribers: [],
@@ -281,6 +282,23 @@ const normalizeActivity = (id, data) => ({
 const canDeleteRecord = (record) => state.canManage || String(record?.createdByUid || record?.uploadedByUid || "") === state.user?.uid;
 
 const formatMaybeNumber = (value, digits = 1) => Number.isFinite(value) ? Number(value).toFixed(digits) : "--";
+
+const consumeStravaCallbackStatus = () => {
+  const url = new URL(window.location.href);
+  const status = String(url.searchParams.get("strava") || "").trim().toLowerCase();
+  if (!status) {
+    return;
+  }
+
+  state.stravaNotice = {
+    connected: "Strava connected. You can sync activities now.",
+    denied: "Strava connection was canceled.",
+    error: "Strava connection failed. Check the Functions logs and app settings.",
+  }[status] || "";
+
+  url.searchParams.delete("strava");
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+};
 
 const getSelectedProgressDate = () => state.selectedProgressDate || formatDateInput();
 
@@ -647,6 +665,11 @@ const renderStrava = () => {
   const connected = status.connected === true;
   setText(elements.stravaPill, connected ? "Connected" : "Not connected");
   elements.stravaPill?.classList.toggle("is-live", connected);
+  if (state.stravaNotice) {
+    setText(elements.stravaStatus, state.stravaNotice);
+    return;
+  }
+
   setText(
     elements.stravaStatus,
     connected
@@ -1124,6 +1147,7 @@ const applyManageState = () => {
 
 export const initTriathlonTracker = ({ initHeaderAuth } = {}) => {
   updateCountdown();
+  consumeStravaCallbackStatus();
   setInitialInputs();
   bindEvents();
   applyManageState();

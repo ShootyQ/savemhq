@@ -134,6 +134,8 @@ const normalizeActivity = (activity) => ({
   name: String(activity.name || "Strava activity"),
   sportType: String(activity.sport_type || activity.type || "Workout"),
   startDate: activity.start_date ? admin.firestore.Timestamp.fromDate(new Date(activity.start_date)) : null,
+  startDateLocal: activity.start_date_local ? admin.firestore.Timestamp.fromDate(new Date(activity.start_date_local)) : null,
+  timezone: String(activity.timezone || ""),
   distanceMeters: Number(activity.distance || 0),
   movingTimeSeconds: Number(activity.moving_time || 0),
   elapsedTimeSeconds: Number(activity.elapsed_time || 0),
