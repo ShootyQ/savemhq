@@ -620,6 +620,10 @@ service cloud.firestore {
         "sleepHours",
         "waist",
         "energy",
+        "waterGallons",
+        "pagesRead",
+        "mealsEaten",
+        "sugarGrams",
         "nutrition",
         "recovery",
         "notes",
@@ -633,6 +637,10 @@ service cloud.firestore {
         "sleepHours",
         "waist",
         "energy",
+        "waterGallons",
+        "pagesRead",
+        "mealsEaten",
+        "sugarGrams",
         "nutrition",
         "recovery",
         "notes",
@@ -646,6 +654,10 @@ service cloud.firestore {
         && (request.resource.data.sleepHours == null || request.resource.data.sleepHours is number)
         && (request.resource.data.waist == null || request.resource.data.waist is number)
         && ["", "low", "steady", "strong"].hasAny([request.resource.data.energy])
+        && (request.resource.data.waterGallons == null || (request.resource.data.waterGallons is number && request.resource.data.waterGallons >= 0))
+        && (request.resource.data.pagesRead == null || (request.resource.data.pagesRead is number && request.resource.data.pagesRead >= 0))
+        && (request.resource.data.mealsEaten == null || (request.resource.data.mealsEaten is number && request.resource.data.mealsEaten >= 0))
+        && (request.resource.data.sugarGrams == null || (request.resource.data.sugarGrams is number && request.resource.data.sugarGrams >= 0))
         && request.resource.data.nutrition is string
         && request.resource.data.recovery is string
         && request.resource.data.notes is string

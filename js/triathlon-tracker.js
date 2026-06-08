@@ -28,6 +28,11 @@ const STORAGE_ROOT = `triathlon/${SEASON_ID}`;
 const COMPRESSIBLE_IMAGE_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 const IMAGE_PREP_TIMEOUT_MS = 8000;
 const IMAGE_UPLOAD_TIMEOUT_MS = 45000;
+const DAILY_WORKOUT_TARGET = 3;
+const DAILY_WORKOUT_MINUTES = 45;
+const DAILY_WATER_TARGET_GALLONS = 1;
+const DAILY_PAGES_TARGET = 10;
+const DAILY_SUGAR_TARGET_GRAMS = 10;
 const storage = getStorage(app);
 const functions = getFunctions(app);
 const createStravaAuthSession = httpsCallable(functions, "createStravaAuthSession");
@@ -55,6 +60,7 @@ const defaultState = {
   activities: [],
   stravaStatus: null,
   photoFilter: "all",
+  selectedProgressDate: "",
   unsubscribers: [],
 };
 
@@ -73,6 +79,14 @@ const elements = {
   weightChange: $("triathlon-weight-change"),
   goalGap: $("triathlon-goal-gap"),
   latestCheckin: $("triathlon-latest-checkin"),
+  progressDate: $("triathlon-progress-date"),
+  progressScore: $("triathlon-progress-score"),
+  progressWorkouts: $("triathlon-progress-workouts"),
+  progressHydration: $("triathlon-progress-hydration"),
+  progressNutrition: $("triathlon-progress-nutrition"),
+  progressPhoto: $("triathlon-progress-photo"),
+  progressGrid: $("triathlon-progress-grid"),
+  progressWorkoutList: $("triathlon-progress-workout-list"),
   weightForm: $("triathlon-weight-form"),
   weightValue: $("triathlon-weight-value"),
   weightTime: $("triathlon-weight-time"),
@@ -86,6 +100,10 @@ const elements = {
   sleepHours: $("triathlon-sleep-hours"),
   waist: $("triathlon-waist"),
   energy: $("triathlon-energy"),
+  waterGallons: $("triathlon-water-gallons"),
+  pagesRead: $("triathlon-pages-read"),
+  mealsEaten: $("triathlon-meals-eaten"),
+  sugarGrams: $("triathlon-sugar-grams"),
   nutrition: $("triathlon-nutrition"),
   recovery: $("triathlon-recovery"),
   checkinNotes: $("triathlon-checkin-notes"),
@@ -100,6 +118,7 @@ const elements = {
   photoSubmit: $("triathlon-photo-submit"),
   photoStatus: $("triathlon-photo-status"),
   photoGallery: $("triathlon-photo-gallery"),
+  photoProgression: $("triathlon-photo-progression"),
   photoFilters: [...document.querySelectorAll(".triathlon-photo-filter")],
   stravaPill: $("triathlon-strava-pill"),
   stravaStatus: $("triathlon-strava-status"),
@@ -166,6 +185,11 @@ const formatDateInput = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+const dateKeyForValue = (value) => {
+  const date = toDate(value);
+  return date ? formatDateInput(date) : "";
+};
+
 const formatDateTimeInput = (date = new Date()) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -220,6 +244,10 @@ const normalizeCheckin = (id, data) => ({
   sleepHours: data?.sleepHours == null ? null : Number(data.sleepHours),
   waist: data?.waist == null ? null : Number(data.waist),
   energy: String(data?.energy || ""),
+  waterGallons: data?.waterGallons == null ? null : Number(data.waterGallons),
+  pagesRead: data?.pagesRead == null ? null : Number(data.pagesRead),
+  mealsEaten: data?.mealsEaten == null ? null : Number(data.mealsEaten),
+  sugarGrams: data?.sugarGrams == null ? null : Number(data.sugarGrams),
   nutrition: String(data?.nutrition || "").trim(),
   recovery: String(data?.recovery || "").trim(),
   notes: String(data?.notes || "").trim(),
@@ -243,6 +271,7 @@ const normalizeActivity = (id, data) => ({
   name: String(data?.name || "Activity"),
   sportType: String(data?.sportType || data?.type || "Workout"),
   startDate: data?.startDate || null,
+  startDateLocal: data?.startDateLocal || null,
   distanceMeters: Number(data?.distanceMeters || 0),
   movingTimeSeconds: Number(data?.movingTimeSeconds || 0),
   elevationGainMeters: Number(data?.elevationGainMeters || 0),
@@ -250,6 +279,69 @@ const normalizeActivity = (id, data) => ({
 });
 
 const canDeleteRecord = (record) => state.canManage || String(record?.createdByUid || record?.uploadedByUid || "") === state.user?.uid;
+
+const formatMaybeNumber = (value, digits = 1) => Number.isFinite(value) ? Number(value).toFixed(digits) : "--";
+
+const getSelectedProgressDate = () => state.selectedProgressDate || formatDateInput();
+
+const getProgressSummary = (dateKey = getSelectedProgressDate()) => {
+  const targetDateKey = String(dateKey || formatDateInput()).trim();
+  const checkin = state.checkins.find((entry) => entry.dateKey === targetDateKey) || null;
+  const activities = state.activities
+    .filter((activity) => dateKeyForValue(activity.startDateLocal || activity.startDate) === targetDateKey)
+    .sort((left, right) => (toDate(right.startDateLocal || right.startDate)?.getTime() || 0) - (toDate(left.startDateLocal || left.startDate)?.getTime() || 0));
+  const qualifyingWorkouts = activities.filter((activity) => Number(activity.movingTimeSeconds || 0) >= DAILY_WORKOUT_MINUTES * 60);
+  const progressPhotos = state.photos.filter((photo) => photo.photoType === "progress" && dateKeyForValue(photo.takenAt) === targetDateKey);
+
+  const items = [
+    {
+      label: "45 minute workouts",
+      value: `${qualifyingWorkouts.length}/${DAILY_WORKOUT_TARGET}`,
+      note: qualifyingWorkouts.length ? `${activities.length} synced Strava activit${activities.length === 1 ? "y" : "ies"}` : "Needs synced workouts",
+      complete: qualifyingWorkouts.length >= DAILY_WORKOUT_TARGET,
+    },
+    {
+      label: "Water",
+      value: checkin?.waterGallons == null ? "--" : `${formatMaybeNumber(checkin.waterGallons, 2)} gal`,
+      note: `Target ${DAILY_WATER_TARGET_GALLONS} gallon`,
+      complete: Number(checkin?.waterGallons) >= DAILY_WATER_TARGET_GALLONS,
+    },
+    {
+      label: "Read 10 pages",
+      value: checkin?.pagesRead == null ? "--" : `${Math.round(checkin.pagesRead)} pages`,
+      note: `Target ${DAILY_PAGES_TARGET} pages`,
+      complete: Number(checkin?.pagesRead) >= DAILY_PAGES_TARGET,
+    },
+    {
+      label: "One meal",
+      value: checkin?.mealsEaten == null ? "--" : `${Math.round(checkin.mealsEaten)} meal${Math.round(checkin.mealsEaten) === 1 ? "" : "s"}`,
+      note: "Fasting target",
+      complete: Number(checkin?.mealsEaten) === 1,
+    },
+    {
+      label: "Sugar under 10g",
+      value: checkin?.sugarGrams == null ? "--" : `${formatMaybeNumber(checkin.sugarGrams, 1)} g`,
+      note: `Stay under ${DAILY_SUGAR_TARGET_GRAMS} g`,
+      complete: Number.isFinite(checkin?.sugarGrams) && Number(checkin.sugarGrams) < DAILY_SUGAR_TARGET_GRAMS,
+    },
+    {
+      label: "Progress photo",
+      value: progressPhotos.length ? `${progressPhotos.length} logged` : "Open",
+      note: progressPhotos[0] ? formatDateTime(progressPhotos[0].takenAt) : "Upload a progress photo",
+      complete: progressPhotos.length > 0,
+    },
+  ];
+
+  return {
+    dateKey: targetDateKey,
+    checkin,
+    activities,
+    qualifyingWorkouts,
+    progressPhotos,
+    items,
+    completedCount: items.filter((item) => item.complete).length,
+  };
+};
 
 const renderAccessState = () => {
   if (!elements.app || !elements.locked) {
@@ -279,6 +371,9 @@ const renderWeightSummary = () => {
   const sortedWeights = [...state.weights].sort((a, b) => (toDate(a.measuredAt)?.getTime() || 0) - (toDate(b.measuredAt)?.getTime() || 0));
   const first = sortedWeights[0];
   const latest = sortedWeights[sortedWeights.length - 1];
+  const dailySummary = getProgressSummary();
+
+  setText(elements.progressScore, `${dailySummary.completedCount}/${dailySummary.items.length}`);
 
   if (!latest) {
     setText(elements.currentWeight, "--");
@@ -373,33 +468,97 @@ const renderCheckins = () => {
     return;
   }
 
-  elements.checkinList.innerHTML = state.checkins.slice(0, 6).map((entry) => `
-    <article class="triathlon-log-item triathlon-log-item-stacked">
-      <div>
-        <strong>${escapeHtml(entry.dateKey)}</strong>
-        <p class="small-note">${[
-          entry.sleepHours == null ? "" : `${entry.sleepHours}h sleep`,
-          entry.waist == null ? "" : `${entry.waist.toFixed(1)} in waist`,
-          entry.energy ? `Energy: ${entry.energy}` : "",
-        ].filter(Boolean).join(" · ") || "Daily check-in"}</p>
-        ${entry.nutrition ? `<p><strong>Nutrition:</strong> ${escapeHtml(entry.nutrition)}</p>` : ""}
-        ${entry.recovery ? `<p><strong>Recovery:</strong> ${escapeHtml(entry.recovery)}</p>` : ""}
-        ${entry.notes ? `<p>${escapeHtml(entry.notes)}</p>` : ""}
-      </div>
-      ${canDeleteRecord(entry) ? `<button class="btn btn-secondary triathlon-delete-checkin" type="button" data-id="${escapeHtml(entry.id)}">Delete</button>` : ""}
+  elements.checkinList.innerHTML = state.checkins.slice(0, 6).map((entry) => {
+    const dailySummary = getProgressSummary(entry.dateKey);
+    return `
+      <article class="triathlon-log-item triathlon-log-item-stacked">
+        <div>
+          <strong>${escapeHtml(entry.dateKey)}</strong>
+          <p class="small-note">${[
+            entry.sleepHours == null ? "" : `${entry.sleepHours}h sleep`,
+            entry.waist == null ? "" : `${entry.waist.toFixed(1)} in waist`,
+            entry.energy ? `Energy: ${entry.energy}` : "",
+          ].filter(Boolean).join(" · ") || "Daily check-in"}</p>
+          <div class="triathlon-inline-progress">
+            <span class="status-chip ${dailySummary.completedCount >= 5 ? "is-live" : ""}">${dailySummary.completedCount}/${dailySummary.items.length} complete</span>
+            <span class="small-note">Water ${entry.waterGallons == null ? "--" : `${formatMaybeNumber(entry.waterGallons, 2)} gal`} · Read ${entry.pagesRead == null ? "--" : `${Math.round(entry.pagesRead)} pages`} · Meals ${entry.mealsEaten == null ? "--" : Math.round(entry.mealsEaten)} · Sugar ${entry.sugarGrams == null ? "--" : `${formatMaybeNumber(entry.sugarGrams, 1)} g`} · Workouts ${dailySummary.qualifyingWorkouts.length}/${DAILY_WORKOUT_TARGET} · Photo ${dailySummary.progressPhotos.length ? "yes" : "no"}</span>
+          </div>
+          ${entry.nutrition ? `<p><strong>Nutrition:</strong> ${escapeHtml(entry.nutrition)}</p>` : ""}
+          ${entry.recovery ? `<p><strong>Recovery:</strong> ${escapeHtml(entry.recovery)}</p>` : ""}
+          ${entry.notes ? `<p>${escapeHtml(entry.notes)}</p>` : ""}
+        </div>
+        ${canDeleteRecord(entry) ? `<button class="btn btn-secondary triathlon-delete-checkin" type="button" data-id="${escapeHtml(entry.id)}">Delete</button>` : ""}
+      </article>
+    `;
+  }).join("");
+};
+
+const renderDailyProgress = () => {
+  if (!elements.progressGrid || !elements.progressWorkoutList) {
+    return;
+  }
+
+  const selectedDate = state.selectedProgressDate || state.checkins[0]?.dateKey || formatDateInput();
+  state.selectedProgressDate = selectedDate;
+  if (elements.progressDate && elements.progressDate.value !== selectedDate) {
+    elements.progressDate.value = selectedDate;
+  }
+
+  const dailySummary = getProgressSummary(selectedDate);
+  setText(elements.progressWorkouts, `${dailySummary.qualifyingWorkouts.length}/${DAILY_WORKOUT_TARGET}`);
+  setText(elements.progressHydration, `${dailySummary.checkin?.waterGallons == null ? "--" : `${formatMaybeNumber(dailySummary.checkin.waterGallons, 2)} gal`} / ${dailySummary.checkin?.pagesRead == null ? "--" : `${Math.round(dailySummary.checkin.pagesRead)} p`}`);
+  setText(elements.progressNutrition, `${dailySummary.checkin?.mealsEaten == null ? "--" : `${Math.round(dailySummary.checkin.mealsEaten)} meal`} / ${dailySummary.checkin?.sugarGrams == null ? "--" : `${formatMaybeNumber(dailySummary.checkin.sugarGrams, 1)} g`}`);
+  setText(elements.progressPhoto, dailySummary.progressPhotos.length ? `${dailySummary.progressPhotos.length} logged` : "Open");
+
+  elements.progressGrid.innerHTML = dailySummary.items.map((item) => `
+    <article class="triathlon-progress-card ${item.complete ? "is-complete" : ""}">
+      <span class="status-chip ${item.complete ? "is-live" : ""}">${item.complete ? "Done" : "Open"}</span>
+      <strong>${escapeHtml(item.label)}</strong>
+      <div class="triathlon-progress-value">${escapeHtml(item.value)}</div>
+      <p class="small-note">${escapeHtml(item.note)}</p>
     </article>
   `).join("");
+
+  if (!dailySummary.activities.length) {
+    elements.progressWorkoutList.innerHTML = `<p class="small-note">No Strava workouts synced for ${escapeHtml(dailySummary.dateKey)} yet.</p>`;
+    return;
+  }
+
+  elements.progressWorkoutList.innerHTML = dailySummary.activities.map((activity) => {
+    const qualifies = Number(activity.movingTimeSeconds || 0) >= DAILY_WORKOUT_MINUTES * 60;
+    return `
+      <article class="triathlon-log-item">
+        <div>
+          <strong>${escapeHtml(activity.name)}</strong>
+          <p class="small-note">${escapeHtml(activity.sportType)} · ${activityDuration(activity)} · ${formatDateTime(activity.startDateLocal || activity.startDate)}${qualifies ? " · Counts toward the goal" : ""}</p>
+        </div>
+        ${activity.sourceUrl ? `<a class="btn btn-secondary" href="${escapeHtml(activity.sourceUrl)}" target="_blank" rel="noopener noreferrer">Open</a>` : ""}
+      </article>
+    `;
+  }).join("");
 };
 
 const renderPhotos = () => {
-  if (!elements.photoGallery) {
+  if (!elements.photoGallery || !elements.photoProgression) {
     return;
   }
 
   const visiblePhotos = state.photos.filter((photo) => state.photoFilter === "all" || photo.photoType === state.photoFilter);
+  const progressPhotos = [...state.photos]
+    .filter((photo) => photo.photoType === "progress")
+    .sort((left, right) => (toDate(left.takenAt)?.getTime() || 0) - (toDate(right.takenAt)?.getTime() || 0));
   elements.photoFilters.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.filter === state.photoFilter);
   });
+
+  elements.photoProgression.innerHTML = progressPhotos.length
+    ? progressPhotos.slice(-8).map((photo) => `
+      <article class="triathlon-photo-progression-card">
+        <img src="${escapeHtml(photo.photoUrl)}" alt="${escapeHtml(photo.caption || `Progress photo from ${formatDateOnly(photo.takenAt)}`)}" loading="lazy" />
+        <strong>${formatDateOnly(photo.takenAt)}</strong>
+      </article>
+    `).join("")
+    : `<p class="small-note">Upload progress photos and they will line up here in order.</p>`;
 
   if (!visiblePhotos.length) {
     elements.photoGallery.innerHTML = `<p class="small-note">No ${state.photoFilter === "all" ? "" : `${state.photoFilter} `}photos yet.</p>`;
@@ -502,6 +661,7 @@ const renderAll = () => {
   renderWeightChart();
   renderWeightList();
   renderCheckins();
+  renderDailyProgress();
   renderPhotos();
   renderActivities();
   renderStrava();
@@ -601,12 +761,20 @@ const submitCheckin = async (event) => {
 
     const sleepHours = elements.sleepHours.value ? Number(elements.sleepHours.value) : null;
     const waist = elements.waist.value ? Number(elements.waist.value) : null;
+    const waterGallons = elements.waterGallons.value ? Number(elements.waterGallons.value) : null;
+    const pagesRead = elements.pagesRead.value ? Number(elements.pagesRead.value) : null;
+    const mealsEaten = elements.mealsEaten.value ? Number(elements.mealsEaten.value) : null;
+    const sugarGrams = elements.sugarGrams.value ? Number(elements.sugarGrams.value) : null;
     await addDoc(checkinsCollection, {
       seasonId: SEASON_ID,
       dateKey,
       sleepHours: Number.isFinite(sleepHours) ? sleepHours : null,
       waist: Number.isFinite(waist) ? waist : null,
       energy: String(elements.energy.value || "").trim(),
+      waterGallons: Number.isFinite(waterGallons) ? waterGallons : null,
+      pagesRead: Number.isFinite(pagesRead) ? pagesRead : null,
+      mealsEaten: Number.isFinite(mealsEaten) ? mealsEaten : null,
+      sugarGrams: Number.isFinite(sugarGrams) ? sugarGrams : null,
       nutrition: String(elements.nutrition.value || "").trim(),
       recovery: String(elements.recovery.value || "").trim(),
       notes: String(elements.checkinNotes.value || "").trim(),
@@ -618,6 +786,10 @@ const submitCheckin = async (event) => {
 
     elements.checkinForm.reset();
     elements.checkinDate.value = formatDateInput();
+    state.selectedProgressDate = dateKey;
+    if (elements.progressDate) {
+      elements.progressDate.value = dateKey;
+    }
     setText(elements.checkinStatus, "Check-in saved.");
   } catch (error) {
     setText(elements.checkinStatus, `Could not save check-in (${error.message || error.code || "unknown"}).`);
@@ -894,6 +1066,12 @@ const bindEvents = () => {
     });
   });
 
+  elements.progressDate?.addEventListener("change", () => {
+    state.selectedProgressDate = String(elements.progressDate.value || "").trim() || formatDateInput();
+    renderDailyProgress();
+    renderWeightSummary();
+  });
+
   elements.stravaConnect?.addEventListener("click", connectStrava);
   elements.stravaSync?.addEventListener("click", syncStrava);
   elements.stravaDisconnect?.addEventListener("click", disconnectStravaIntegration);
@@ -909,6 +1087,10 @@ const setInitialInputs = () => {
   if (elements.checkinDate) {
     elements.checkinDate.value = formatDateInput();
   }
+  if (elements.progressDate) {
+    elements.progressDate.value = formatDateInput();
+    state.selectedProgressDate = elements.progressDate.value;
+  }
 };
 
 const applyManageState = () => {
@@ -921,6 +1103,10 @@ const applyManageState = () => {
     elements.sleepHours,
     elements.waist,
     elements.energy,
+    elements.waterGallons,
+    elements.pagesRead,
+    elements.mealsEaten,
+    elements.sugarGrams,
     elements.nutrition,
     elements.recovery,
     elements.checkinNotes,

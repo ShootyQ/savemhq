@@ -68,7 +68,44 @@
                     <span class="small-note">Latest check-in</span>
                     <strong id="triathlon-latest-checkin">--</strong>
                   </div>
+                  <div class="trip-stat-chip">
+                    <span class="small-note">Daily score</span>
+                    <strong id="triathlon-progress-score">--</strong>
+                  </div>
                 </div>
+              </article>
+
+              <article class="project-card triathlon-summary-card">
+                <div class="triathlon-card-heading">
+                  <div>
+                    <p class="section-kicker">Daily Progress</p>
+                    <h2>3-2-1 Discipline Board</h2>
+                  </div>
+                  <div class="trip-log-field triathlon-progress-date-field">
+                    <label for="triathlon-progress-date">Day</label>
+                    <input id="triathlon-progress-date" class="trip-text-input" type="date" />
+                  </div>
+                </div>
+                <div class="trip-stat-grid triathlon-stat-grid" aria-live="polite">
+                  <div class="trip-stat-chip">
+                    <span class="small-note">45 min workouts</span>
+                    <strong id="triathlon-progress-workouts">--</strong>
+                  </div>
+                  <div class="trip-stat-chip">
+                    <span class="small-note">Water / pages</span>
+                    <strong id="triathlon-progress-hydration">--</strong>
+                  </div>
+                  <div class="trip-stat-chip">
+                    <span class="small-note">Meal / sugar</span>
+                    <strong id="triathlon-progress-nutrition">--</strong>
+                  </div>
+                  <div class="trip-stat-chip">
+                    <span class="small-note">Progress photo</span>
+                    <strong id="triathlon-progress-photo">--</strong>
+                  </div>
+                </div>
+                <div id="triathlon-progress-grid" class="triathlon-progress-grid" aria-live="polite"></div>
+                <div id="triathlon-progress-workout-list" class="triathlon-log-list" aria-live="polite"></div>
               </article>
 
               <article class="project-card triathlon-strava-card">
@@ -148,6 +185,22 @@
                       <option value="strong">Strong</option>
                     </select>
                   </div>
+                  <div class="trip-log-field">
+                    <label for="triathlon-water-gallons">Water (gallons)</label>
+                    <input id="triathlon-water-gallons" class="trip-text-input" type="number" min="0" step="0.05" inputmode="decimal" placeholder="1.0" />
+                  </div>
+                  <div class="trip-log-field">
+                    <label for="triathlon-pages-read">Pages read</label>
+                    <input id="triathlon-pages-read" class="trip-text-input" type="number" min="0" step="1" inputmode="numeric" placeholder="10" />
+                  </div>
+                  <div class="trip-log-field">
+                    <label for="triathlon-meals-eaten">Meals eaten</label>
+                    <input id="triathlon-meals-eaten" class="trip-text-input" type="number" min="0" step="1" inputmode="numeric" placeholder="1" />
+                  </div>
+                  <div class="trip-log-field">
+                    <label for="triathlon-sugar-grams">Sugar grams</label>
+                    <input id="triathlon-sugar-grams" class="trip-text-input" type="number" min="0" step="0.1" inputmode="decimal" placeholder="9.5" />
+                  </div>
                   <div class="trip-log-field triathlon-form-wide">
                     <label for="triathlon-nutrition">Nutrition / meals</label>
                     <textarea id="triathlon-nutrition" maxlength="420" placeholder="Meals, hydration, wins, rough spots"></textarea>
@@ -216,6 +269,10 @@
                 <button class="btn btn-secondary triathlon-photo-filter" type="button" data-filter="progress">Progress</button>
                 <button class="btn btn-secondary triathlon-photo-filter" type="button" data-filter="training">Training</button>
               </div>
+            </div>
+            <div>
+              <p class="small-note">Progression</p>
+              <div id="triathlon-photo-progression" class="triathlon-photo-progression" aria-live="polite"></div>
             </div>
             <div id="triathlon-photo-gallery" class="triathlon-photo-gallery" aria-live="polite"></div>
           </section>

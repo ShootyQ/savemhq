@@ -1035,8 +1035,38 @@ body[data-page="triathlon"] .hero-inner {
   gap: 1rem;
 }
 
+.triathlon-progress-date-field {
+  min-width: min(12rem, 100%);
+}
+
 .triathlon-stat-grid {
   grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+}
+
+.triathlon-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.85rem;
+}
+
+.triathlon-progress-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.95rem;
+  border: 1px solid rgba(121, 107, 90, 0.18);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 253, 249, 0.82);
+}
+
+.triathlon-progress-card.is-complete {
+  border-color: rgba(67, 128, 109, 0.34);
+  background: linear-gradient(180deg, rgba(244, 252, 248, 0.98), rgba(233, 246, 239, 0.88));
+}
+
+.triathlon-progress-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--sea-deep);
 }
 
 .triathlon-form {
@@ -1117,6 +1147,13 @@ body[data-page="triathlon"] .hero-inner {
   gap: 0.35rem;
 }
 
+.triathlon-inline-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.7rem;
+  align-items: center;
+}
+
 .triathlon-filter-row {
   display: flex;
   flex-wrap: wrap;
@@ -1134,6 +1171,26 @@ body[data-page="triathlon"] .hero-inner {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
   gap: 0.9rem;
+}
+
+.triathlon-photo-progression {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.75rem;
+}
+
+.triathlon-photo-progression-card {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.triathlon-photo-progression-card img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: calc(var(--radius-sm) - 0.15rem);
+  border: 1px solid rgba(121, 107, 90, 0.18);
+  background: var(--surface-soft);
 }
 
 .triathlon-photo-card {
