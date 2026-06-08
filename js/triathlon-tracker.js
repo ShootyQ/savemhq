@@ -502,6 +502,8 @@ const renderWeightChart = () => {
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = Math.max(1, max - min);
+  const first = sortedWeights[0];
+  const latest = sortedWeights[sortedWeights.length - 1];
   const width = 520;
   const height = 180;
   const padding = 18;
@@ -524,8 +526,8 @@ const renderWeightChart = () => {
       `).join("")}
     </svg>
     <div class="triathlon-chart-labels">
-      <span>${min.toFixed(1)} lb</span>
-      <span>${max.toFixed(1)} lb</span>
+      <span>Start: ${first.weight.toFixed(1)} lb</span>
+      <span>Latest: ${latest.weight.toFixed(1)} lb</span>
     </div>
   `;
 };

@@ -5,16 +5,49 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function approvalDoc() {
+      return firestore.get(/databases/(default)/documents/loginApprovals/$(request.auth.uid));
+    }
+
+    function approvalDocExists() {
+      return isAuthed() && approvalDoc() != null;
+    }
+
+    function approvalStatusIsApproved() {
+      return approvalDocExists()
+        && approvalDoc().data.status == "approved";
+    }
+
+    function approvalEmailIs(value) {
+      return approvalDocExists()
+        && approvalDoc().data.email == value;
+    }
+
+    function approvalAccessSectionsContain(section) {
+      return approvalDocExists()
+        && approvalDoc().data.accessSections is list
+        && approvalDoc().data.accessSections.hasAny([section]);
+    }
+
     function isRoadTripPhotoUploader() {
       return isAuthed() && (
         request.auth.token.email == "andrewpcarlson85@gmail.com"
         || request.auth.token.email == "savannahbcarlson@gmail.com"
+        || approvalEmailIs("andrewpcarlson85@gmail.com")
+        || approvalEmailIs("savannahbcarlson@gmail.com")
       );
     }
 
     function isTriathlonPhotoUploader() {
       return isAuthed()
-        && request.auth.token.email == "andrewpcarlson85@gmail.com";
+        && (
+          request.auth.token.email == "andrewpcarlson85@gmail.com"
+          || approvalEmailIs("andrewpcarlson85@gmail.com")
+          || (
+            approvalStatusIsApproved()
+            && approvalAccessSectionsContain("triathlon")
+          )
+        );
     }
 
     match /roadTrips/{tripId}/photo-proof/{challengeId}/{fileName} {
