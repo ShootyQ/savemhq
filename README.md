@@ -63,6 +63,40 @@ firebase deploy --only firestore:rules,storage,functions
 
 After deploy, sign in as the triathlon manager on the tracker page, click `Connect Strava`, approve the app, then click `Sync Now` to pull activities into `triathlonSeasons/2026-andrew-august-22/stravaActivities`.
 
+## The Workroom Setup
+
+The Workroom is a private, owner-only office system with two pages:
+
+- `workroom.html` — the read-only TV display.
+- `workroom-control.html` — projects, tasks, focus, treasurer reminders, and Google connection management.
+
+Both pages require Firebase Authentication with `andrewpcarlson85@gmail.com`. They use real-time Firestore data under the signed-in owner's Workroom documents. Google Calendar and Gmail data are fetched only by Cloud Functions; browser clients cannot read OAuth state or token documents.
+
+### Google Calendar and Gmail OAuth
+
+1. In Google Cloud Console, enable the **Google Calendar API** and **Gmail API** for the Firebase project.
+2. Configure the OAuth consent screen and add the owner as a test user while the app is in testing.
+3. Create a **Web application** OAuth client. Add the deployed `handleWorkroomGoogleCallback` Function URL as an authorized redirect URI.
+4. Set these Firebase Functions string parameters during deployment:
+	- `GOOGLE_CLIENT_ID`
+	- `GOOGLE_REDIRECT_URI` — the full deployed callback URL
+	- `WORKROOM_CONTROL_URL` — normally the deployed `workroom-control.html` URL
+5. Store the OAuth client secret only in Firebase Secret Manager:
+
+```bash
+firebase functions:secrets:set GOOGLE_CLIENT_SECRET
+```
+
+The integration requests Calendar read-only and Gmail metadata-only access. It intentionally stores only selected calendar events and Gmail sender/subject metadata in the browser-readable summary; email bodies, snippets, access tokens, and refresh tokens stay out of client-readable data.
+
+Deploy the Workroom backend before opening the pages:
+
+```bash
+firebase deploy --only firestore:rules,functions
+```
+
+After deployment, open `workroom-control.html`, sign in with the owner account, connect each Google account, choose the calendars to display, and use **Sync now** to verify the TV display. The scheduled Function refreshes connected accounts every ten minutes.
+
 ## 2026 Competition UX Notes
 
 - Mobile header now uses a compact `Menu` toggle so auth buttons do not consume most of the screen.

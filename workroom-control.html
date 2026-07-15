@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Workroom | Control Room</title>
+    <meta name="description" content="Private control room for The Workroom office dashboard." />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="workroom-control">
+    <main class="workroom-control-shell">
+      <section id="workroom-gate" class="workroom-gate">
+        <p class="workroom-eyebrow">Private office system</p>
+        <h1>The Workroom</h1>
+        <p id="workroom-gate-message">Checking your private access…</p>
+        <button id="workroom-sign-in" class="workroom-button workroom-button-primary hidden" type="button">Sign in with Google</button>
+      </section>
+
+      <div id="workroom-control" class="hidden">
+        <header class="workroom-control-header">
+          <div>
+            <p class="workroom-eyebrow">The Workroom · control room</p>
+            <h1>Make room for the work that matters.</h1>
+          </div>
+          <div class="workroom-header-actions">
+            <a class="workroom-button workroom-button-quiet" href="workroom.html" target="_blank" rel="noopener">Open TV display</a>
+            <button id="workroom-sign-out" class="workroom-button workroom-button-quiet" type="button">Sign out</button>
+          </div>
+        </header>
+
+        <p id="workroom-notice" class="workroom-notice" aria-live="polite"></p>
+
+        <section class="workroom-control-grid">
+          <article class="workroom-panel workroom-focus-panel">
+            <p class="workroom-eyebrow">Daily compass</p>
+            <h2>Focus strip</h2>
+            <form id="workroom-focus-form" class="workroom-form">
+              <label>Primary focus<input id="workroom-focus-primary" maxlength="160" placeholder="What deserves the day?" required /></label>
+              <label>Next action<input id="workroom-focus-next" maxlength="160" placeholder="One small, concrete step" /></label>
+              <label>Intention<input id="workroom-focus-intention" maxlength="180" placeholder="How do you want to work?" /></label>
+              <button class="workroom-button workroom-button-primary" type="submit">Save focus</button>
+            </form>
+          </article>
+
+          <article class="workroom-panel">
+            <p class="workroom-eyebrow">Google workspace</p>
+            <h2>Calendar & email</h2>
+            <p class="workroom-panel-note">Only calendar details plus Gmail sender and subject reach the TV. Email bodies and snippets never do.</p>
+            <div class="workroom-inline-actions">
+              <button id="workroom-google-connect" class="workroom-button workroom-button-primary" type="button">Connect Google account</button>
+              <button id="workroom-google-sync" class="workroom-button workroom-button-quiet" type="button">Sync now</button>
+            </div>
+            <div id="workroom-connections" class="workroom-connection-list" aria-live="polite"></div>
+          </article>
+        </section>
+
+        <section class="workroom-management-grid">
+          <article class="workroom-panel">
+            <p class="workroom-eyebrow">Project map</p>
+            <h2>Projects</h2>
+            <form id="workroom-project-form" class="workroom-form workroom-compact-form">
+              <label>Project<input id="workroom-project-title" maxlength="120" required placeholder="e.g. Summer site refresh" /></label>
+              <label>Target date<input id="workroom-project-date" type="date" /></label>
+              <label>Color<select id="workroom-project-color"><option value="fern">Fern</option><option value="sky">Sky</option><option value="sun">Sun</option><option value="clay">Clay</option></select></label>
+              <button class="workroom-button workroom-button-primary" type="submit">Add project</button>
+            </form>
+            <div id="workroom-projects" class="workroom-record-list"></div>
+          </article>
+
+          <article class="workroom-panel">
+            <p class="workroom-eyebrow">Action queue</p>
+            <h2>Tasks</h2>
+            <form id="workroom-task-form" class="workroom-form workroom-compact-form">
+              <label>Task<input id="workroom-task-title" maxlength="180" required placeholder="The next useful thing" /></label>
+              <label>Project<select id="workroom-task-project"><option value="">No project</option></select></label>
+              <label>Priority<select id="workroom-task-priority"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></label>
+              <label>Due date<input id="workroom-task-date" type="date" /></label>
+              <label>Notes<textarea id="workroom-task-notes" maxlength="1000" placeholder="Optional context"></textarea></label>
+              <button class="workroom-button workroom-button-primary" type="submit">Add task</button>
+            </form>
+            <div id="workroom-tasks" class="workroom-record-list"></div>
+          </article>
+
+          <article class="workroom-panel">
+            <p class="workroom-eyebrow">Treasurer pulse</p>
+            <h2>Finance reminders</h2>
+            <form id="workroom-finance-form" class="workroom-form workroom-compact-form">
+              <label>Reminder<input id="workroom-finance-title" maxlength="160" required placeholder="Invoice follow-up" /></label>
+              <label>Category<input id="workroom-finance-category" maxlength="50" placeholder="Invoice, approval, filing…" /></label>
+              <label>Urgency<select id="workroom-finance-urgency"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></label>
+              <label>Due date<input id="workroom-finance-date" type="date" /></label>
+              <label>Amount (optional)<input id="workroom-finance-amount" type="number" step="0.01" min="0" /></label>
+              <label>Reference<input id="workroom-finance-reference" maxlength="160" placeholder="Vendor or note" /></label>
+              <button class="workroom-button workroom-button-primary" type="submit">Add reminder</button>
+            </form>
+            <div id="workroom-finance" class="workroom-record-list"></div>
+          </article>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="js/workroom-control.js"></script>
+  </body>
+</html>

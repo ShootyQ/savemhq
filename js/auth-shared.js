@@ -78,6 +78,8 @@ export const getKnownUserProfile = (email) => KNOWN_USER_PROFILES[String(email |
 
 export const getPersonFromEmail = (email) => getKnownUserProfile(email)?.person || "";
 
+export const isWorkroomOwner = (user) => String(user?.email || "").trim().toLowerCase() === ADMIN_EMAIL;
+
 export const normalizeAccessSections = (value) => {
   if (!Array.isArray(value)) {
     return [];

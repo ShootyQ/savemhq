@@ -9,6 +9,55 @@ service cloud.firestore {
       return isAuthed() && request.auth.token.email == "andrewpcarlson85@gmail.com";
     }
 
+    function isWorkroomOwner(ownerUid) {
+      return isAdmin() && request.auth.uid == ownerUid;
+    }
+
+    function workroomProjectIsValid() {
+      return request.resource.data.keys().hasAll(["title", "status", "color", "targetDate", "createdAt", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["title", "status", "color", "outcome", "targetDate", "createdAt", "updatedAt"])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 120
+        && ["active", "paused", "complete"].hasAny([request.resource.data.status])
+        && request.resource.data.color is string
+        && request.resource.data.color.size() <= 24
+        && (request.resource.data.targetDate == null || request.resource.data.targetDate is timestamp);
+    }
+
+    function workroomTaskIsValid() {
+      return request.resource.data.keys().hasAll(["title", "projectId", "status", "priority", "dueDate", "notes", "createdAt", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["title", "projectId", "status", "priority", "dueDate", "notes", "completedAt", "createdAt", "updatedAt"])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 180
+        && request.resource.data.projectId is string
+        && request.resource.data.projectId.size() <= 150
+        && ["next", "in-progress", "waiting", "done"].hasAny([request.resource.data.status])
+        && ["high", "medium", "low"].hasAny([request.resource.data.priority])
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 1000
+        && (request.resource.data.dueDate == null || request.resource.data.dueDate is timestamp)
+        && (request.resource.data.completedAt == null || request.resource.data.completedAt is timestamp);
+    }
+
+    function workroomFinanceReminderIsValid() {
+      return request.resource.data.keys().hasAll(["title", "category", "urgency", "dueDate", "reference", "amount", "status", "createdAt", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["title", "category", "urgency", "dueDate", "reference", "amount", "status", "completedAt", "createdAt", "updatedAt"])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
+        && request.resource.data.category is string
+        && request.resource.data.category.size() <= 50
+        && ["high", "medium", "low"].hasAny([request.resource.data.urgency])
+        && ["open", "done"].hasAny([request.resource.data.status])
+        && request.resource.data.reference is string
+        && request.resource.data.reference.size() <= 160
+        && (request.resource.data.amount == null || request.resource.data.amount is number)
+        && (request.resource.data.dueDate == null || request.resource.data.dueDate is timestamp)
+        && (request.resource.data.completedAt == null || request.resource.data.completedAt is timestamp);
+    }
+
     function isAutoApprovedUser() {
       return isAuthed() && (
         request.auth.token.email == "andrewpcarlson85@gmail.com"
@@ -859,6 +908,50 @@ service cloud.firestore {
     }
 
     match /triathlonSecrets/{secretId} {
+      allow read, write: if false;
+    }
+
+    match /workrooms/{ownerUid} {
+      allow read, create, update, delete: if isWorkroomOwner(ownerUid);
+    }
+
+    match /workrooms/{ownerUid}/projects/{projectId} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow create, update: if isWorkroomOwner(ownerUid) && workroomProjectIsValid();
+      allow delete: if isWorkroomOwner(ownerUid);
+    }
+
+    match /workrooms/{ownerUid}/tasks/{taskId} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow create, update: if isWorkroomOwner(ownerUid) && workroomTaskIsValid();
+      allow delete: if isWorkroomOwner(ownerUid);
+    }
+
+    match /workrooms/{ownerUid}/financeReminders/{reminderId} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow create, update: if isWorkroomOwner(ownerUid) && workroomFinanceReminderIsValid();
+      allow delete: if isWorkroomOwner(ownerUid);
+    }
+
+    match /workrooms/{ownerUid}/settings/{settingId} {
+      allow read, create, update, delete: if isWorkroomOwner(ownerUid) && settingId == "focus";
+    }
+
+    match /workroomConnections/{ownerUid}/connections/{connectionId} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow write: if false;
+    }
+
+    match /workroomSummaries/{ownerUid} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow write: if false;
+    }
+
+    match /workroomOAuthStates/{stateId} {
+      allow read, write: if false;
+    }
+
+    match /workroomSecrets/{secretId} {
       allow read, write: if false;
     }
 

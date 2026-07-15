@@ -45,6 +45,101 @@ body[data-page="home"] .site-header {
   border-bottom: 1px solid #cededb;
 }
 
+body[data-page^="workroom"] {
+  min-width: 0;
+  color: #edf1e8;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(121, 167, 126, 0.22), transparent 28rem),
+    radial-gradient(circle at 88% 12%, rgba(185, 153, 94, 0.16), transparent 25rem),
+    linear-gradient(135deg, #0e1d1a 0%, #172a25 48%, #11201d 100%);
+}
+
+.workroom-control-shell,
+.workroom-display-shell {
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.workroom-control-shell {
+  width: min(1480px, 94vw);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 3vw, 3.5rem) 0 4rem;
+}
+
+.workroom-gate {
+  width: min(42rem, 90vw);
+  margin: 15vh auto;
+  padding: clamp(2rem, 6vw, 5rem);
+  text-align: center;
+  border: 1px solid rgba(229, 239, 218, 0.18);
+  border-radius: 2rem;
+  background: rgba(20, 42, 36, 0.8);
+  box-shadow: 0 2rem 5rem rgba(0, 0, 0, 0.27);
+}
+
+.workroom-gate h1,
+.workroom-control-header h1,
+.workroom-display-focus h1,
+.workroom-panel h2,
+.workroom-tv-card h2 { color: #f5f1e8; }
+.workroom-gate p { color: #c8d3c6; }
+.workroom-eyebrow { margin: 0 0 0.38rem; color: #b8c998; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.workroom-button { min-height: 2.6rem; padding: 0.58rem 0.95rem; border: 1px solid transparent; border-radius: 0.82rem; font: inherit; font-size: 0.86rem; font-weight: 800; cursor: pointer; text-decoration: none; transition: transform 180ms ease, background 180ms ease; }
+.workroom-button:hover { transform: translateY(-1px); }
+.workroom-button-primary { color: #11211c; background: #d5dfaa; }
+.workroom-button-quiet { color: #e8edde; background: rgba(239, 243, 231, 0.08); border-color: rgba(239, 243, 231, 0.15); }
+.workroom-gate .workroom-button { margin-top: 1.1rem; }
+.workroom-control-header { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1.6rem; }
+.workroom-control-header h1 { max-width: 18ch; font-size: clamp(2.1rem, 4vw, 4.4rem); }
+.workroom-header-actions, .workroom-inline-actions, .workroom-connection-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.workroom-notice { min-height: 1.5rem; margin: 0 0 1rem; color: #dce8bc; font-weight: 700; }
+.workroom-notice.is-error { color: #ffb8a0; }
+.workroom-control-grid, .workroom-management-grid { display: grid; gap: 1rem; }
+.workroom-control-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); margin-bottom: 1rem; }
+.workroom-management-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+.workroom-panel, .workroom-tv-card { border: 1px solid rgba(227, 236, 218, 0.14); border-radius: 1.35rem; background: linear-gradient(145deg, rgba(31, 57, 48, 0.86), rgba(18, 39, 33, 0.83)); box-shadow: 0 1.4rem 3.6rem rgba(0, 0, 0, 0.16); }
+.workroom-panel { padding: clamp(1.2rem, 2.3vw, 2rem); }
+.workroom-panel h2 { font-size: 1.65rem; margin-bottom: 0.9rem; }
+.workroom-panel-note, .workroom-empty, .workroom-record small, .workroom-connection small { color: #afc0b3; font-size: 0.8rem; }
+.workroom-form { display: grid; gap: 0.72rem; }
+.workroom-form label { display: grid; gap: 0.28rem; color: #dce6d6; font-size: 0.8rem; font-weight: 800; }
+.workroom-form input, .workroom-form select, .workroom-form textarea { width: 100%; box-sizing: border-box; padding: 0.64rem 0.7rem; border: 1px solid rgba(221, 236, 215, 0.16); border-radius: 0.68rem; color: #edf2e9; background: rgba(9, 24, 20, 0.5); font: inherit; }
+.workroom-form textarea { min-height: 4rem; resize: vertical; }
+.workroom-compact-form { margin-bottom: 1.1rem; }
+.workroom-record-list, .workroom-connection-list { display: grid; gap: 0.5rem; }
+.workroom-record, .workroom-connection { display: flex; align-items: center; gap: 0.7rem; padding: 0.65rem 0; border-top: 1px solid rgba(225, 235, 216, 0.1); }
+.workroom-record > div, .workroom-connection > div:first-child { display: grid; flex: 1; min-width: 0; }
+.workroom-record strong, .workroom-connection strong { color: #f1f4ed; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workroom-record.is-done strong { color: #98aa99; text-decoration: line-through; }
+.workroom-icon-button, .workroom-check { flex: 0 0 auto; border: 0; cursor: pointer; }
+.workroom-icon-button { color: #b7c6b7; background: transparent; font-size: 1.35rem; }
+.workroom-check { width: 1.35rem; height: 1.35rem; border: 1px solid #8eab86; border-radius: 50%; color: #13251e; background: transparent; font-weight: 900; }
+.is-done .workroom-check { background: #cbdc9e; }
+.workroom-color-dot, .workroom-tv-marker { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #98c08b; }
+.workroom-color-dot.sky { background: #8bbbc0; }.workroom-color-dot.sun { background: #dec57d; }.workroom-color-dot.clay { background: #d79274; }
+.workroom-priority, .workroom-tv-marker.high { color: #ffc1a5; }.workroom-priority.medium, .workroom-tv-marker.medium { color: #e3d98d; }.workroom-priority.low, .workroom-tv-marker.low { color: #9dc89e; }
+.workroom-calendar-picker { display: grid; gap: 0.65rem; padding: 0.85rem; border: 1px solid rgba(214, 231, 199, 0.18); border-radius: 0.8rem; }
+.workroom-calendar-choice { color: #dce5d7; font-size: 0.85rem; }
+
+.workroom-display-shell { padding: clamp(1.5rem, 3vw, 3.5rem); overflow: hidden; }
+.workroom-display-header, .workroom-display-footer { display: flex; justify-content: space-between; align-items: end; gap: 1rem; }
+.workroom-display-date { margin: 0; color: #d8e3d3; font-size: clamp(1.1rem, 1.8vw, 2rem); font-weight: 650; }
+.workroom-clock { color: #f9f5e9; font-family: "Fraunces", Georgia, serif; font-size: clamp(3.4rem, 6vw, 7rem); line-height: 0.9; }
+.workroom-display-focus { max-width: 70rem; margin: clamp(2.4rem, 5vw, 5rem) 0 clamp(1.4rem, 3vw, 3rem); }
+.workroom-display-focus h1 { max-width: 19ch; font-size: clamp(2.5rem, 4.9vw, 6.5rem); margin-bottom: 0.55rem; }
+.workroom-display-focus p:last-child { color: #c4d6c3; font-size: clamp(1.05rem, 1.65vw, 1.8rem); }
+.workroom-tv-grid { display: grid; grid-template-columns: 1.15fr 0.85fr 1fr; grid-template-areas: "tasks projects calendar" "tasks mail finance"; gap: clamp(0.9rem, 1.5vw, 1.5rem); }
+.workroom-tv-card { min-height: 10rem; padding: clamp(1rem, 1.75vw, 1.75rem); }
+.workroom-tv-tasks { grid-area: tasks; }.workroom-tv-finance { grid-area: finance; }
+.workroom-tv-heading { display: flex; justify-content: space-between; align-items: start; gap: 0.8rem; margin-bottom: 0.9rem; }.workroom-tv-heading h2 { margin: 0; font-size: clamp(1.2rem, 1.75vw, 2rem); }
+.workroom-tv-count { display: grid; place-items: center; min-width: 1.7rem; height: 1.7rem; border-radius: 50%; color: #1b3227; background: #d3dfaa; font-size: 0.8rem; font-weight: 900; }
+.workroom-tv-list { display: grid; gap: 0.65rem; }.workroom-tv-row { display: flex; align-items: start; gap: 0.65rem; padding-top: 0.63rem; border-top: 1px solid rgba(232, 239, 222, 0.1); }.workroom-tv-row > div { min-width: 0; }.workroom-tv-row strong, .workroom-project-progress strong { display: block; color: #f3f4ed; font-size: clamp(0.85rem, 1.06vw, 1.18rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.workroom-tv-row small, .workroom-project-progress small { color: #afc3b2; font-size: clamp(0.68rem, 0.8vw, 0.86rem); }.workroom-tv-row time { min-width: 4.3rem; color: #d9df9e; font-size: clamp(0.7rem, 0.9vw, 0.95rem); font-weight: 800; }.workroom-mail-dot { width: 0.48rem; height: 0.48rem; margin-top: 0.4rem; border-radius: 50%; background: #a6c99a; }.workroom-tv-empty { color: #9fb3a5; font-size: 0.85rem; }
+.workroom-project-progress { display: grid; grid-template-columns: minmax(0, 1fr) 5rem 2.1rem; align-items: center; gap: 0.55rem; padding-top: 0.7rem; border-top: 1px solid rgba(232, 239, 222, 0.1); }.workroom-progress-track { height: 0.34rem; border-radius: 999px; overflow: hidden; background: rgba(230, 240, 220, 0.12); }.workroom-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #90bd91, #d3dc9e); }.workroom-display-footer { margin-top: clamp(1.2rem, 2.5vw, 2.6rem); color: #9fb7a8; font-size: clamp(0.7rem, 0.9vw, 0.94rem); }
+
+@media (max-width: 980px) { .workroom-control-grid, .workroom-management-grid { grid-template-columns: 1fr; }.workroom-tv-grid { grid-template-columns: 1fr 1fr; grid-template-areas: "tasks calendar" "projects mail" "finance finance"; } }
+@media (max-width: 620px) { .workroom-control-header, .workroom-display-header, .workroom-display-footer { align-items: start; flex-direction: column; }.workroom-tv-grid { grid-template-columns: 1fr; grid-template-areas: "tasks" "projects" "calendar" "mail" "finance"; }.workroom-clock { font-size: 3.2rem; }.workroom-project-progress { grid-template-columns: minmax(0, 1fr) 4rem 2rem; } }
+@media (prefers-reduced-motion: reduce) { .workroom-button { transition: none; } }
+
 body[data-page="home"] .nav-wrap {
   padding-block: 0.62rem;
 }
