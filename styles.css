@@ -62,8 +62,8 @@ body[data-page^="workroom"] {
   box-sizing: border-box;
 }
 
-.workroom-control-shell {
-  width: min(1800px, 98vw);
+.workroom-control-shell { 
+  width: min(1920px, 96vw);
   margin: 0 auto;
   padding: clamp(1rem, 2vw, 2rem) 0 2rem;
 }
@@ -91,17 +91,19 @@ body[data-page^="workroom"] {
 .workroom-button-primary { color: #11211c; background: #d5dfaa; }
 .workroom-button-quiet { color: #e8edde; background: rgba(239, 243, 231, 0.08); border-color: rgba(239, 243, 231, 0.15); }
 .workroom-gate .workroom-button { margin-top: 1.1rem; }
-.workroom-control-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
-.workroom-control-header h1 { max-width: none; margin: 0; font-size: clamp(1.7rem, 2.8vw, 3rem); }
+.workroom-control-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; padding-bottom: 0.8rem; border-bottom: 1px solid rgba(227, 236, 218, 0.12); }
+.workroom-control-header h1 { max-width: none; margin: 0; font-size: clamp(1.8rem, 2.8vw, 3.1rem); letter-spacing: 0.02em; }
 .workroom-header-actions, .workroom-inline-actions, .workroom-connection-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; }
 .workroom-notice { min-height: 1.15rem; margin: 0 0 0.65rem; color: #dce8bc; font-size: 0.8rem; font-weight: 700; }
 .workroom-notice.is-error { color: #ffb8a0; }
 .workroom-control-grid, .workroom-management-grid { display: grid; gap: 1rem; }
 .workroom-control-grid { grid-template-columns: minmax(18rem, 0.72fr) minmax(0, 1.28fr); margin-bottom: 0.75rem; }
+.workroom-command-grid { grid-template-columns: minmax(32rem, 1.45fr) minmax(18rem, 0.55fr); align-items: start; }
 .workroom-management-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; }
 .workroom-panel, .workroom-tv-card { border: 1px solid rgba(227, 236, 218, 0.14); border-radius: 1.35rem; background: linear-gradient(145deg, rgba(31, 57, 48, 0.86), rgba(18, 39, 33, 0.83)); box-shadow: 0 1.4rem 3.6rem rgba(0, 0, 0, 0.16); }
 .workroom-panel { padding: clamp(0.9rem, 1.5vw, 1.35rem); }
 .workroom-panel h2 { font-size: clamp(1.2rem, 1.5vw, 1.55rem); margin-bottom: 0.65rem; }
+.workroom-panel:hover { border-color: rgba(213, 223, 170, 0.3); }
 .workroom-panel-note, .workroom-empty, .workroom-record small, .workroom-connection small { color: #afc0b3; font-size: 0.8rem; }
 .workroom-form { display: grid; gap: 0.72rem; }
 .workroom-form label { display: grid; gap: 0.28rem; color: #dce6d6; font-size: 0.8rem; font-weight: 800; }
@@ -111,6 +113,9 @@ body[data-page^="workroom"] {
 .workroom-checkbox-label input { width: auto !important; }
 .workroom-compact-form { margin-bottom: 1.1rem; }
 .workroom-record-list, .workroom-connection-list { display: grid; gap: 0.5rem; }
+.workroom-contact-form { grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.42fr); column-gap: 0.85rem; }
+.workroom-contact-form label:nth-of-type(3), .workroom-contact-form button { grid-column: 1 / -1; }
+.workroom-contact-form textarea { min-height: 3.2rem; }
 .workroom-record, .workroom-connection { display: flex; align-items: center; gap: 0.7rem; padding: 0.65rem 0; border-top: 1px solid rgba(225, 235, 216, 0.1); }
 .workroom-record > div, .workroom-connection > div:first-child { display: grid; flex: 1; min-width: 0; }
 .workroom-record strong, .workroom-connection strong { color: #f1f4ed; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -124,6 +129,16 @@ body[data-page^="workroom"] {
 .workroom-priority, .workroom-tv-marker.high { color: #ffc1a5; }.workroom-priority.medium, .workroom-tv-marker.medium { color: #e3d98d; }.workroom-priority.low, .workroom-tv-marker.low { color: #9dc89e; }
 .workroom-calendar-picker { display: grid; gap: 0.65rem; padding: 0.85rem; border: 1px solid rgba(214, 231, 199, 0.18); border-radius: 0.8rem; }
 .workroom-calendar-choice { color: #dce5d7; font-size: 0.85rem; }
+.workroom-google-panel { padding: 1rem; background: linear-gradient(145deg, rgba(48, 78, 61, 0.92), rgba(19, 42, 34, 0.92)); }
+.workroom-google-panel h2 { margin-bottom: 0.6rem; }
+.workroom-google-panel .workroom-inline-actions { gap: 0.4rem; }
+.workroom-google-panel .workroom-button { min-height: 2.25rem; padding: 0.48rem 0.68rem; font-size: 0.74rem; }
+.workroom-google-panel .workroom-connection-list { margin-top: 0.65rem; }
+.workroom-google-panel .workroom-connection { align-items: flex-start; gap: 0.45rem; padding: 0.6rem; border: 1px solid rgba(225, 235, 216, 0.1); border-radius: 0.75rem; background: rgba(8, 26, 20, 0.22); }
+.workroom-google-panel .workroom-connection strong { font-size: 0.78rem; }
+.workroom-google-panel .workroom-connection small { font-size: 0.69rem; line-height: 1.35; }
+.workroom-google-panel .workroom-connection-actions { gap: 0.32rem; }
+.workroom-google-panel .workroom-connection-actions .workroom-button { min-height: 2rem; padding: 0.38rem 0.52rem; }
 
 .workroom-display-shell { display: flex; flex-direction: column; height: 100vh; min-height: 0; padding: clamp(0.75rem, 1.5vw, 1.5rem); overflow: hidden; }
 .workroom-display-header, .workroom-display-footer { display: flex; justify-content: space-between; align-items: end; gap: 1rem; }
@@ -143,7 +158,7 @@ body[data-page^="workroom"] {
 .workroom-complete-toast { position: fixed; right: clamp(1rem, 3vw, 3rem); bottom: clamp(1rem, 3vw, 3rem); z-index: 20; padding: 0.7rem 1rem; border: 1px solid rgba(214, 231, 166, 0.56); border-radius: 999px; color: #14271e; background: #d5dfaa; box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.24); font-size: 0.9rem; font-weight: 900; opacity: 0; transform: translateY(0.65rem); pointer-events: none; transition: opacity 180ms ease, transform 180ms ease; }.workroom-complete-toast.is-visible { opacity: 1; transform: translateY(0); }
 .workroom-project-progress { display: grid; grid-template-columns: minmax(0, 1fr) 5rem 2.1rem; align-items: center; gap: 0.55rem; padding-top: 0.7rem; border-top: 1px solid rgba(232, 239, 222, 0.1); }.workroom-progress-track { height: 0.34rem; border-radius: 999px; overflow: hidden; background: rgba(230, 240, 220, 0.12); }.workroom-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #90bd91, #d3dc9e); }.workroom-display-footer { margin-top: clamp(1.2rem, 2.5vw, 2.6rem); color: #9fb7a8; font-size: clamp(0.7rem, 0.9vw, 0.94rem); }
 
-@media (max-width: 1180px) { .workroom-management-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1180px) { .workroom-command-grid { grid-template-columns: minmax(0, 1fr) minmax(17rem, 0.6fr); }.workroom-management-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 980px) { body[data-page="workroom-display"] { overflow: auto; }.workroom-control-grid, .workroom-management-grid { grid-template-columns: 1fr; }.workroom-display-shell { display: block; height: auto; min-height: 100vh; }.workroom-tv-grid { grid-template-columns: 1fr 1fr; grid-template-areas: "tasks contacts" "projects mail" "calendar ach" "finance finance"; } }
 @media (max-width: 620px) { .workroom-control-header, .workroom-display-header, .workroom-display-footer { align-items: start; flex-direction: column; }.workroom-tv-grid { grid-template-columns: 1fr; grid-template-areas: "tasks" "contacts" "projects" "mail" "ach" "calendar" "finance"; }.workroom-clock { font-size: 3.2rem; }.workroom-project-progress { grid-template-columns: minmax(0, 1fr) 4rem 2rem; } }
 @media (max-height: 800px) and (min-width: 981px) { .workroom-display-shell { padding: 0.6rem 1rem; }.workroom-clock { font-size: clamp(2.8rem, 4.4vw, 4.2rem); }.workroom-display-date { font-size: clamp(0.95rem, 1.35vw, 1.3rem); }.workroom-tv-grid { gap: 0.5rem; margin-top: 0.5rem; }.workroom-tv-card { padding: 0.58rem; }.workroom-tv-heading { margin-bottom: 0.38rem; }.workroom-tv-heading h2 { font-size: 1.05rem; }.workroom-tv-row { padding-top: 0.3rem; }.workroom-tv-list { gap: 0.2rem; } }

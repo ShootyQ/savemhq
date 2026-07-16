@@ -29,10 +29,10 @@
 
         <p id="workroom-notice" class="workroom-notice" aria-live="polite"></p>
 
-        <section class="workroom-control-grid">
-          <article class="workroom-panel">
+        <section class="workroom-control-grid workroom-command-grid">
+          <article class="workroom-panel workroom-contact-panel">
             <h2>Contact follow-ups</h2>
-            <form id="workroom-contact-form" class="workroom-form workroom-compact-form">
+            <form id="workroom-contact-form" class="workroom-form workroom-compact-form workroom-contact-form">
               <label>Contact<input id="workroom-contact-name" maxlength="120" required placeholder="Name or organization" /></label>
               <label>Follow up on<input id="workroom-contact-date" type="date" required /></label>
               <label>Reason<textarea id="workroom-contact-reason" maxlength="500" required placeholder="What needs attention?"></textarea></label>
@@ -43,7 +43,7 @@
             <div id="workroom-contacts" class="workroom-record-list"></div>
           </article>
 
-          <article class="workroom-panel">
+          <article class="workroom-panel workroom-google-panel">
             <h2>Calendar & email</h2>
             <div class="workroom-inline-actions">
               <button id="workroom-google-connect" class="workroom-button workroom-button-primary" type="button">Connect Google account</button>
