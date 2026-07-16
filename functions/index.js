@@ -495,7 +495,8 @@ exports.handleWorkroomGoogleCallback = onRequest({ secrets: [GOOGLE_CLIENT_SECRE
         updatedAt: FieldValue.serverTimestamp(),
       }, { merge: true }).catch(() => {});
     }
-    response.redirect(`${workroomControlUrl()}?google=error`);
+    const reason = String(error?.message || "connection_failed").slice(0, 120);
+    response.redirect(`${workroomControlUrl()}?google=error&reason=${encodeURIComponent(reason)}`);
   }
 });
 
