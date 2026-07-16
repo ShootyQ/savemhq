@@ -71,7 +71,7 @@ const fetchJson = async (url, options = {}) => {
   }
 
   if (!response.ok) {
-    const message = json?.message || json?.error || text || `HTTP ${response.status}`;
+    const message = json?.error_description || json?.message || json?.error || text || `HTTP ${response.status}`;
     throw new Error(message);
   }
 
