@@ -362,14 +362,14 @@ const syncGoogleConnection = async (uid, connectionId, connectionData) => {
     ? connectionData.selectedCalendars.slice(0, 12)
     : ["primary"];
   const now = new Date();
-  const windowEnd = new Date(now.getTime() + 36 * 60 * 60 * 1000);
+  const windowEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const calendarEvents = (await Promise.all(selectedCalendars.map(async (calendarId) => {
     const params = new URLSearchParams({
       timeMin: now.toISOString(),
       timeMax: windowEnd.toISOString(),
       singleEvents: "true",
       orderBy: "startTime",
-      maxResults: "12",
+      maxResults: "24",
     });
     const payload = await googleApi(`/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`, tokenData);
     return (payload.items || []).map((event) => formatGoogleEvent(event, calendarId, connectionId));

@@ -121,22 +121,19 @@ body[data-page^="workroom"] {
 .workroom-calendar-picker { display: grid; gap: 0.65rem; padding: 0.85rem; border: 1px solid rgba(214, 231, 199, 0.18); border-radius: 0.8rem; }
 .workroom-calendar-choice { color: #dce5d7; font-size: 0.85rem; }
 
-.workroom-display-shell { padding: clamp(1rem, 2vw, 2.25rem); overflow: hidden; }
+.workroom-display-shell { display: flex; flex-direction: column; padding: clamp(1rem, 2vw, 2.25rem); overflow: hidden; }
 .workroom-display-header, .workroom-display-footer { display: flex; justify-content: space-between; align-items: end; gap: 1rem; }
 .workroom-display-date { margin: 0; color: #d8e3d3; font-size: clamp(1.1rem, 1.8vw, 2rem); font-weight: 650; }
 .workroom-clock { color: #f9f5e9; font-family: "Fraunces", Georgia, serif; font-size: clamp(3.4rem, 6vw, 7rem); line-height: 0.9; }
-.workroom-display-focus { max-width: 100%; margin: clamp(1rem, 2vw, 2rem) 0 clamp(0.8rem, 1.4vw, 1.35rem); }
-.workroom-display-focus h1 { max-width: 25ch; font-size: clamp(2rem, 3.5vw, 4.5rem); margin-bottom: 0.25rem; }
-.workroom-display-focus p:last-child { color: #c4d6c3; font-size: clamp(1.05rem, 1.65vw, 1.8rem); }
-.workroom-tv-grid { display: grid; grid-template-columns: 1.15fr 0.85fr 1fr; grid-template-areas: "tasks projects calendar" "tasks mail finance"; gap: clamp(0.9rem, 1.5vw, 1.5rem); }
-.workroom-tv-card { min-height: 8rem; padding: clamp(0.85rem, 1.3vw, 1.3rem); }
-.workroom-tv-tasks { grid-area: tasks; }.workroom-tv-finance { grid-area: finance; }
+.workroom-tv-grid { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(16rem, 0.9fr) minmax(28rem, 1.65fr) minmax(16rem, 0.9fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "tasks calendar mail" "projects calendar finance"; gap: clamp(0.9rem, 1.5vw, 1.5rem); margin-top: clamp(0.85rem, 1.5vw, 1.4rem); }
+.workroom-tv-card { min-height: 0; padding: clamp(0.85rem, 1.3vw, 1.3rem); overflow: auto; }
+.workroom-tv-tasks { grid-area: tasks; }.workroom-tv-projects { grid-area: projects; }.workroom-tv-calendar { grid-area: calendar; }.workroom-tv-mail { grid-area: mail; }.workroom-tv-finance { grid-area: finance; }
 .workroom-tv-heading { display: flex; justify-content: space-between; align-items: start; gap: 0.8rem; margin-bottom: 0.9rem; }.workroom-tv-heading h2 { margin: 0; font-size: clamp(1.2rem, 1.75vw, 2rem); }
 .workroom-tv-count { display: grid; place-items: center; min-width: 1.7rem; height: 1.7rem; border-radius: 50%; color: #1b3227; background: #d3dfaa; font-size: 0.8rem; font-weight: 900; }
 .workroom-tv-list { display: grid; gap: 0.65rem; }.workroom-tv-row { display: flex; align-items: start; gap: 0.65rem; padding-top: 0.63rem; border-top: 1px solid rgba(232, 239, 222, 0.1); }.workroom-tv-row > div { min-width: 0; }.workroom-tv-row strong, .workroom-project-progress strong { display: block; color: #f3f4ed; font-size: clamp(0.85rem, 1.06vw, 1.18rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.workroom-tv-row small, .workroom-project-progress small { color: #afc3b2; font-size: clamp(0.68rem, 0.8vw, 0.86rem); }.workroom-tv-row time { min-width: 4.3rem; color: #d9df9e; font-size: clamp(0.7rem, 0.9vw, 0.95rem); font-weight: 800; }.workroom-mail-dot { width: 0.48rem; height: 0.48rem; margin-top: 0.4rem; border-radius: 50%; background: #a6c99a; }.workroom-tv-empty { color: #9fb3a5; font-size: 0.85rem; }
 .workroom-project-progress { display: grid; grid-template-columns: minmax(0, 1fr) 5rem 2.1rem; align-items: center; gap: 0.55rem; padding-top: 0.7rem; border-top: 1px solid rgba(232, 239, 222, 0.1); }.workroom-progress-track { height: 0.34rem; border-radius: 999px; overflow: hidden; background: rgba(230, 240, 220, 0.12); }.workroom-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #90bd91, #d3dc9e); }.workroom-display-footer { margin-top: clamp(1.2rem, 2.5vw, 2.6rem); color: #9fb7a8; font-size: clamp(0.7rem, 0.9vw, 0.94rem); }
 
-@media (max-width: 980px) { .workroom-control-grid, .workroom-management-grid { grid-template-columns: 1fr; }.workroom-tv-grid { grid-template-columns: 1fr 1fr; grid-template-areas: "tasks calendar" "projects mail" "finance finance"; } }
+@media (max-width: 980px) { .workroom-control-grid, .workroom-management-grid { grid-template-columns: 1fr; }.workroom-display-shell { display: block; }.workroom-tv-grid { grid-template-columns: 1fr 1fr; grid-template-areas: "tasks calendar" "projects mail" "finance finance"; } }
 @media (max-width: 620px) { .workroom-control-header, .workroom-display-header, .workroom-display-footer { align-items: start; flex-direction: column; }.workroom-tv-grid { grid-template-columns: 1fr; grid-template-areas: "tasks" "projects" "calendar" "mail" "finance"; }.workroom-clock { font-size: 3.2rem; }.workroom-project-progress { grid-template-columns: minmax(0, 1fr) 4rem 2rem; } }
 @media (prefers-reduced-motion: reduce) { .workroom-button { transition: none; } }
 
