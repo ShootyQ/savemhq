@@ -1,11 +1,11 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { doc, onSnapshot, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth } from "./auth-shared.js";
-import { asDate, connectionsRef, escapeHtml, financeRef, formatDay, isOwner, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
+import { achEntriesRef, asDate, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, formatDay, isOwner, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
-const elements = { gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), clock: $("workroom-clock"), date: $("workroom-date"), tasks: $("workroom-display-tasks"), taskCount: $("workroom-task-count"), projects: $("workroom-display-projects"), events: $("workroom-display-events"), mail: $("workroom-display-mail"), mailCount: $("workroom-mail-count"), finance: $("workroom-display-finance"), completeToast: $("workroom-complete-toast") };
-let state = { user: null, tasks: [], projects: [], finance: [], summary: {}, connections: [], unsubscribers: [] };
+const elements = { gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), clock: $("workroom-clock"), date: $("workroom-date"), tasks: $("workroom-display-tasks"), taskCount: $("workroom-task-count"), projects: $("workroom-display-projects"), events: $("workroom-display-events"), mail: $("workroom-display-mail"), mailCount: $("workroom-mail-count"), finance: $("workroom-display-finance"), contacts: $("workroom-display-contacts"), ach: $("workroom-display-ach"), completeToast: $("workroom-complete-toast") };
+let state = { user: null, tasks: [], projects: [], finance: [], contacts: [], ach: [], summary: {}, connections: [], unsubscribers: [] };
 let celebrationTimer = null;
 const removeSubscriptions = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; };
 const soonest = (items, dateKey = "dueDate") => [...items].sort((a, b) => priorityRank(a.priority || a.urgency) - priorityRank(b.priority || b.urgency) || ((asDate(a[dateKey])?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b[dateKey])?.getTime() || Number.MAX_SAFE_INTEGER)));
@@ -42,6 +42,10 @@ const render = () => {
   elements.mail.innerHTML = mail.length ? mail.map((message) => `<div class="workroom-tv-row"><span class="workroom-mail-dot"></span><div><strong>${escapeHtml(message.subject)}</strong><small>${escapeHtml(message.from || "Google Mail")}</small></div></div>`).join("") : blank("No unread messages in connected inboxes.");
   const finance = soonest(state.finance.filter((item) => item.status !== "done")).slice(0, 4);
   elements.finance.innerHTML = finance.length ? finance.map((item) => `<div class="workroom-tv-row"><span class="workroom-tv-marker ${escapeHtml(item.urgency)}"></span><div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.category || "Reminder")}${item.dueDate ? ` · ${formatDay(item.dueDate)}` : ""}</small></div></div>`).join("") : blank("No financial reminders are waiting.");
+  const contacts = [...state.contacts].filter((item) => item.status !== "done").sort((a, b) => (asDate(a.followUpDate)?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b.followUpDate)?.getTime() || Number.MAX_SAFE_INTEGER)).slice(0, 4);
+  elements.contacts.innerHTML = contacts.length ? contacts.map((item) => `<div class="workroom-tv-row"><time>${formatDay(item.followUpDate)}</time><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.method)} · ${escapeHtml(item.reason)}</small></div></div>`).join("") : blank("No follow-ups waiting.");
+  const ach = [...state.ach].sort((a, b) => (asDate(a.withdrawalDate)?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b.withdrawalDate)?.getTime() || Number.MAX_SAFE_INTEGER)).slice(0, 4);
+  elements.ach.innerHTML = ach.length ? ach.map((item) => `<div class="workroom-tv-row"><time>${formatDay(item.withdrawalDate)}</time><div><strong>${escapeHtml(item.name)} · $${Number(item.amount || 0).toFixed(2)}</strong><small>${escapeHtml(item.reason)}${item.recurring ? " · recurring" : ""}</small></div></div>`).join("") : blank("No ACH entries waiting.");
 };
 
 const tick = () => { const now = new Date(); elements.clock.textContent = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(now); elements.date.textContent = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(now); };
@@ -77,6 +81,8 @@ onAuthStateChanged(auth, (user) => {
     onSnapshot(tasksRef(user.uid), (snapshot) => { state.tasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(projectsRef(user.uid), (snapshot) => { state.projects = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(financeRef(user.uid), (snapshot) => { state.finance = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
+    onSnapshot(contactFollowUpsRef(user.uid), (snapshot) => { state.contacts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
+    onSnapshot(achEntriesRef(user.uid), (snapshot) => { state.ach = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(summaryRef(user.uid), (snapshot) => { state.summary = snapshot.data() || {}; render(); }),
     onSnapshot(connectionsRef(user.uid), (snapshot) => { state.connections = snapshot.docs.map((item) => item.data()); render(); }),
   );

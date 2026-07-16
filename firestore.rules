@@ -58,6 +58,39 @@ service cloud.firestore {
         && (request.resource.data.completedAt == null || request.resource.data.completedAt is timestamp);
     }
 
+    function workroomContactFollowUpIsValid() {
+      return request.resource.data.keys().hasAll(["name", "followUpDate", "reason", "method", "contactDetail", "status", "createdAt", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["name", "followUpDate", "reason", "method", "contactDetail", "status", "completedAt", "createdAt", "updatedAt"])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.followUpDate is timestamp
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.reason.size() <= 500
+        && ["phone", "email"].hasAny([request.resource.data.method])
+        && request.resource.data.contactDetail is string
+        && request.resource.data.contactDetail.size() > 0
+        && request.resource.data.contactDetail.size() <= 160
+        && ["open", "done"].hasAny([request.resource.data.status])
+        && (request.resource.data.completedAt == null || request.resource.data.completedAt is timestamp);
+    }
+
+    function workroomAchEntryIsValid() {
+      return request.resource.data.keys().hasAll(["name", "amount", "withdrawalDate", "reason", "recurring", "createdAt", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["name", "amount", "withdrawalDate", "reason", "recurring", "createdAt", "updatedAt"])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.amount is number
+        && request.resource.data.amount >= 0
+        && request.resource.data.withdrawalDate is timestamp
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.reason.size() <= 500
+        && request.resource.data.recurring is bool;
+    }
+
     function isAutoApprovedUser() {
       return isAuthed() && (
         request.auth.token.email == "andrewpcarlson85@gmail.com"
@@ -930,6 +963,18 @@ service cloud.firestore {
     match /workrooms/{ownerUid}/financeReminders/{reminderId} {
       allow read: if isWorkroomOwner(ownerUid);
       allow create, update: if isWorkroomOwner(ownerUid) && workroomFinanceReminderIsValid();
+      allow delete: if isWorkroomOwner(ownerUid);
+    }
+
+    match /workrooms/{ownerUid}/contactFollowUps/{followUpId} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow create, update: if isWorkroomOwner(ownerUid) && workroomContactFollowUpIsValid();
+      allow delete: if isWorkroomOwner(ownerUid);
+    }
+
+    match /workrooms/{ownerUid}/achEntries/{entryId} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow create, update: if isWorkroomOwner(ownerUid) && workroomAchEntryIsValid();
       allow delete: if isWorkroomOwner(ownerUid);
     }
 

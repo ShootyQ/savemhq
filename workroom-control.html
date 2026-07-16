@@ -30,14 +30,17 @@
         <p id="workroom-notice" class="workroom-notice" aria-live="polite"></p>
 
         <section class="workroom-control-grid">
-          <article class="workroom-panel workroom-focus-panel">
-            <h2>Focus</h2>
-            <form id="workroom-focus-form" class="workroom-form">
-              <label>Primary focus<input id="workroom-focus-primary" maxlength="160" placeholder="What deserves the day?" required /></label>
-              <label>Next action<input id="workroom-focus-next" maxlength="160" placeholder="One small, concrete step" /></label>
-              <label>Intention<input id="workroom-focus-intention" maxlength="180" placeholder="How do you want to work?" /></label>
-              <button class="workroom-button workroom-button-primary" type="submit">Save focus</button>
+          <article class="workroom-panel">
+            <h2>Contact follow-ups</h2>
+            <form id="workroom-contact-form" class="workroom-form workroom-compact-form">
+              <label>Contact<input id="workroom-contact-name" maxlength="120" required placeholder="Name or organization" /></label>
+              <label>Follow up on<input id="workroom-contact-date" type="date" required /></label>
+              <label>Reason<textarea id="workroom-contact-reason" maxlength="500" required placeholder="What needs attention?" /></label>
+              <label>How<select id="workroom-contact-method"><option value="phone">Phone</option><option value="email">Email</option></select></label>
+              <label>Phone or email<input id="workroom-contact-detail" maxlength="160" required placeholder="Number or address" /></label>
+              <button class="workroom-button workroom-button-primary" type="submit">Add follow-up</button>
             </form>
+            <div id="workroom-contacts" class="workroom-record-list"></div>
           </article>
 
           <article class="workroom-panel">
@@ -87,6 +90,19 @@
               <button class="workroom-button workroom-button-primary" type="submit">Add reminder</button>
             </form>
             <div id="workroom-finance" class="workroom-record-list"></div>
+          </article>
+
+          <article class="workroom-panel">
+            <h2>ACH entries</h2>
+            <form id="workroom-ach-form" class="workroom-form workroom-compact-form">
+              <label>Name<input id="workroom-ach-name" maxlength="120" required placeholder="Payee or account" /></label>
+              <label>Amount<input id="workroom-ach-amount" type="number" step="0.01" min="0" required /></label>
+              <label>Withdrawal date<input id="workroom-ach-date" type="date" required /></label>
+              <label>Reason<textarea id="workroom-ach-reason" maxlength="500" required placeholder="What is this for?" /></label>
+              <label class="workroom-checkbox-label"><input id="workroom-ach-recurring" type="checkbox" /> Recurring entry</label>
+              <button class="workroom-button workroom-button-primary" type="submit">Add ACH entry</button>
+            </form>
+            <div id="workroom-ach" class="workroom-record-list"></div>
           </article>
         </section>
       </div>

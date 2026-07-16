@@ -8,6 +8,8 @@ export const workroomRef = (uid) => doc(db, "workrooms", uid);
 export const projectsRef = (uid) => collection(workroomRef(uid), "projects");
 export const tasksRef = (uid) => collection(workroomRef(uid), "tasks");
 export const financeRef = (uid) => collection(workroomRef(uid), "financeReminders");
+export const contactFollowUpsRef = (uid) => collection(workroomRef(uid), "contactFollowUps");
+export const achEntriesRef = (uid) => collection(workroomRef(uid), "achEntries");
 export const focusRef = (uid) => doc(workroomRef(uid), "settings", "focus");
 export const summaryRef = (uid) => doc(db, "workroomSummaries", uid);
 export const connectionsRef = (uid) => collection(db, "workroomConnections", uid, "connections");
