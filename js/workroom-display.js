@@ -4,9 +4,42 @@ import { auth } from "./auth-shared.js";
 import { achEntriesRef, asDate, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, formatDay, isOwner, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
-const elements = { gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), clock: $("workroom-clock"), date: $("workroom-date"), tasks: $("workroom-display-tasks"), taskCount: $("workroom-task-count"), projects: $("workroom-display-projects"), events: $("workroom-display-events"), mail: $("workroom-display-mail"), mailCount: $("workroom-mail-count"), finance: $("workroom-display-finance"), contacts: $("workroom-display-contacts"), ach: $("workroom-display-ach"), completeToast: $("workroom-complete-toast") };
+const elements = { gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), clock: $("workroom-clock"), date: $("workroom-date"), tasks: $("workroom-display-tasks"), taskCount: $("workroom-task-count"), projects: $("workroom-display-projects"), events: $("workroom-display-events"), mail: $("workroom-display-mail"), mailCount: $("workroom-mail-count"), finance: $("workroom-display-finance"), contacts: $("workroom-display-contacts"), ach: $("workroom-display-ach"), quote: $("workroom-quote-text"), completeToast: $("workroom-complete-toast") };
 let state = { user: null, tasks: [], projects: [], finance: [], contacts: [], ach: [], summary: {}, connections: [], unsubscribers: [] };
 let celebrationTimer = null;
+const quotes = [
+  ["Well begun is half done.", "Aristotle"],
+  ["No great thing is created suddenly.", "Epictetus"],
+  ["Luck is what happens when preparation meets opportunity.", "Seneca"],
+  ["The obstacle is the path.", "Zen proverb"],
+  ["What we think, we become.", "Buddha"],
+  ["The secret of getting ahead is getting started.", "Mark Twain"],
+  ["Energy and persistence conquer all things.", "Benjamin Franklin"],
+  ["Nothing great was ever achieved without enthusiasm.", "Ralph Waldo Emerson"],
+  ["The future depends on what you do today.", "Mahatma Gandhi"],
+  ["Do what you can, with what you have, where you are.", "Theodore Roosevelt"],
+  ["It is never too late to be what you might have been.", "George Eliot"],
+  ["The only way out is through.", "Robert Frost"],
+  ["The journey of a thousand miles begins with one step.", "Lao Tzu"],
+  ["He who has a why can endure almost any how.", "Friedrich Nietzsche"],
+  ["The best way out is always through.", "Robert Frost"],
+  ["Action may not always bring happiness, but there is no happiness without action.", "William James"],
+  ["The future is completely open, and we are writing it moment to moment.", "Pema Chödrön"],
+  ["To improve is to change; to be perfect is to change often.", "Winston Churchill"],
+  ["Start where you are. Use what you have. Do what you can.", "Arthur Ashe"],
+  ["What you do speaks so loudly that I cannot hear what you say.", "Ralph Waldo Emerson"],
+  ["The greatest glory in living lies not in never falling, but in rising every time we fall.", "Nelson Mandela"],
+  ["A person who never made a mistake never tried anything new.", "Albert Einstein"],
+  ["Do not wait; the time will never be just right.", "Napoleon Hill"],
+  ["The most effective way to do it, is to do it.", "Amelia Earhart"],
+  ["Work gives you meaning and purpose.", "Stephen Hawking"],
+  ["The important thing is not to stop questioning.", "Albert Einstein"],
+  ["Be faithful to that which exists within yourself.", "André Gide"],
+  ["A goal without a plan is just a wish.", "Antoine de Saint-Exupéry"],
+  ["We become what we repeatedly do.", "Will Durant"],
+  ["Live out of your imagination, not your history.", "Stephen Covey"],
+];
+let quoteIndex = 0;
 const removeSubscriptions = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; };
 const soonest = (items, dateKey = "dueDate") => [...items].sort((a, b) => priorityRank(a.priority || a.urgency) - priorityRank(b.priority || b.urgency) || ((asDate(a[dateKey])?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b[dateKey])?.getTime() || Number.MAX_SAFE_INTEGER)));
 const blank = (copy) => `<p class="workroom-tv-empty">${copy}</p>`;
@@ -23,6 +56,14 @@ const celebrate = (message) => {
   elements.completeToast.classList.add("is-visible");
   window.clearTimeout(celebrationTimer);
   celebrationTimer = window.setTimeout(() => elements.completeToast.classList.remove("is-visible"), 2400);
+};
+const showQuote = () => {
+  const [quote, author] = quotes[quoteIndex];
+  quoteIndex = (quoteIndex + 1) % quotes.length;
+  elements.quote.textContent = `“${quote}” — ${author}`;
+  elements.quote.classList.remove("is-running");
+  void elements.quote.offsetWidth;
+  elements.quote.classList.add("is-running");
 };
 
 const render = () => {
@@ -50,6 +91,8 @@ const render = () => {
 
 const tick = () => { const now = new Date(); elements.clock.textContent = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(now); elements.date.textContent = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(now); };
 tick(); setInterval(tick, 15_000);
+showQuote();
+setInterval(showQuote, 18_000);
 
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-complete-task]");
