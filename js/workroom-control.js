@@ -119,5 +119,6 @@ onAuthStateChanged(auth, async (user) => {
   await setDoc(workroomRef(user.uid), { title: "The Workroom", updatedAt: serverTimestamp() }, { merge: true });
   subscribe(user);
   const googleState = new URLSearchParams(window.location.search).get("google");
-  if (googleState) { notice(googleState === "connected" ? "Google account connected." : "Google connection was not completed.", googleState !== "connected"); window.history.replaceState({}, "", "workroom-control.html"); }
+  const googleReason = new URLSearchParams(window.location.search).get("reason");
+  if (googleState) { notice(googleState === "connected" ? "Google account connected." : `Google connection was not completed${googleReason ? ` (${googleReason}).` : "."}`, googleState !== "connected"); window.history.replaceState({}, "", "workroom-control.html"); }
 });

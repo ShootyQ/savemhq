@@ -447,16 +447,23 @@ exports.createWorkroomGoogleAuthSession = onCall(async (request) => {
 
 exports.handleWorkroomGoogleCallback = onRequest({ secrets: [GOOGLE_CLIENT_SECRET] }, async (request, response) => {
   const state = String(request.query.state || "").trim();
+  let stateData = null;
   try {
     const code = String(request.query.code || "").trim();
     const oauthError = String(request.query.error || "").trim();
     if (oauthError || !code || !state) {
-      response.redirect(`${workroomControlUrl()}?google=denied`);
+      console.warn("Workroom Google OAuth callback was denied or incomplete.", {
+        hasCode: Boolean(code),
+        hasState: Boolean(state),
+        oauthError: oauthError || "none",
+      });
+      const reason = oauthError || "missing_parameters";
+      response.redirect(`${workroomControlUrl()}?google=denied&reason=${encodeURIComponent(reason)}`);
       return;
     }
     const stateRef = db.collection("workroomOAuthStates").doc(state);
     const stateSnapshot = await stateRef.get();
-    const stateData = stateSnapshot.data();
+    stateData = stateSnapshot.data();
     if (!stateSnapshot.exists || stateData.used || stateData.expiresAt.toMillis() < Date.now()) {
       response.status(403).send("Invalid or expired Google connection state.");
       return;
@@ -480,6 +487,14 @@ exports.handleWorkroomGoogleCallback = onRequest({ secrets: [GOOGLE_CLIENT_SECRE
       message: String(error?.message || "Unknown error"),
       statePresent: Boolean(state),
     });
+    if (stateData?.uid && stateData?.connectionId) {
+      await workroomConnectionRef(stateData.uid, stateData.connectionId).set({
+        status: "error",
+        selectedCalendars: [],
+        error: String(error?.message || "Google connection failed.").slice(0, 240),
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true }).catch(() => {});
+    }
     response.redirect(`${workroomControlUrl()}?google=error`);
   }
 });
