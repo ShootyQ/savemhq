@@ -476,6 +476,10 @@ exports.handleWorkroomGoogleCallback = onRequest({ secrets: [GOOGLE_CLIENT_SECRE
     await syncWorkroomGoogle(stateData.uid);
     response.redirect(`${workroomControlUrl()}?google=connected`);
   } catch (error) {
+    console.error("Workroom Google OAuth callback failed.", {
+      message: String(error?.message || "Unknown error"),
+      statePresent: Boolean(state),
+    });
     response.redirect(`${workroomControlUrl()}?google=error`);
   }
 });
