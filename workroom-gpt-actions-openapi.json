@@ -1,0 +1,341 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SavemHQ Workroom Actions",
+    "description": "Direct action execution for The Workroom via ChatGPT Actions.",
+    "version": "1.1.0"
+  },
+  "servers": [
+    {
+      "url": "https://us-central1-YOUR_FIREBASE_PROJECT.cloudfunctions.net"
+    }
+  ],
+  "paths": {
+    "/executeWorkroomAction": {
+      "post": {
+        "operationId": "executeWorkroomAction",
+        "summary": "Execute one Workroom create action",
+        "description": "Creates one Workroom item immediately with idempotency and daily limits.",
+        "security": [
+          {
+            "workroomKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteWorkroomActionRequest"
+              },
+              "examples": {
+                "createTask": {
+                  "value": {
+                    "uid": "REPLACE_WITH_OWNER_UID",
+                    "requestId": "task-20260717-001",
+                    "source": "chatgpt-action",
+                    "operation": "createTask",
+                    "payload": {
+                      "title": "Call vendor about invoice",
+                      "priority": "high",
+                      "dueDate": "2026-07-18",
+                      "notes": "Mention ACH confirmation"
+                    }
+                  }
+                },
+                "createProject": {
+                  "value": {
+                    "uid": "REPLACE_WITH_OWNER_UID",
+                    "requestId": "project-20260717-001",
+                    "source": "chatgpt-action",
+                    "operation": "createProject",
+                    "payload": {
+                      "title": "Q3 Website Refresh",
+                      "color": "sky",
+                      "targetDate": "2026-08-15",
+                      "outcome": "Launch refreshed home and workroom flows"
+                    }
+                  }
+                },
+                "createFinanceReminder": {
+                  "value": {
+                    "uid": "REPLACE_WITH_OWNER_UID",
+                    "requestId": "finance-20260717-001",
+                    "source": "chatgpt-action",
+                    "operation": "createFinanceReminder",
+                    "payload": {
+                      "title": "Send invoice follow-up",
+                      "category": "Invoice",
+                      "urgency": "high",
+                      "dueDate": "2026-07-19",
+                      "reference": "Acme Co Q3 invoice",
+                      "amount": 1850
+                    }
+                  }
+                },
+                "createContactFollowUp": {
+                  "value": {
+                    "uid": "REPLACE_WITH_OWNER_UID",
+                    "requestId": "contact-20260717-001",
+                    "source": "chatgpt-action",
+                    "operation": "createContactFollowUp",
+                    "payload": {
+                      "name": "Jordan Lee",
+                      "followUpDate": "2026-07-20",
+                      "reason": "Confirm proposal timeline",
+                      "method": "email",
+                      "contactDetail": "jordan@example.com"
+                    }
+                  }
+                },
+                "createAchEntry": {
+                  "value": {
+                    "uid": "REPLACE_WITH_OWNER_UID",
+                    "requestId": "ach-20260717-001",
+                    "source": "chatgpt-action",
+                    "operation": "createAchEntry",
+                    "payload": {
+                      "name": "City Utilities",
+                      "amount": 142.35,
+                      "withdrawalDate": "2026-07-25",
+                      "reason": "Monthly utility autopay",
+                      "recurring": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Action executed or replayed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecuteWorkroomActionSuccess"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "Validation or authorization error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecuteWorkroomActionError"
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecuteWorkroomActionError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "workroomKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-workroom-key"
+      }
+    },
+    "schemas": {
+      "Operation": {
+        "type": "string",
+        "enum": [
+          "createTask",
+          "createProject",
+          "createFinanceReminder",
+          "createContactFollowUp",
+          "createAchEntry"
+        ]
+      },
+      "ExecuteWorkroomActionRequest": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/CreateTaskRequest" },
+          { "$ref": "#/components/schemas/CreateProjectRequest" },
+          { "$ref": "#/components/schemas/CreateFinanceReminderRequest" },
+          { "$ref": "#/components/schemas/CreateContactFollowUpRequest" },
+          { "$ref": "#/components/schemas/CreateAchEntryRequest" }
+        ]
+      },
+      "RequestBase": {
+        "type": "object",
+        "required": ["uid", "requestId", "operation", "payload"],
+        "properties": {
+          "uid": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Firebase uid for the Workroom owner."
+          },
+          "requestId": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120,
+            "pattern": "^[a-zA-Z0-9._:-]+$",
+            "description": "Unique idempotency key per user intent."
+          },
+          "source": {
+            "type": "string",
+            "enum": ["chatgpt-action", "gpt", "manual", "api"],
+            "default": "chatgpt-action"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateTaskRequest": {
+        "allOf": [
+          { "$ref": "#/components/schemas/RequestBase" },
+          {
+            "type": "object",
+            "properties": {
+              "operation": { "const": "createTask" },
+              "payload": { "$ref": "#/components/schemas/CreateTaskPayload" }
+            }
+          }
+        ]
+      },
+      "CreateProjectRequest": {
+        "allOf": [
+          { "$ref": "#/components/schemas/RequestBase" },
+          {
+            "type": "object",
+            "properties": {
+              "operation": { "const": "createProject" },
+              "payload": { "$ref": "#/components/schemas/CreateProjectPayload" }
+            }
+          }
+        ]
+      },
+      "CreateFinanceReminderRequest": {
+        "allOf": [
+          { "$ref": "#/components/schemas/RequestBase" },
+          {
+            "type": "object",
+            "properties": {
+              "operation": { "const": "createFinanceReminder" },
+              "payload": { "$ref": "#/components/schemas/CreateFinancePayload" }
+            }
+          }
+        ]
+      },
+      "CreateContactFollowUpRequest": {
+        "allOf": [
+          { "$ref": "#/components/schemas/RequestBase" },
+          {
+            "type": "object",
+            "properties": {
+              "operation": { "const": "createContactFollowUp" },
+              "payload": { "$ref": "#/components/schemas/CreateContactPayload" }
+            }
+          }
+        ]
+      },
+      "CreateAchEntryRequest": {
+        "allOf": [
+          { "$ref": "#/components/schemas/RequestBase" },
+          {
+            "type": "object",
+            "properties": {
+              "operation": { "const": "createAchEntry" },
+              "payload": { "$ref": "#/components/schemas/CreateAchPayload" }
+            }
+          }
+        ]
+      },
+      "CreateTaskPayload": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+          "projectId": { "type": "string", "maxLength": 150 },
+          "priority": { "type": "string", "enum": ["high", "medium", "low"], "default": "medium" },
+          "dueDate": { "type": "string", "description": "ISO date yyyy-mm-dd or ISO datetime." },
+          "notes": { "type": "string", "maxLength": 1000 }
+        },
+        "additionalProperties": false
+      },
+      "CreateProjectPayload": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "color": { "type": "string", "enum": ["fern", "sky", "sun", "clay"], "default": "fern" },
+          "targetDate": { "type": "string", "description": "ISO date yyyy-mm-dd or ISO datetime." },
+          "outcome": { "type": "string", "maxLength": 600 }
+        },
+        "additionalProperties": false
+      },
+      "CreateFinancePayload": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "category": { "type": "string", "maxLength": 50 },
+          "urgency": { "type": "string", "enum": ["high", "medium", "low"], "default": "medium" },
+          "dueDate": { "type": "string", "description": "ISO date yyyy-mm-dd or ISO datetime." },
+          "reference": { "type": "string", "maxLength": 160 },
+          "amount": { "type": "number", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "CreateContactPayload": {
+        "type": "object",
+        "required": ["name", "followUpDate", "reason", "contactDetail"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "followUpDate": { "type": "string", "description": "ISO date yyyy-mm-dd or ISO datetime." },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "method": { "type": "string", "enum": ["phone", "email"], "default": "email" },
+          "contactDetail": { "type": "string", "minLength": 1, "maxLength": 160 }
+        },
+        "additionalProperties": false
+      },
+      "CreateAchPayload": {
+        "type": "object",
+        "required": ["name", "amount", "withdrawalDate", "reason"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "amount": { "type": "number", "minimum": 0 },
+          "withdrawalDate": { "type": "string", "description": "ISO date yyyy-mm-dd or ISO datetime." },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "recurring": { "type": "boolean", "default": false }
+        },
+        "additionalProperties": false
+      },
+      "ExecuteWorkroomActionSuccess": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "auditId": { "type": "string" },
+          "replayed": { "type": "boolean" },
+          "operation": { "$ref": "#/components/schemas/Operation" },
+          "createdId": { "type": "string" },
+          "collectionPath": { "type": "string" },
+          "dateKey": { "type": "string" }
+        }
+      },
+      "ExecuteWorkroomActionError": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "error": { "type": "string" },
+          "message": { "type": "string" },
+          "auditId": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

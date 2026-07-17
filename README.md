@@ -97,6 +97,80 @@ firebase deploy --only firestore:rules,functions
 
 After deployment, open `workroom-control.html`, sign in with the owner account, connect each Google account, choose the calendars to display, and use **Sync now** to verify the TV display. The scheduled Function refreshes connected accounts every ten minutes.
 
+### ChatGPT Actions (Direct Auto-Execution)
+
+The Workroom now includes a server-side action endpoint so a ChatGPT custom GPT can execute create operations immediately without calling the OpenAI API from your backend.
+
+Function endpoint:
+
+- `executeWorkroomAction` (HTTP POST)
+
+Authentication:
+
+- Header `x-workroom-key` must match the `WORKROOM_AUTOMATION_KEY` secret.
+
+Required request shape:
+
+```json
+{
+	"uid": "<workroom-owner-uid>",
+	"requestId": "unique-id-per-command",
+	"source": "chatgpt-action",
+	"operation": "createTask",
+	"payload": {
+		"title": "Call vendor about invoice",
+		"priority": "high",
+		"dueDate": "2026-07-18",
+		"notes": "Mention ACH confirmation"
+	}
+}
+```
+
+Supported operations:
+
+- `createTask`
+- `createProject`
+- `createFinanceReminder`
+- `createContactFollowUp`
+- `createAchEntry`
+
+Guardrails included:
+
+- Daily execution caps (global + per operation)
+- Idempotency via `requestId`
+- Immutable audit log entries for accepted/rejected requests
+- Delete/update actions are not exposed to GPT
+
+Owner status panel:
+
+- `workroom-control.html` shows daily remaining usage and recent action history.
+- Data is served by callable Function `getWorkroomAutomationStatus` because audit/usage docs are server-only in Firestore rules.
+
+OpenAPI schema for ChatGPT Actions import:
+
+- `workroom-gpt-actions-openapi.json`
+
+Custom GPT instruction template:
+
+- `workroom-gpt-custom-instructions.md`
+
+Deployment notes:
+
+1. Set or rotate the secret before deploy:
+
+```bash
+firebase functions:secrets:set WORKROOM_AUTOMATION_KEY
+```
+
+2. Deploy backend changes:
+
+```bash
+firebase deploy --only firestore:rules,functions
+```
+
+3. In your custom GPT Actions settings, import `workroom-gpt-actions-openapi.json`, set the server URL to your deployed Functions domain, and configure the `x-workroom-key` header value.
+4. Paste `workroom-gpt-custom-instructions.md` into your Custom GPT Instructions field to improve operation selection and payload quality.
+
 ## 2026 Competition UX Notes
 
 - Mobile header now uses a compact `Menu` toggle so auth buttons do not consume most of the screen.

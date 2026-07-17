@@ -44,6 +44,27 @@
           </article>
 
           <article class="workroom-panel workroom-google-panel">
+            <h2>Automation inbox</h2>
+            <form id="workroom-automation-form" class="workroom-form workroom-compact-form">
+              <label>Source<select id="workroom-automation-source"><option value="voice">Voice note</option><option value="slack">Slack summary</option><option value="gmail">Gmail summary</option><option value="gpt">GPT assistant</option><option value="manual" selected>Manual notes</option></select></label>
+              <label>Inbox text<textarea id="workroom-automation-text" maxlength="12000" required placeholder="Paste a GPT/Slack/Gmail summary or dictate your notes."></textarea></label>
+              <div class="workroom-inline-actions">
+                <button id="workroom-automation-voice" class="workroom-button workroom-button-quiet" type="button">Start voice capture</button>
+                <button class="workroom-button workroom-button-primary" type="submit">Create tasks from text</button>
+              </div>
+              <p class="workroom-inline-hint">Tip: one task per bullet line produces the best imports.</p>
+            </form>
+            <div class="workroom-record-list">
+              <div class="workroom-inline-actions">
+                <strong>GPT Action Status</strong>
+                <button id="workroom-automation-refresh" class="workroom-button workroom-button-quiet" type="button">Refresh status</button>
+              </div>
+              <p id="workroom-automation-usage" class="workroom-inline-hint">Usage data will appear after sign-in.</p>
+              <div id="workroom-automation-audit" class="workroom-record-list"></div>
+            </div>
+          </article>
+
+          <article class="workroom-panel workroom-google-panel">
             <h2>Calendar & email</h2>
             <div class="workroom-inline-actions">
               <button id="workroom-google-connect" class="workroom-button workroom-button-primary" type="button">Connect Google account</button>

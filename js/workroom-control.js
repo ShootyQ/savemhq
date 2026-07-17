@@ -34,6 +34,8 @@ import {
 const $ = (id) => document.getElementById(id);
 const elements = {
   gate: $("workroom-gate"), gateMessage: $("workroom-gate-message"), signIn: $("workroom-sign-in"), signOut: $("workroom-sign-out"), app: $("workroom-control"), notice: $("workroom-notice"),
+  automationForm: $("workroom-automation-form"), automationSource: $("workroom-automation-source"), automationText: $("workroom-automation-text"), automationVoice: $("workroom-automation-voice"),
+  automationRefresh: $("workroom-automation-refresh"), automationUsage: $("workroom-automation-usage"), automationAudit: $("workroom-automation-audit"),
   contactForm: $("workroom-contact-form"), contactName: $("workroom-contact-name"), contactDate: $("workroom-contact-date"), contactReason: $("workroom-contact-reason"), contactMethod: $("workroom-contact-method"), contactDetail: $("workroom-contact-detail"), contacts: $("workroom-contacts"),
   projectForm: $("workroom-project-form"), projectTitle: $("workroom-project-title"), projectDate: $("workroom-project-date"), projectColor: $("workroom-project-color"), projects: $("workroom-projects"),
   taskForm: $("workroom-task-form"), taskTitle: $("workroom-task-title"), taskProject: $("workroom-task-project"), taskPriority: $("workroom-task-priority"), taskDate: $("workroom-task-date"), taskNotes: $("workroom-task-notes"), tasks: $("workroom-tasks"),
@@ -47,7 +49,12 @@ const googleSync = httpsCallable(functions, "syncWorkroomGoogle");
 const googleDisconnect = httpsCallable(functions, "disconnectWorkroomGoogle");
 const googleCalendars = httpsCallable(functions, "listWorkroomGoogleCalendars");
 const saveGoogleCalendars = httpsCallable(functions, "setWorkroomGoogleCalendars");
+const parseAutomationText = httpsCallable(functions, "parseWorkroomAutomationText");
+const getAutomationStatus = httpsCallable(functions, "getWorkroomAutomationStatus");
 let state = { user: null, projects: [], tasks: [], finance: [], contacts: [], ach: [], connections: [], unsubscribers: [] };
+let speechRecognition = null;
+let speechActive = false;
+let automationStatusInterval = null;
 
 const notice = (message = "", error = false) => {
   elements.notice.textContent = message;
@@ -56,6 +63,117 @@ const notice = (message = "", error = false) => {
 const clean = (value) => String(value || "").trim();
 const timestampForDate = (value) => value ? new Date(`${value}T12:00:00`) : null;
 const cleanUp = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; };
+
+const clearAutomationStatusTimer = () => {
+  if (automationStatusInterval) {
+    window.clearInterval(automationStatusInterval);
+    automationStatusInterval = null;
+  }
+};
+
+const formatStatusStamp = (value) => {
+  if (!value) return "";
+  return formatDateTime(value);
+};
+
+const renderAutomationStatus = (status = null) => {
+  if (!elements.automationUsage || !elements.automationAudit) return;
+  if (!status) {
+    elements.automationUsage.textContent = "Usage data will appear after sign-in.";
+    elements.automationAudit.innerHTML = `<p class="workroom-empty">No action history yet.</p>`;
+    return;
+  }
+
+  const totalUsed = Number(status.counts?.total || 0);
+  const totalLimit = Number(status.limits?.total || 0);
+  const totalRemaining = Number(status.remaining?.total || 0);
+  elements.automationUsage.textContent = `Today ${status.dateKey}: ${totalUsed}/${totalLimit} used · ${totalRemaining} remaining. Tasks ${status.counts?.createTask || 0}/${status.limits?.createTask || 0}, Projects ${status.counts?.createProject || 0}/${status.limits?.createProject || 0}, Finance ${status.counts?.createFinanceReminder || 0}/${status.limits?.createFinanceReminder || 0}, Follow-ups ${status.counts?.createContactFollowUp || 0}/${status.limits?.createContactFollowUp || 0}, ACH ${status.counts?.createAchEntry || 0}/${status.limits?.createAchEntry || 0}.`;
+
+  const recent = Array.isArray(status.recent) ? status.recent : [];
+  elements.automationAudit.innerHTML = recent.length
+    ? recent.map((entry) => {
+      const when = formatStatusStamp(entry.completedAt || entry.failedAt || entry.createdAt);
+      const details = [entry.operation || "action", entry.status || "unknown", when ? `at ${when}` : ""]
+        .filter(Boolean)
+        .join(" · ");
+      const message = entry.errorMessage || (entry.createdId ? `Created ${entry.createdId}` : "No write");
+      return `<div class="workroom-record"><div><strong>${escapeHtml(entry.requestId || entry.id || "request")}</strong><small>${escapeHtml(details)} · ${escapeHtml(message)}</small></div></div>`;
+    }).join("")
+    : `<p class="workroom-empty">No action history yet.</p>`;
+};
+
+const refreshAutomationStatus = async (quiet = false) => {
+  if (!state.user || !isOwner(state.user)) {
+    renderAutomationStatus(null);
+    return;
+  }
+  try {
+    const result = await getAutomationStatus();
+    renderAutomationStatus(result.data || null);
+  } catch (error) {
+    if (!quiet) notice(String(error.message || "Could not refresh automation status."), true);
+  }
+};
+
+const setVoiceButton = () => {
+  if (!elements.automationVoice) return;
+  elements.automationVoice.disabled = false;
+  elements.automationVoice.textContent = speechActive ? "Stop voice capture" : "Start voice capture";
+};
+
+const appendAutomationText = (snippet) => {
+  const next = clean(snippet);
+  if (!next) return;
+  const current = String(elements.automationText.value || "").trim();
+  elements.automationText.value = current ? `${current}\n${next}` : next;
+};
+
+const ensureVoiceCapture = () => {
+  if (speechRecognition !== null) return speechRecognition;
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+  speechRecognition = new SpeechRecognition();
+  speechRecognition.lang = "en-US";
+  speechRecognition.interimResults = true;
+  speechRecognition.continuous = true;
+  speechRecognition.addEventListener("result", (event) => {
+    let finalChunk = "";
+    for (let index = event.resultIndex; index < event.results.length; index += 1) {
+      if (event.results[index].isFinal) {
+        finalChunk += ` ${event.results[index][0].transcript || ""}`;
+      }
+    }
+    appendAutomationText(finalChunk);
+  });
+  speechRecognition.addEventListener("end", () => {
+    speechActive = false;
+    setVoiceButton();
+  });
+  speechRecognition.addEventListener("error", () => {
+    speechActive = false;
+    setVoiceButton();
+    notice("Voice capture hit an issue. You can keep typing instead.", true);
+  });
+  return speechRecognition;
+};
+
+const toggleVoiceCapture = () => {
+  const instance = ensureVoiceCapture();
+  if (!instance) {
+    notice("Voice capture is not available in this browser yet.", true);
+    return;
+  }
+  if (speechActive) {
+    instance.stop();
+    speechActive = false;
+    setVoiceButton();
+    return;
+  }
+  instance.start();
+  speechActive = true;
+  setVoiceButton();
+  notice("Voice capture is running. Speak naturally and then stop capture.");
+};
 
 const renderProjects = () => {
   const sorted = [...state.projects].sort((a, b) => String(a.targetDate?.toMillis?.() || 0).localeCompare(String(b.targetDate?.toMillis?.() || 0)));
@@ -104,6 +222,25 @@ const run = async (action, success) => { try { await action(); if (success) noti
 
 elements.signIn.addEventListener("click", () => run(async () => signInWithPopup(auth, new GoogleAuthProvider())));
 elements.signOut.addEventListener("click", () => signOut(auth));
+elements.automationRefresh?.addEventListener("click", () => run(() => refreshAutomationStatus(), "Automation status refreshed."));
+elements.automationVoice?.addEventListener("click", () => toggleVoiceCapture());
+elements.automationForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  run(async () => {
+    const text = clean(elements.automationText.value);
+    if (!text) throw new Error("Add some text to parse first.");
+    const result = await parseAutomationText({ source: elements.automationSource.value, text });
+    const created = Number(result.data?.createdCount || 0);
+    const skipped = Number(result.data?.skippedCount || 0);
+    if (created) {
+      elements.automationText.value = "";
+      notice(`Created ${created} task${created === 1 ? "" : "s"}${skipped ? ` (${skipped} duplicate${skipped === 1 ? "" : "s"} skipped).` : "."}`);
+    } else {
+      notice(`No tasks were created${skipped ? ` (${skipped} duplicate${skipped === 1 ? "" : "s"} skipped).` : "."}`);
+    }
+    await refreshAutomationStatus(true);
+  });
+});
 elements.contactForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(contactFollowUpsRef(state.user.uid), { name: clean(elements.contactName.value), followUpDate: timestampForDate(elements.contactDate.value), reason: clean(elements.contactReason.value), method: elements.contactMethod.value, contactDetail: clean(elements.contactDetail.value), status: "open", completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.contactForm.reset(); }, "Follow-up added."); });
 elements.projectForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(projectsRef(state.user.uid), { title: clean(elements.projectTitle.value), status: "active", color: elements.projectColor.value, outcome: "", targetDate: timestampForDate(elements.projectDate.value), createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.projectForm.reset(); }, "Project added."); });
 elements.taskForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(tasksRef(state.user.uid), { title: clean(elements.taskTitle.value), projectId: elements.taskProject.value, status: "next", priority: elements.taskPriority.value, dueDate: timestampForDate(elements.taskDate.value), notes: clean(elements.taskNotes.value), completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.taskForm.reset(); }, "Task added."); });
@@ -129,13 +266,18 @@ document.addEventListener("click", (event) => {
 });
 
 onAuthStateChanged(auth, async (user) => {
-  cleanUp(); state.user = user;
-  if (!user) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.remove("hidden"); elements.gateMessage.textContent = "Sign in with the Workroom owner account to continue."; return; }
-  if (!isOwner(user)) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = "This private space is reserved for its owner."; return; }
+  cleanUp();
+  clearAutomationStatusTimer();
+  state.user = user;
+  if (!user) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.remove("hidden"); elements.gateMessage.textContent = "Sign in with the Workroom owner account to continue."; renderAutomationStatus(null); return; }
+  if (!isOwner(user)) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = "This private space is reserved for its owner."; renderAutomationStatus(null); return; }
   elements.gate.classList.add("hidden"); elements.app.classList.remove("hidden");
   await setDoc(workroomRef(user.uid), { title: "The Workroom", updatedAt: serverTimestamp() }, { merge: true });
   subscribe(user);
+  await refreshAutomationStatus(true);
+  automationStatusInterval = window.setInterval(() => { refreshAutomationStatus(true); }, 60_000);
   const googleState = new URLSearchParams(window.location.search).get("google");
   const googleReason = new URLSearchParams(window.location.search).get("reason");
   if (googleState) { notice(googleState === "connected" ? "Google account connected." : `Google connection was not completed${googleReason ? ` (${googleReason}).` : "."}`, googleState !== "connected"); window.history.replaceState({}, "", "workroom-control.html"); }
+  setVoiceButton();
 });

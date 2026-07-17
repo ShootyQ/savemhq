@@ -27,7 +27,7 @@ service cloud.firestore {
 
     function workroomTaskIsValid() {
       return request.resource.data.keys().hasAll(["title", "projectId", "status", "priority", "dueDate", "notes", "createdAt", "updatedAt"])
-        && request.resource.data.keys().hasOnly(["title", "projectId", "status", "priority", "dueDate", "notes", "completedAt", "createdAt", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["title", "projectId", "status", "priority", "dueDate", "notes", "completedAt", "source", "ingestionHash", "createdAt", "updatedAt"])
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 180
@@ -37,6 +37,14 @@ service cloud.firestore {
         && ["high", "medium", "low"].hasAny([request.resource.data.priority])
         && request.resource.data.notes is string
         && request.resource.data.notes.size() <= 1000
+        && (!request.resource.data.keys().hasAny(["source"]) || (
+          request.resource.data.source is string
+          && request.resource.data.source.size() <= 24
+        ))
+        && (!request.resource.data.keys().hasAny(["ingestionHash"]) || (
+          request.resource.data.ingestionHash is string
+          && request.resource.data.ingestionHash.size() <= 80
+        ))
         && (request.resource.data.dueDate == null || request.resource.data.dueDate is timestamp)
         && (request.resource.data.completedAt == null || request.resource.data.completedAt is timestamp);
     }
@@ -997,6 +1005,18 @@ service cloud.firestore {
     }
 
     match /workroomSecrets/{secretId} {
+      allow read, write: if false;
+    }
+
+    match /workroomAutomationUsage/{docId} {
+      allow read, write: if false;
+    }
+
+    match /workroomAutomationIdempotency/{docId} {
+      allow read, write: if false;
+    }
+
+    match /workroomAutomationAudit/{ownerUid}/entries/{entryId} {
       allow read, write: if false;
     }
 

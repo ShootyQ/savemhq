@@ -17,6 +17,7 @@ const GOOGLE_CLIENT_ID = defineString("GOOGLE_CLIENT_ID");
 const GOOGLE_REDIRECT_URI = defineString("GOOGLE_REDIRECT_URI");
 const WORKROOM_CONTROL_URL = defineString("WORKROOM_CONTROL_URL");
 const GOOGLE_CLIENT_SECRET = defineSecret("GOOGLE_CLIENT_SECRET");
+const WORKROOM_AUTOMATION_KEY = defineSecret("WORKROOM_AUTOMATION_KEY");
 
 const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
 const SEASON_ID = "2026-andrew-august-22";
@@ -35,6 +36,14 @@ const tokenRef = (uid) => db.collection("triathlonSecrets").doc(`${uid}_strava`)
 const workroomConnectionRef = (uid, connectionId) => db.collection("workroomConnections").doc(uid).collection("connections").doc(connectionId);
 const workroomSecretRef = (uid, connectionId) => db.collection("workroomSecrets").doc(`${uid}_${connectionId}`);
 const workroomSummaryRef = (uid) => db.collection("workroomSummaries").doc(uid);
+const workroomTasksCollectionRef = (uid) => db.collection("workrooms").doc(uid).collection("tasks");
+const workroomProjectsCollectionRef = (uid) => db.collection("workrooms").doc(uid).collection("projects");
+const workroomFinanceCollectionRef = (uid) => db.collection("workrooms").doc(uid).collection("financeReminders");
+const workroomContactCollectionRef = (uid) => db.collection("workrooms").doc(uid).collection("contactFollowUps");
+const workroomAchCollectionRef = (uid) => db.collection("workrooms").doc(uid).collection("achEntries");
+const workroomAutomationUsageRef = (uid, dateKey) => db.collection("workroomAutomationUsage").doc(`${uid}_${dateKey}`);
+const workroomAutomationIdempotencyRef = (uid, requestId) => db.collection("workroomAutomationIdempotency").doc(`${uid}_${requestId}`);
+const workroomAutomationAuditRef = (uid, auditId) => db.collection("workroomAutomationAudit").doc(uid).collection("entries").doc(auditId);
 
 const dashboardUrl = () => TRIATHLON_DASHBOARD_URL.value() || "https://savemhq.com/triathlon-tracker.html";
 const workroomControlUrl = () => WORKROOM_CONTROL_URL.value() || "https://savemhq.com/workroom-control.html";
@@ -58,6 +67,393 @@ const requireWorkroomOwner = (auth) => {
   if (email !== ADMIN_EMAIL) {
     throw new HttpsError("permission-denied", "Only the Workroom owner can manage Google connections.");
   }
+};
+
+const WORKROOM_INGESTION_SOURCES = new Set(["voice", "slack", "gmail", "gpt", "manual", "api"]);
+const WORKROOM_ACTION_OPERATIONS = new Set([
+  "createTask",
+  "createProject",
+  "createFinanceReminder",
+  "createContactFollowUp",
+  "createAchEntry",
+]);
+const WORKROOM_ACTION_SOURCES = new Set(["chatgpt-action", "gpt", "manual", "api"]);
+const WORKROOM_ACTION_DAILY_TOTAL_LIMIT = 40;
+const WORKROOM_ACTION_DAILY_OPERATION_LIMITS = {
+  createTask: 20,
+  createProject: 5,
+  createFinanceReminder: 8,
+  createContactFollowUp: 8,
+  createAchEntry: 5,
+};
+const WORKROOM_PROJECT_COLORS = new Set(["fern", "sky", "sun", "clay"]);
+const WORKROOM_PRIORITY = new Set(["high", "medium", "low"]);
+const WORKROOM_CONTACT_METHOD = new Set(["phone", "email"]);
+
+const clean = (value) => String(value || "").trim();
+
+const fail = (status, code, message) => {
+  const error = new Error(message);
+  error.status = status;
+  error.code = code;
+  throw error;
+};
+
+const ensureString = (value, maxLength, field) => {
+  const normalized = clean(value);
+  if (!normalized) fail(400, "invalid_payload", `${field} is required.`);
+  if (normalized.length > maxLength) fail(400, "invalid_payload", `${field} exceeds ${maxLength} characters.`);
+  return normalized;
+};
+
+const optionalString = (value, maxLength, field) => {
+  const normalized = clean(value);
+  if (!normalized) return "";
+  if (normalized.length > maxLength) fail(400, "invalid_payload", `${field} exceeds ${maxLength} characters.`);
+  return normalized;
+};
+
+const ensureEnum = (value, set, fallback, field) => {
+  const normalized = clean(value).toLowerCase();
+  if (!normalized && fallback) return fallback;
+  if (!set.has(normalized)) fail(400, "invalid_payload", `${field} must be one of: ${[...set].join(", ")}.`);
+  return normalized;
+};
+
+const toTimestampOrNull = (value, field) => {
+  if (value == null || value === "") return null;
+  const normalized = clean(value);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(normalized)
+    ? new Date(`${normalized}T12:00:00`)
+    : new Date(normalized);
+  if (Number.isNaN(date.getTime())) fail(400, "invalid_payload", `${field} must be a valid date.`);
+  return admin.firestore.Timestamp.fromDate(date);
+};
+
+const toRequiredTimestamp = (value, field) => {
+  const stamp = toTimestampOrNull(value, field);
+  if (!stamp) fail(400, "invalid_payload", `${field} is required.`);
+  return stamp;
+};
+
+const toOptionalAmount = (value, field) => {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) fail(400, "invalid_payload", `${field} must be a valid number.`);
+  return number;
+};
+
+const toRequiredAmount = (value, field) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) fail(400, "invalid_payload", `${field} must be a valid number.`);
+  if (number < 0) fail(400, "invalid_payload", `${field} must be zero or greater.`);
+  return number;
+};
+
+const parseBoolean = (value, defaultValue = false) => {
+  if (value == null || value === "") return defaultValue;
+  if (typeof value === "boolean") return value;
+  const normalized = clean(value).toLowerCase();
+  if (["true", "1", "yes", "y"].includes(normalized)) return true;
+  if (["false", "0", "no", "n"].includes(normalized)) return false;
+  fail(400, "invalid_payload", "recurring must be true or false.");
+};
+
+const createPayloadHash = (operation, payload) => crypto
+  .createHash("sha256")
+  .update(`${operation}:${JSON.stringify(payload || {})}`)
+  .digest("hex");
+
+const usageDateKey = () => new Date().toISOString().slice(0, 10);
+
+const ensureWorkroomOwnerUid = async (uid) => {
+  const user = await admin.auth().getUser(uid).catch(() => null);
+  if (!user) fail(403, "permission_denied", "That uid is not allowed for Workroom automation.");
+  const email = clean(user.email).toLowerCase();
+  if (email !== ADMIN_EMAIL) fail(403, "permission_denied", "That uid is not allowed for Workroom automation.");
+};
+
+const normalizeActionSource = (value) => {
+  const normalized = clean(value).toLowerCase();
+  return WORKROOM_ACTION_SOURCES.has(normalized) ? normalized : "chatgpt-action";
+};
+
+const validateActionRequest = (body) => {
+  const uid = ensureString(body?.uid, 128, "uid");
+  const requestId = ensureString(body?.requestId, 120, "requestId");
+  if (!/^[a-zA-Z0-9._:-]+$/.test(requestId)) {
+    fail(400, "invalid_payload", "requestId contains unsupported characters.");
+  }
+  const operation = ensureString(body?.operation, 64, "operation");
+  if (!WORKROOM_ACTION_OPERATIONS.has(operation)) {
+    fail(400, "invalid_payload", `operation must be one of: ${[...WORKROOM_ACTION_OPERATIONS].join(", ")}.`);
+  }
+  const source = normalizeActionSource(body?.source);
+  const payload = typeof body?.payload === "object" && body?.payload != null ? body.payload : null;
+  if (!payload) fail(400, "invalid_payload", "payload is required.");
+  return { uid, requestId, operation, source, payload };
+};
+
+const buildTaskDoc = ({ payload, source, requestId }) => {
+  const title = ensureString(payload.title, 180, "title");
+  const notes = optionalString(payload.notes, 1000, "notes");
+  const projectId = optionalString(payload.projectId, 150, "projectId");
+  const priority = ensureEnum(payload.priority, WORKROOM_PRIORITY, "medium", "priority");
+  return {
+    title,
+    projectId,
+    status: "next",
+    priority,
+    dueDate: toTimestampOrNull(payload.dueDate, "dueDate"),
+    notes,
+    source,
+    ingestionHash: crypto.createHash("sha256").update(`gpt-action:${requestId}:${title.toLowerCase()}`).digest("hex"),
+    completedAt: null,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+};
+
+const buildProjectDoc = ({ payload }) => ({
+  title: ensureString(payload.title, 120, "title"),
+  status: "active",
+  color: ensureEnum(payload.color, WORKROOM_PROJECT_COLORS, "fern", "color"),
+  outcome: optionalString(payload.outcome, 600, "outcome"),
+  targetDate: toTimestampOrNull(payload.targetDate, "targetDate"),
+  createdAt: FieldValue.serverTimestamp(),
+  updatedAt: FieldValue.serverTimestamp(),
+});
+
+const buildFinanceDoc = ({ payload }) => ({
+  title: ensureString(payload.title, 160, "title"),
+  category: optionalString(payload.category, 50, "category"),
+  urgency: ensureEnum(payload.urgency, WORKROOM_PRIORITY, "medium", "urgency"),
+  dueDate: toTimestampOrNull(payload.dueDate, "dueDate"),
+  reference: optionalString(payload.reference, 160, "reference"),
+  amount: toOptionalAmount(payload.amount, "amount"),
+  status: "open",
+  completedAt: null,
+  createdAt: FieldValue.serverTimestamp(),
+  updatedAt: FieldValue.serverTimestamp(),
+});
+
+const buildContactDoc = ({ payload }) => ({
+  name: ensureString(payload.name, 120, "name"),
+  followUpDate: toRequiredTimestamp(payload.followUpDate, "followUpDate"),
+  reason: ensureString(payload.reason, 500, "reason"),
+  method: ensureEnum(payload.method, WORKROOM_CONTACT_METHOD, "email", "method"),
+  contactDetail: ensureString(payload.contactDetail, 160, "contactDetail"),
+  status: "open",
+  completedAt: null,
+  createdAt: FieldValue.serverTimestamp(),
+  updatedAt: FieldValue.serverTimestamp(),
+});
+
+const buildAchDoc = ({ payload }) => ({
+  name: ensureString(payload.name, 120, "name"),
+  amount: toRequiredAmount(payload.amount, "amount"),
+  withdrawalDate: toRequiredTimestamp(payload.withdrawalDate, "withdrawalDate"),
+  reason: ensureString(payload.reason, 500, "reason"),
+  recurring: parseBoolean(payload.recurring, false),
+  createdAt: FieldValue.serverTimestamp(),
+  updatedAt: FieldValue.serverTimestamp(),
+});
+
+const WORKROOM_ACTION_BUILDERS = {
+  createTask: { collection: workroomTasksCollectionRef, buildDoc: buildTaskDoc },
+  createProject: { collection: workroomProjectsCollectionRef, buildDoc: buildProjectDoc },
+  createFinanceReminder: { collection: workroomFinanceCollectionRef, buildDoc: buildFinanceDoc },
+  createContactFollowUp: { collection: workroomContactCollectionRef, buildDoc: buildContactDoc },
+  createAchEntry: { collection: workroomAchCollectionRef, buildDoc: buildAchDoc },
+};
+
+const executeWorkroomAction = async ({ uid, requestId, operation, source, payload }) => {
+  const actionDefinition = WORKROOM_ACTION_BUILDERS[operation];
+  if (!actionDefinition) fail(400, "invalid_payload", "Unsupported operation.");
+  const dateKey = usageDateKey();
+  const usageRef = workroomAutomationUsageRef(uid, dateKey);
+  const idempotencyRef = workroomAutomationIdempotencyRef(uid, requestId);
+  const payloadHash = createPayloadHash(operation, payload);
+  const operationLimit = WORKROOM_ACTION_DAILY_OPERATION_LIMITS[operation] || WORKROOM_ACTION_DAILY_TOTAL_LIMIT;
+  const now = FieldValue.serverTimestamp();
+
+  return db.runTransaction(async (transaction) => {
+    const [usageSnapshot, idempotencySnapshot] = await Promise.all([
+      transaction.get(usageRef),
+      transaction.get(idempotencyRef),
+    ]);
+
+    if (idempotencySnapshot.exists) {
+      const existing = idempotencySnapshot.data() || {};
+      return {
+        replayed: true,
+        operation,
+        createdId: String(existing.createdId || ""),
+        collectionPath: String(existing.collectionPath || ""),
+        dateKey,
+      };
+    }
+
+    const usage = usageSnapshot.data() || {};
+    const totals = {
+      total: Number(usage.total || 0),
+      createTask: Number(usage.createTask || 0),
+      createProject: Number(usage.createProject || 0),
+      createFinanceReminder: Number(usage.createFinanceReminder || 0),
+      createContactFollowUp: Number(usage.createContactFollowUp || 0),
+      createAchEntry: Number(usage.createAchEntry || 0),
+    };
+
+    if (totals.total >= WORKROOM_ACTION_DAILY_TOTAL_LIMIT) {
+      fail(429, "daily_limit_exceeded", "Daily Workroom automation limit reached.");
+    }
+    if (totals[operation] >= operationLimit) {
+      fail(429, "operation_limit_exceeded", `Daily limit reached for ${operation}.`);
+    }
+
+    const targetCollection = actionDefinition.collection(uid);
+    const targetRef = targetCollection.doc();
+    const docData = actionDefinition.buildDoc({ payload, source, requestId });
+    transaction.set(targetRef, docData);
+    transaction.set(usageRef, {
+      uid,
+      dateKey,
+      total: totals.total + 1,
+      createTask: totals.createTask + (operation === "createTask" ? 1 : 0),
+      createProject: totals.createProject + (operation === "createProject" ? 1 : 0),
+      createFinanceReminder: totals.createFinanceReminder + (operation === "createFinanceReminder" ? 1 : 0),
+      createContactFollowUp: totals.createContactFollowUp + (operation === "createContactFollowUp" ? 1 : 0),
+      createAchEntry: totals.createAchEntry + (operation === "createAchEntry" ? 1 : 0),
+      updatedAt: now,
+    }, { merge: true });
+    transaction.set(idempotencyRef, {
+      uid,
+      requestId,
+      operation,
+      source,
+      payloadHash,
+      createdId: targetRef.id,
+      collectionPath: targetRef.path,
+      dateKey,
+      createdAt: now,
+      updatedAt: now,
+    }, { merge: true });
+
+    return {
+      replayed: false,
+      operation,
+      createdId: targetRef.id,
+      collectionPath: targetRef.path,
+      dateKey,
+    };
+  });
+};
+
+const normalizeTaskTitle = (value) => clean(value).replace(/^[\-•\*\d\.)\s]+/, "").slice(0, 180);
+
+const normalizeTaskInputText = (value) => String(value || "").replace(/\r\n/g, "\n").trim();
+
+const inferPriority = (text) => {
+  const value = text.toLowerCase();
+  if (/(urgent|asap|today|critical|immediately|by eod|high priority)/.test(value)) return "high";
+  if (/(someday|later|low priority|whenever|backlog)/.test(value)) return "low";
+  return "medium";
+};
+
+const inferDueDate = (text) => {
+  const value = text.toLowerCase();
+  const now = new Date();
+  const atNoon = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
+  if (/(\btoday\b|by eod|end of day)/.test(value)) return atNoon(now);
+  if (/\btomorrow\b/.test(value)) {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    return atNoon(tomorrow);
+  }
+  const inDays = value.match(/in\s+(\d{1,2})\s+days?/);
+  if (inDays) {
+    const target = new Date(now);
+    target.setDate(now.getDate() + Number(inDays[1]));
+    return atNoon(target);
+  }
+  const byDate = value.match(/\b(?:by|due)\s+(\d{4}-\d{2}-\d{2})\b/);
+  if (byDate) {
+    const date = new Date(`${byDate[1]}T12:00:00`);
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+  return null;
+};
+
+const parseTaskCandidates = (text) => {
+  const normalized = normalizeTaskInputText(text);
+  if (!normalized) return [];
+  const lines = normalized.split("\n").map((line) => clean(line)).filter(Boolean);
+  const bulletLike = lines.filter((line) => /^([\-•\*]|\d+[\.)])\s+/.test(line));
+  const units = bulletLike.length >= 2 ? bulletLike : lines;
+  const tasks = [];
+  for (const unit of units) {
+    const title = normalizeTaskTitle(unit);
+    if (!title) continue;
+    tasks.push({
+      title,
+      notes: unit.slice(0, 1000),
+      priority: inferPriority(unit),
+      dueDate: inferDueDate(unit),
+    });
+  }
+  return tasks.slice(0, 40);
+};
+
+const computeIngestionHash = ({ title, notes, source }) => crypto
+  .createHash("sha256")
+  .update(`${clean(source).toLowerCase()}::${clean(title).toLowerCase()}::${clean(notes).toLowerCase()}`)
+  .digest("hex");
+
+const createTasksFromAutomationText = async ({ uid, source, text }) => {
+  const normalizedSource = WORKROOM_INGESTION_SOURCES.has(clean(source).toLowerCase()) ? clean(source).toLowerCase() : "manual";
+  const candidates = parseTaskCandidates(text);
+  if (!candidates.length) {
+    return { createdCount: 0, skippedCount: 0 };
+  }
+
+  const collection = workroomTasksCollectionRef(uid);
+  const hashes = candidates.map((candidate) => computeIngestionHash({ ...candidate, source: normalizedSource }));
+  const existingHashMatches = await Promise.all(hashes.map((hash) => collection.where("ingestionHash", "==", hash).limit(1).get()));
+
+  const now = FieldValue.serverTimestamp();
+  let createdCount = 0;
+  let skippedCount = 0;
+  const batch = db.batch();
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    const hash = hashes[index];
+    if (!candidate.title) {
+      skippedCount += 1;
+      continue;
+    }
+    if (!existingHashMatches[index].empty) {
+      skippedCount += 1;
+      continue;
+    }
+    batch.set(collection.doc(), {
+      title: candidate.title,
+      projectId: "",
+      status: "next",
+      priority: candidate.priority,
+      dueDate: candidate.dueDate ? admin.firestore.Timestamp.fromDate(candidate.dueDate) : null,
+      notes: candidate.notes,
+      source: normalizedSource,
+      ingestionHash: hash,
+      completedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    createdCount += 1;
+  }
+  if (createdCount) {
+    await batch.commit();
+  }
+  return { createdCount, skippedCount };
 };
 
 const fetchJson = async (url, options = {}) => {
@@ -540,4 +936,167 @@ exports.scheduledWorkroomGoogleSync = onSchedule({ schedule: "every 10 minutes",
   const connections = await db.collectionGroup("connections").where("status", "==", "connected").get();
   const ownerUids = [...new Set(connections.docs.map((connection) => connection.ref.parent.parent?.id).filter(Boolean))];
   await Promise.all(ownerUids.map((uid) => syncWorkroomGoogle(uid)));
+});
+
+exports.parseWorkroomAutomationText = onCall(async (request) => {
+  const auth = requireAuth(request);
+  requireWorkroomOwner(auth);
+  const source = clean(request.data?.source || "manual");
+  const text = normalizeTaskInputText(request.data?.text || "");
+  if (!text) {
+    throw new HttpsError("invalid-argument", "Provide text to parse into tasks.");
+  }
+  return createTasksFromAutomationText({ uid: auth.uid, source, text });
+});
+
+exports.ingestWorkroomAutomation = onRequest({ secrets: [WORKROOM_AUTOMATION_KEY] }, async (request, response) => {
+  if (request.method !== "POST") {
+    response.status(405).json({ error: "method_not_allowed" });
+    return;
+  }
+
+  const headerKey = clean(request.get("x-workroom-key"));
+  const configuredKey = clean(WORKROOM_AUTOMATION_KEY.value());
+  if (!configuredKey || headerKey !== configuredKey) {
+    response.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  const uid = clean(request.body?.uid);
+  const source = clean(request.body?.source || "api");
+  const text = normalizeTaskInputText(request.body?.text || "");
+  if (!uid || !text) {
+    response.status(400).json({ error: "missing_uid_or_text" });
+    return;
+  }
+
+  try {
+    const result = await createTasksFromAutomationText({ uid, source, text });
+    response.status(200).json({ ok: true, ...result });
+  } catch (error) {
+    response.status(500).json({ error: "ingestion_failed", message: String(error?.message || "Unknown error") });
+  }
+});
+
+exports.executeWorkroomAction = onRequest({ secrets: [WORKROOM_AUTOMATION_KEY] }, async (request, response) => {
+  if (request.method !== "POST") {
+    response.status(405).json({ error: "method_not_allowed" });
+    return;
+  }
+
+  const headerKey = clean(request.get("x-workroom-key"));
+  const configuredKey = clean(WORKROOM_AUTOMATION_KEY.value());
+  if (!configuredKey || headerKey !== configuredKey) {
+    response.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  let action = null;
+  let auditId = "";
+  try {
+    action = validateActionRequest(request.body || {});
+    await ensureWorkroomOwnerUid(action.uid);
+    auditId = crypto.randomBytes(12).toString("hex");
+    const payloadHash = createPayloadHash(action.operation, action.payload);
+    const auditRef = workroomAutomationAuditRef(action.uid, auditId);
+    await auditRef.set({
+      uid: action.uid,
+      requestId: action.requestId,
+      operation: action.operation,
+      source: action.source,
+      payloadHash,
+      status: "received",
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    const result = await executeWorkroomAction(action);
+    await auditRef.set({
+      status: result.replayed ? "replayed" : "completed",
+      createdId: result.createdId,
+      collectionPath: result.collectionPath,
+      replayed: result.replayed,
+      completedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    response.status(200).json({ ok: true, auditId, ...result });
+  } catch (error) {
+    const status = Number(error?.status || 500);
+    const code = clean(error?.code || "action_execution_failed");
+    const message = clean(error?.message || "Unable to execute Workroom action.");
+    if (action?.uid && auditId) {
+      await workroomAutomationAuditRef(action.uid, auditId).set({
+        status: "rejected",
+        errorCode: code,
+        errorMessage: message.slice(0, 240),
+        failedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true }).catch(() => {});
+    }
+    response.status(status).json({ ok: false, error: code, message, auditId: auditId || null });
+  }
+});
+
+exports.getWorkroomAutomationStatus = onCall(async (request) => {
+  const auth = requireAuth(request);
+  requireWorkroomOwner(auth);
+  const uid = auth.uid;
+  const dateKey = usageDateKey();
+  const usageSnapshot = await workroomAutomationUsageRef(uid, dateKey).get();
+  const usage = usageSnapshot.data() || {};
+  const counts = {
+    total: Number(usage.total || 0),
+    createTask: Number(usage.createTask || 0),
+    createProject: Number(usage.createProject || 0),
+    createFinanceReminder: Number(usage.createFinanceReminder || 0),
+    createContactFollowUp: Number(usage.createContactFollowUp || 0),
+    createAchEntry: Number(usage.createAchEntry || 0),
+  };
+
+  const recentSnapshot = await db.collection("workroomAutomationAudit")
+    .doc(uid)
+    .collection("entries")
+    .orderBy("createdAt", "desc")
+    .limit(10)
+    .get();
+
+  const recent = recentSnapshot.docs.map((item) => {
+    const data = item.data() || {};
+    return {
+      id: item.id,
+      requestId: String(data.requestId || ""),
+      operation: String(data.operation || ""),
+      source: String(data.source || ""),
+      status: String(data.status || ""),
+      createdId: String(data.createdId || ""),
+      errorCode: String(data.errorCode || ""),
+      errorMessage: String(data.errorMessage || ""),
+      createdAt: data.createdAt || null,
+      completedAt: data.completedAt || null,
+      failedAt: data.failedAt || null,
+    };
+  });
+
+  return {
+    dateKey,
+    limits: {
+      total: WORKROOM_ACTION_DAILY_TOTAL_LIMIT,
+      createTask: WORKROOM_ACTION_DAILY_OPERATION_LIMITS.createTask,
+      createProject: WORKROOM_ACTION_DAILY_OPERATION_LIMITS.createProject,
+      createFinanceReminder: WORKROOM_ACTION_DAILY_OPERATION_LIMITS.createFinanceReminder,
+      createContactFollowUp: WORKROOM_ACTION_DAILY_OPERATION_LIMITS.createContactFollowUp,
+      createAchEntry: WORKROOM_ACTION_DAILY_OPERATION_LIMITS.createAchEntry,
+    },
+    counts,
+    remaining: {
+      total: Math.max(0, WORKROOM_ACTION_DAILY_TOTAL_LIMIT - counts.total),
+      createTask: Math.max(0, WORKROOM_ACTION_DAILY_OPERATION_LIMITS.createTask - counts.createTask),
+      createProject: Math.max(0, WORKROOM_ACTION_DAILY_OPERATION_LIMITS.createProject - counts.createProject),
+      createFinanceReminder: Math.max(0, WORKROOM_ACTION_DAILY_OPERATION_LIMITS.createFinanceReminder - counts.createFinanceReminder),
+      createContactFollowUp: Math.max(0, WORKROOM_ACTION_DAILY_OPERATION_LIMITS.createContactFollowUp - counts.createContactFollowUp),
+      createAchEntry: Math.max(0, WORKROOM_ACTION_DAILY_OPERATION_LIMITS.createAchEntry - counts.createAchEntry),
+    },
+    recent,
+  };
 });
