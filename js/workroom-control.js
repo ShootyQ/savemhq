@@ -42,7 +42,7 @@ const elements = {
   taskForm: $("workroom-task-form"), taskTitle: $("workroom-task-title"), taskProject: $("workroom-task-project"), taskPriority: $("workroom-task-priority"), taskDate: $("workroom-task-date"), taskNotes: $("workroom-task-notes"), tasks: $("workroom-tasks"),
   financeForm: $("workroom-finance-form"), financeTitle: $("workroom-finance-title"), financeCategory: $("workroom-finance-category"), financeUrgency: $("workroom-finance-urgency"), financeDate: $("workroom-finance-date"), financeAmount: $("workroom-finance-amount"), financeReference: $("workroom-finance-reference"), finance: $("workroom-finance"),
   achForm: $("workroom-ach-form"), achName: $("workroom-ach-name"), achAmount: $("workroom-ach-amount"), achDate: $("workroom-ach-date"), achReason: $("workroom-ach-reason"), achRecurring: $("workroom-ach-recurring"), ach: $("workroom-ach"),
-  googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"), briefingCount: $("workroom-briefing-count"), briefingStatus: $("workroom-briefing-status"), automationSummary: $("workroom-automation-summary"), todayStats: $("workroom-today-stats"), todayActions: $("workroom-today-actions"), quickAdd: $("workroom-quick-add"), quickAddDialog: $("workroom-quick-add-dialog"),
+  googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"), briefingCount: $("workroom-briefing-count"), briefingStatus: $("workroom-briefing-status"), briefingResult: $("workroom-briefing-result"), automationSummary: $("workroom-automation-summary"), todayStats: $("workroom-today-stats"), todayActions: $("workroom-today-actions"), quickAdd: $("workroom-quick-add"), quickAddDialog: $("workroom-quick-add-dialog"),
 };
 const functions = getFunctions();
 const googleConnect = httpsCallable(functions, "createWorkroomGoogleAuthSession");
@@ -72,6 +72,19 @@ const renderBriefingCount = () => {
     const generated = state.briefing.generatedAt ? `Updated ${formatDateTime(state.briefing.generatedAt)}` : "Waiting for the first review.";
     const sources = state.briefing.sourceCounts ? `${Number(state.briefing.sourceCounts.recentMail || 0)} mail · ${Number(state.briefing.sourceCounts.slackMessages || 0)} Slack` : "";
     elements.briefingStatus.textContent = [generated, sources].filter(Boolean).join(" · ");
+  }
+  if (elements.briefingResult) {
+    const sourceCounts = state.briefing.sourceCounts;
+    const text = clean(state.briefing.text);
+    if (!text || !sourceCounts) {
+      elements.briefingResult.innerHTML = `<p class="workroom-empty">Run a review to see exactly what GPT checked and found.</p>`;
+      return;
+    }
+    const sources = [
+      ["tasks", "open tasks"], ["projects", "projects"], ["financeReminders", "finance reminders"], ["contactFollowUps", "follow-ups"], ["achEntries", "ACH entries"], ["calendarEvents", "calendar events"], ["recentMail", "email messages"], ["slackMessages", "Slack messages"],
+    ].map(([key, label]) => `${Number(sourceCounts[key] || 0)} ${label}`).join(" · ");
+    const syncNote = state.briefing.googleSyncError ? `<p class="workroom-briefing-warning">Google source issue: ${escapeHtml(state.briefing.googleSyncError)}</p>` : "";
+    elements.briefingResult.innerHTML = `<p class="workroom-briefing-sources"><strong>Review receipt</strong> · ${escapeHtml(sources)}</p>${syncNote}<pre>${escapeHtml(text)}</pre>`;
   }
 };
 
@@ -308,7 +321,7 @@ elements.financeForm.addEventListener("submit", (event) => { event.preventDefaul
 elements.achForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(achEntriesRef(state.user.uid), { name: clean(elements.achName.value), amount: Number(elements.achAmount.value), withdrawalDate: timestampForDate(elements.achDate.value), reason: clean(elements.achReason.value), recurring: elements.achRecurring.checked, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.achForm.reset(); closeQuickAdd(); }, "ACH entry added."); });
 elements.googleConnect.addEventListener("click", () => run(async () => { const result = await googleConnect(); window.location.assign(result.data.authorizeUrl); }));
 elements.googleSync.addEventListener("click", () => run(() => googleSync(), "Google data refreshed."));
-elements.briefingGenerate?.addEventListener("click", async () => { elements.briefingGenerate.disabled = true; await run(() => generateBriefing(), "Email + Slack review complete. Open the TV display to see it."); elements.briefingGenerate.disabled = false; });
+elements.briefingGenerate?.addEventListener("click", async () => { elements.briefingGenerate.disabled = true; await run(() => generateBriefing(), "Review complete. The receipt below shows what GPT checked and found."); elements.briefingGenerate.disabled = false; });
 elements.quickAdd?.addEventListener("click", () => openQuickAdd());
 document.querySelectorAll("[data-workroom-view]").forEach((button) => button.addEventListener("click", () => setActiveView(button.dataset.workroomView)));
 document.querySelectorAll("[data-open-quick-add]").forEach((button) => button.addEventListener("click", () => openQuickAdd(button.dataset.openQuickAdd)));
