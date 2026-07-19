@@ -29,6 +29,7 @@ import {
   projectsRef,
   tasksRef,
   workroomRef,
+  briefingRef,
 } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
