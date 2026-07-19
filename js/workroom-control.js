@@ -42,7 +42,7 @@ const elements = {
   taskForm: $("workroom-task-form"), taskTitle: $("workroom-task-title"), taskProject: $("workroom-task-project"), taskPriority: $("workroom-task-priority"), taskDate: $("workroom-task-date"), taskNotes: $("workroom-task-notes"), tasks: $("workroom-tasks"),
   financeForm: $("workroom-finance-form"), financeTitle: $("workroom-finance-title"), financeCategory: $("workroom-finance-category"), financeUrgency: $("workroom-finance-urgency"), financeDate: $("workroom-finance-date"), financeAmount: $("workroom-finance-amount"), financeReference: $("workroom-finance-reference"), finance: $("workroom-finance"),
   achForm: $("workroom-ach-form"), achName: $("workroom-ach-name"), achAmount: $("workroom-ach-amount"), achDate: $("workroom-ach-date"), achReason: $("workroom-ach-reason"), achRecurring: $("workroom-ach-recurring"), ach: $("workroom-ach"),
-  googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"), briefingCount: $("workroom-briefing-count"),
+  googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"), briefingCount: $("workroom-briefing-count"), briefingStatus: $("workroom-briefing-status"), automationSummary: $("workroom-automation-summary"), todayStats: $("workroom-today-stats"), todayActions: $("workroom-today-actions"), quickAdd: $("workroom-quick-add"), quickAddDialog: $("workroom-quick-add-dialog"),
 };
 const functions = getFunctions();
 const googleConnect = httpsCallable(functions, "createWorkroomGoogleAuthSession");
@@ -53,7 +53,7 @@ const saveGoogleCalendars = httpsCallable(functions, "setWorkroomGoogleCalendars
 const generateBriefing = httpsCallable(functions, "generateWorkroomBriefing");
 const parseAutomationText = httpsCallable(functions, "parseWorkroomAutomationText");
 const getAutomationStatus = httpsCallable(functions, "getWorkroomAutomationStatus");
-let state = { user: null, projects: [], tasks: [], finance: [], contacts: [], ach: [], briefing: {}, connections: [], unsubscribers: [] };
+let state = { user: null, projects: [], tasks: [], finance: [], contacts: [], ach: [], briefing: {}, connections: [], currentView: "today", quickAddType: "task", unsubscribers: [] };
 let speechRecognition = null;
 let speechActive = false;
 let automationStatusInterval = null;
@@ -65,7 +65,58 @@ const notice = (message = "", error = false) => {
 const clean = (value) => String(value || "").trim();
 const timestampForDate = (value) => value ? new Date(`${value}T12:00:00`) : null;
 const cleanUp = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; };
-const renderBriefingCount = () => { if (elements.briefingCount) elements.briefingCount.textContent = `Today: ${Number(state.briefing.dailyRunCount || 0)} run${Number(state.briefing.dailyRunCount || 0) === 1 ? "" : "s"}`; };
+const renderBriefingCount = () => {
+  const count = Number(state.briefing.dailyRunCount || 0);
+  if (elements.briefingCount) elements.briefingCount.textContent = `Today: ${count} run${count === 1 ? "" : "s"}`;
+  if (elements.briefingStatus) {
+    const generated = state.briefing.generatedAt ? `Updated ${formatDateTime(state.briefing.generatedAt)}` : "Waiting for the first review.";
+    const sources = state.briefing.sourceCounts ? `${Number(state.briefing.sourceCounts.recentMail || 0)} mail · ${Number(state.briefing.sourceCounts.slackMessages || 0)} Slack` : "";
+    elements.briefingStatus.textContent = [generated, sources].filter(Boolean).join(" · ");
+  }
+};
+
+const dateMillis = (value) => value?.toMillis?.() || 0;
+const isOpen = (item) => item.status !== "done";
+const isDueNow = (value) => value && dateMillis(value) <= Date.now() + 24 * 60 * 60 * 1000;
+const renderToday = () => {
+  const openTasks = state.tasks.filter(isOpen);
+  const openContacts = state.contacts.filter(isOpen);
+  const openFinance = state.finance.filter(isOpen);
+  const dueCount = [...openTasks.map((item) => item.dueDate), ...openContacts.map((item) => item.followUpDate), ...openFinance.map((item) => item.dueDate)].filter(isDueNow).length;
+  if (elements.todayStats) elements.todayStats.innerHTML = [
+    ["Open tasks", openTasks.length], ["Due now", dueCount], ["Follow-ups", openContacts.length], ["Finance", openFinance.length],
+  ].map(([label, value]) => `<div class="workroom-stat"><strong>${value}</strong><span>${label}</span></div>`).join("");
+  if (!elements.todayActions) return;
+  const items = [
+    ...openTasks.map((item) => ({ ...item, itemType: "Task", date: item.dueDate, priority: item.priority, complete: "task" })),
+    ...openContacts.map((item) => ({ ...item, itemType: "Follow-up", title: item.name, date: item.followUpDate, priority: "medium", complete: "contact", detail: item.reason })),
+    ...openFinance.map((item) => ({ ...item, itemType: "Finance", date: item.dueDate, priority: item.urgency, complete: "finance", detail: item.category })),
+  ].sort((left, right) => (dateMillis(left.date) || Number.MAX_SAFE_INTEGER) - (dateMillis(right.date) || Number.MAX_SAFE_INTEGER) || priorityRank(left.priority) - priorityRank(right.priority)).slice(0, 12);
+  elements.todayActions.innerHTML = items.length ? items.map((item) => {
+    const actionAttribute = item.complete === "task" ? `data-complete-task="${item.id}"` : item.complete === "contact" ? `data-complete-contact="${item.id}"` : `data-complete-finance="${item.id}"`;
+    const due = item.date ? formatDay(item.date) : "No date";
+    return `<div class="workroom-action-row priority-${escapeHtml(item.priority)}"><button ${actionAttribute} class="workroom-check" aria-label="Complete ${escapeHtml(item.title)}" type="button"></button><div><small>${escapeHtml(item.itemType)} · ${escapeHtml(item.priority)}</small><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(due)}${item.detail ? ` · ${escapeHtml(item.detail)}` : ""}</span></div></div>`;
+  }).join("") : `<p class="workroom-empty">Your action queue is clear.</p>`;
+};
+
+const setActiveView = (view) => {
+  state.currentView = view;
+  document.querySelectorAll("[data-workroom-view-panel]").forEach((panel) => { panel.hidden = panel.dataset.workroomViewPanel !== view; panel.classList.toggle("is-active", panel.dataset.workroomViewPanel === view); });
+  document.querySelectorAll(".workroom-view-tab").forEach((button) => { const active = button.dataset.workroomView === view; button.classList.toggle("is-active", active); button.setAttribute("aria-current", active ? "page" : "false"); });
+  if (view === "automations") refreshAutomationStatus(true);
+};
+
+const setQuickAddType = (type) => {
+  state.quickAddType = type;
+  document.querySelectorAll("[data-quick-add-form]").forEach((form) => { form.hidden = form.dataset.quickAddForm !== type; });
+  document.querySelectorAll("[data-quick-add-type]").forEach((button) => button.classList.toggle("is-active", button.dataset.quickAddType === type));
+  const form = document.querySelector(`[data-quick-add-form="${type}"]`);
+  const title = form?.querySelector("input, textarea, select");
+  if (title) window.setTimeout(() => title.focus(), 0);
+};
+
+const openQuickAdd = (type = "task") => { elements.quickAddDialog.hidden = false; document.body.classList.add("workroom-dialog-open"); setQuickAddType(type); };
+const closeQuickAdd = () => { elements.quickAddDialog.hidden = true; document.body.classList.remove("workroom-dialog-open"); elements.quickAdd?.focus(); };
 
 const clearAutomationStatusTimer = () => {
   if (automationStatusInterval) {
@@ -182,22 +233,26 @@ const renderProjects = () => {
   const sorted = [...state.projects].sort((a, b) => String(a.targetDate?.toMillis?.() || 0).localeCompare(String(b.targetDate?.toMillis?.() || 0)));
   elements.projects.innerHTML = sorted.length ? sorted.map((project) => `<div class="workroom-record"><span class="workroom-color-dot ${escapeHtml(project.color)}"></span><div><strong>${escapeHtml(project.title)}</strong><small>${project.targetDate ? `Target ${formatDay(project.targetDate)}` : "No target date"}</small></div><button data-delete-project="${project.id}" class="workroom-icon-button" aria-label="Delete ${escapeHtml(project.title)}">×</button></div>`).join("") : `<p class="workroom-empty">Start with the work you want to move forward.</p>`;
   elements.taskProject.innerHTML = `<option value="">No project</option>${state.projects.map((project) => `<option value="${escapeHtml(project.id)}">${escapeHtml(project.title)}</option>`).join("")}`;
+  renderToday();
 };
 
 const renderTasks = () => {
   const projectNames = new Map(state.projects.map((project) => [project.id, project.title]));
   const sorted = [...state.tasks].sort((a, b) => (a.status === "done") - (b.status === "done") || priorityRank(a.priority) - priorityRank(b.priority) || (a.dueDate?.toMillis?.() || Number.MAX_SAFE_INTEGER) - (b.dueDate?.toMillis?.() || Number.MAX_SAFE_INTEGER));
   elements.tasks.innerHTML = sorted.length ? sorted.map((task) => `<div class="workroom-record ${task.status === "done" ? "is-done" : ""}"><button data-complete-task="${task.id}" class="workroom-check" aria-label="${task.status === "done" ? "Reopen" : "Complete"} ${escapeHtml(task.title)}">${task.status === "done" ? "✓" : ""}</button><div><strong>${escapeHtml(task.title)}</strong><small><span class="workroom-priority ${escapeHtml(task.priority)}">${escapeHtml(task.priority)}</span>${task.projectId ? ` · ${escapeHtml(projectNames.get(task.projectId) || "Archived project")}` : ""}${task.dueDate ? ` · ${formatDay(task.dueDate)}` : ""}</small></div><button data-delete-task="${task.id}" class="workroom-icon-button" aria-label="Delete ${escapeHtml(task.title)}">×</button></div>`).join("") : `<p class="workroom-empty">Your action queue is clear.</p>`;
+  renderToday();
 };
 
 const renderFinance = () => {
   const sorted = [...state.finance].sort((a, b) => (a.status === "done") - (b.status === "done") || priorityRank(a.urgency) - priorityRank(b.urgency) || (a.dueDate?.toMillis?.() || Number.MAX_SAFE_INTEGER) - (b.dueDate?.toMillis?.() || Number.MAX_SAFE_INTEGER));
   elements.finance.innerHTML = sorted.length ? sorted.map((item) => `<div class="workroom-record ${item.status === "done" ? "is-done" : ""}"><button data-complete-finance="${item.id}" class="workroom-check" aria-label="${item.status === "done" ? "Reopen" : "Complete"} ${escapeHtml(item.title)}">${item.status === "done" ? "✓" : ""}</button><div><strong>${escapeHtml(item.title)}</strong><small><span class="workroom-priority ${escapeHtml(item.urgency)}">${escapeHtml(item.urgency)}</span> · ${escapeHtml(item.category || "Reminder")}${item.dueDate ? ` · ${formatDay(item.dueDate)}` : ""}${item.amount != null ? ` · $${Number(item.amount).toFixed(2)}` : ""}</small></div><button data-delete-finance="${item.id}" class="workroom-icon-button" aria-label="Delete ${escapeHtml(item.title)}">×</button></div>`).join("") : `<p class="workroom-empty">No finance reminders are waiting.</p>`;
+  renderToday();
 };
 
 const renderContacts = () => {
   const sorted = [...state.contacts].sort((a, b) => (a.status === "done") - (b.status === "done") || (a.followUpDate?.toMillis?.() || Number.MAX_SAFE_INTEGER) - (b.followUpDate?.toMillis?.() || Number.MAX_SAFE_INTEGER));
   elements.contacts.innerHTML = sorted.length ? sorted.map((item) => `<div class="workroom-record ${item.status === "done" ? "is-done" : ""}"><button data-complete-contact="${item.id}" class="workroom-check" aria-label="${item.status === "done" ? "Reopen" : "Complete"} follow-up with ${escapeHtml(item.name)}">${item.status === "done" ? "✓" : ""}</button><div><strong>${escapeHtml(item.name)}</strong><small>${item.followUpDate ? formatDay(item.followUpDate) : "No date"} · ${escapeHtml(item.method)} · ${escapeHtml(item.contactDetail)} · ${escapeHtml(item.reason)}</small></div><button data-delete-contact="${item.id}" class="workroom-icon-button" aria-label="Delete follow-up with ${escapeHtml(item.name)}">×</button></div>`).join("") : `<p class="workroom-empty">No follow-ups waiting.</p>`;
+  renderToday();
 };
 
 const renderAch = () => {
@@ -207,6 +262,7 @@ const renderAch = () => {
 
 const renderConnections = () => {
   elements.connections.innerHTML = state.connections.length ? state.connections.map((connection) => `<div class="workroom-connection"><div><strong>Google account</strong><small>${escapeHtml(connection.status)}${connection.lastSyncAt ? ` · synced ${formatDateTime(connection.lastSyncAt)}` : " · waiting for first sync"}${connection.error ? ` · ${escapeHtml(connection.error)}` : ""}</small></div><div class="workroom-connection-actions"><button class="workroom-button workroom-button-quiet" data-manage-connection="${connection.id}" type="button">Calendars</button><button class="workroom-button workroom-button-quiet" data-disconnect-connection="${connection.id}" type="button">Disconnect</button></div></div>`).join("") : `<p class="workroom-empty">No Google accounts connected yet.</p>`;
+  if (elements.automationSummary) elements.automationSummary.textContent = state.connections.length ? `${state.connections.length} Google connection${state.connections.length === 1 ? "" : "s"} active.` : "Google is not connected yet.";
 };
 
 const subscribe = (user) => {
@@ -245,14 +301,20 @@ elements.automationForm?.addEventListener("submit", (event) => {
     await refreshAutomationStatus(true);
   });
 });
-elements.contactForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(contactFollowUpsRef(state.user.uid), { name: clean(elements.contactName.value), followUpDate: timestampForDate(elements.contactDate.value), reason: clean(elements.contactReason.value), method: elements.contactMethod.value, contactDetail: clean(elements.contactDetail.value), status: "open", completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.contactForm.reset(); }, "Follow-up added."); });
-elements.projectForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(projectsRef(state.user.uid), { title: clean(elements.projectTitle.value), status: "active", color: elements.projectColor.value, outcome: "", targetDate: timestampForDate(elements.projectDate.value), createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.projectForm.reset(); }, "Project added."); });
-elements.taskForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(tasksRef(state.user.uid), { title: clean(elements.taskTitle.value), projectId: elements.taskProject.value, status: "next", priority: elements.taskPriority.value, dueDate: timestampForDate(elements.taskDate.value), notes: clean(elements.taskNotes.value), completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.taskForm.reset(); }, "Task added."); });
-elements.financeForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { const amount = clean(elements.financeAmount.value); await addDoc(financeRef(state.user.uid), { title: clean(elements.financeTitle.value), category: clean(elements.financeCategory.value), urgency: elements.financeUrgency.value, dueDate: timestampForDate(elements.financeDate.value), reference: clean(elements.financeReference.value), amount: amount ? Number(amount) : null, status: "open", completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.financeForm.reset(); }, "Reminder added."); });
-elements.achForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(achEntriesRef(state.user.uid), { name: clean(elements.achName.value), amount: Number(elements.achAmount.value), withdrawalDate: timestampForDate(elements.achDate.value), reason: clean(elements.achReason.value), recurring: elements.achRecurring.checked, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.achForm.reset(); }, "ACH entry added."); });
+elements.contactForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(contactFollowUpsRef(state.user.uid), { name: clean(elements.contactName.value), followUpDate: timestampForDate(elements.contactDate.value), reason: clean(elements.contactReason.value), method: elements.contactMethod.value, contactDetail: clean(elements.contactDetail.value), status: "open", completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.contactForm.reset(); closeQuickAdd(); }, "Follow-up added."); });
+elements.projectForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(projectsRef(state.user.uid), { title: clean(elements.projectTitle.value), status: "active", color: elements.projectColor.value, outcome: "", targetDate: timestampForDate(elements.projectDate.value), createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.projectForm.reset(); closeQuickAdd(); }, "Project added."); });
+elements.taskForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(tasksRef(state.user.uid), { title: clean(elements.taskTitle.value), projectId: elements.taskProject.value, status: "next", priority: elements.taskPriority.value, dueDate: timestampForDate(elements.taskDate.value), notes: clean(elements.taskNotes.value), completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.taskForm.reset(); closeQuickAdd(); }, "Task added."); });
+elements.financeForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { const amount = clean(elements.financeAmount.value); await addDoc(financeRef(state.user.uid), { title: clean(elements.financeTitle.value), category: clean(elements.financeCategory.value), urgency: elements.financeUrgency.value, dueDate: timestampForDate(elements.financeDate.value), reference: clean(elements.financeReference.value), amount: amount ? Number(amount) : null, status: "open", completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.financeForm.reset(); closeQuickAdd(); }, "Reminder added."); });
+elements.achForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(achEntriesRef(state.user.uid), { name: clean(elements.achName.value), amount: Number(elements.achAmount.value), withdrawalDate: timestampForDate(elements.achDate.value), reason: clean(elements.achReason.value), recurring: elements.achRecurring.checked, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.achForm.reset(); closeQuickAdd(); }, "ACH entry added."); });
 elements.googleConnect.addEventListener("click", () => run(async () => { const result = await googleConnect(); window.location.assign(result.data.authorizeUrl); }));
 elements.googleSync.addEventListener("click", () => run(() => googleSync(), "Google data refreshed."));
-elements.briefingGenerate?.addEventListener("click", () => run(() => generateBriefing(), "Email + Slack review complete. Open the TV display to see it."));
+elements.briefingGenerate?.addEventListener("click", async () => { elements.briefingGenerate.disabled = true; await run(() => generateBriefing(), "Email + Slack review complete. Open the TV display to see it."); elements.briefingGenerate.disabled = false; });
+elements.quickAdd?.addEventListener("click", () => openQuickAdd());
+document.querySelectorAll("[data-workroom-view]").forEach((button) => button.addEventListener("click", () => setActiveView(button.dataset.workroomView)));
+document.querySelectorAll("[data-open-quick-add]").forEach((button) => button.addEventListener("click", () => openQuickAdd(button.dataset.openQuickAdd)));
+document.querySelectorAll("[data-close-quick-add]").forEach((button) => button.addEventListener("click", closeQuickAdd));
+document.querySelectorAll("[data-quick-add-type]").forEach((button) => button.addEventListener("click", () => setQuickAddType(button.dataset.quickAddType)));
+document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !elements.quickAddDialog.hidden) closeQuickAdd(); });
 
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button"); if (!button || !state.user) return;
