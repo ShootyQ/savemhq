@@ -3,11 +3,11 @@
   "info": {
     "title": "SavemHQ Workroom Actions",
     "description": "Direct action execution for The Workroom via ChatGPT Actions.",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "servers": [
     {
-      "url": "https://us-central1-YOUR_FIREBASE_PROJECT.cloudfunctions.net"
+      "url": "https://us-central1-savemhq.cloudfunctions.net"
     }
   ],
   "paths": {
@@ -31,7 +31,7 @@
               "examples": {
                 "createTask": {
                   "value": {
-                    "uid": "REPLACE_WITH_OWNER_UID",
+                    "uid": "RHkEW2ABlqYmwBqeEE0JX40zNND3",
                     "requestId": "task-20260717-001",
                     "source": "chatgpt-action",
                     "operation": "createTask",
@@ -45,7 +45,7 @@
                 },
                 "createProject": {
                   "value": {
-                    "uid": "REPLACE_WITH_OWNER_UID",
+                    "uid": "RHkEW2ABlqYmwBqeEE0JX40zNND3",
                     "requestId": "project-20260717-001",
                     "source": "chatgpt-action",
                     "operation": "createProject",
@@ -59,7 +59,7 @@
                 },
                 "createFinanceReminder": {
                   "value": {
-                    "uid": "REPLACE_WITH_OWNER_UID",
+                    "uid": "RHkEW2ABlqYmwBqeEE0JX40zNND3",
                     "requestId": "finance-20260717-001",
                     "source": "chatgpt-action",
                     "operation": "createFinanceReminder",
@@ -75,7 +75,7 @@
                 },
                 "createContactFollowUp": {
                   "value": {
-                    "uid": "REPLACE_WITH_OWNER_UID",
+                    "uid": "RHkEW2ABlqYmwBqeEE0JX40zNND3",
                     "requestId": "contact-20260717-001",
                     "source": "chatgpt-action",
                     "operation": "createContactFollowUp",
@@ -90,7 +90,7 @@
                 },
                 "createAchEntry": {
                   "value": {
-                    "uid": "REPLACE_WITH_OWNER_UID",
+                    "uid": "RHkEW2ABlqYmwBqeEE0JX40zNND3",
                     "requestId": "ach-20260717-001",
                     "source": "chatgpt-action",
                     "operation": "createAchEntry",
@@ -140,6 +140,65 @@
           }
         }
       }
+    },
+    "/ingestWorkroomAutomation": {
+      "post": {
+        "operationId": "ingestWorkroomAutomation",
+        "summary": "Import actionable tasks from a summarized note",
+        "description": "Parses newline-separated or bullet-separated action items and creates new Workroom tasks. Duplicate items are skipped.",
+        "security": [
+          {
+            "workroomKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestWorkroomAutomationRequest"
+              },
+              "example": {
+                "uid": "RHkEW2ABlqYmwBqeEE0JX40zNND3",
+                "source": "gpt",
+                "text": "- Call the insurance company by Friday\n- Finish the website homepage this week\n- Ask Jordan whether the proposal was approved"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tasks imported or skipped as duplicates.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestWorkroomAutomationSuccess"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "Validation or authorization error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestWorkroomAutomationError"
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestWorkroomAutomationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -162,13 +221,65 @@
         ]
       },
       "ExecuteWorkroomActionRequest": {
-        "oneOf": [
-          { "$ref": "#/components/schemas/CreateTaskRequest" },
-          { "$ref": "#/components/schemas/CreateProjectRequest" },
-          { "$ref": "#/components/schemas/CreateFinanceReminderRequest" },
-          { "$ref": "#/components/schemas/CreateContactFollowUpRequest" },
-          { "$ref": "#/components/schemas/CreateAchEntryRequest" }
-        ]
+        "type": "object",
+        "required": ["uid", "requestId", "operation", "payload"],
+        "properties": {
+          "uid": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Firebase uid for the Workroom owner: RHkEW2ABlqYmwBqeEE0JX40zNND3."
+          },
+          "requestId": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120,
+            "pattern": "^[a-zA-Z0-9._:-]+$",
+            "description": "Unique idempotency key per user intent."
+          },
+          "source": {
+            "type": "string",
+            "enum": ["chatgpt-action", "gpt", "manual", "api"],
+            "default": "chatgpt-action"
+          },
+          "operation": {
+            "$ref": "#/components/schemas/Operation"
+          },
+          "payload": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/CreateTaskPayload" },
+              { "$ref": "#/components/schemas/CreateProjectPayload" },
+              { "$ref": "#/components/schemas/CreateFinancePayload" },
+              { "$ref": "#/components/schemas/CreateContactPayload" },
+              { "$ref": "#/components/schemas/CreateAchPayload" }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "IngestWorkroomAutomationRequest": {
+        "type": "object",
+        "required": ["uid", "text"],
+        "properties": {
+          "uid": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Firebase uid for the Workroom owner: RHkEW2ABlqYmwBqeEE0JX40zNND3."
+          },
+          "source": {
+            "type": "string",
+            "enum": ["voice", "slack", "gmail", "gpt", "manual", "api"],
+            "default": "gpt"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12000,
+            "description": "A concise summary with one actionable task per line or bullet."
+          }
+        },
+        "additionalProperties": false
       },
       "RequestBase": {
         "type": "object",
@@ -325,6 +436,21 @@
           "createdId": { "type": "string" },
           "collectionPath": { "type": "string" },
           "dateKey": { "type": "string" }
+        }
+      },
+      "IngestWorkroomAutomationSuccess": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "createdCount": { "type": "integer", "minimum": 0 },
+          "skippedCount": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "IngestWorkroomAutomationError": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "message": { "type": "string" }
         }
       },
       "ExecuteWorkroomActionError": {

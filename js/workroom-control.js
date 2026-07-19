@@ -41,7 +41,7 @@ const elements = {
   taskForm: $("workroom-task-form"), taskTitle: $("workroom-task-title"), taskProject: $("workroom-task-project"), taskPriority: $("workroom-task-priority"), taskDate: $("workroom-task-date"), taskNotes: $("workroom-task-notes"), tasks: $("workroom-tasks"),
   financeForm: $("workroom-finance-form"), financeTitle: $("workroom-finance-title"), financeCategory: $("workroom-finance-category"), financeUrgency: $("workroom-finance-urgency"), financeDate: $("workroom-finance-date"), financeAmount: $("workroom-finance-amount"), financeReference: $("workroom-finance-reference"), finance: $("workroom-finance"),
   achForm: $("workroom-ach-form"), achName: $("workroom-ach-name"), achAmount: $("workroom-ach-amount"), achDate: $("workroom-ach-date"), achReason: $("workroom-ach-reason"), achRecurring: $("workroom-ach-recurring"), ach: $("workroom-ach"),
-  googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"),
+  googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"),
 };
 const functions = getFunctions();
 const googleConnect = httpsCallable(functions, "createWorkroomGoogleAuthSession");
@@ -49,6 +49,7 @@ const googleSync = httpsCallable(functions, "syncWorkroomGoogle");
 const googleDisconnect = httpsCallable(functions, "disconnectWorkroomGoogle");
 const googleCalendars = httpsCallable(functions, "listWorkroomGoogleCalendars");
 const saveGoogleCalendars = httpsCallable(functions, "setWorkroomGoogleCalendars");
+const generateBriefing = httpsCallable(functions, "generateWorkroomBriefing");
 const parseAutomationText = httpsCallable(functions, "parseWorkroomAutomationText");
 const getAutomationStatus = httpsCallable(functions, "getWorkroomAutomationStatus");
 let state = { user: null, projects: [], tasks: [], finance: [], contacts: [], ach: [], connections: [], unsubscribers: [] };
@@ -248,6 +249,7 @@ elements.financeForm.addEventListener("submit", (event) => { event.preventDefaul
 elements.achForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(achEntriesRef(state.user.uid), { name: clean(elements.achName.value), amount: Number(elements.achAmount.value), withdrawalDate: timestampForDate(elements.achDate.value), reason: clean(elements.achReason.value), recurring: elements.achRecurring.checked, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.achForm.reset(); }, "ACH entry added."); });
 elements.googleConnect.addEventListener("click", () => run(async () => { const result = await googleConnect(); window.location.assign(result.data.authorizeUrl); }));
 elements.googleSync.addEventListener("click", () => run(() => googleSync(), "Google data refreshed."));
+elements.briefingGenerate?.addEventListener("click", () => run(() => generateBriefing(), "Briefing generated. Open the TV display to see it."));
 
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button"); if (!button || !state.user) return;

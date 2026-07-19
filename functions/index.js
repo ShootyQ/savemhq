@@ -18,6 +18,8 @@ const GOOGLE_REDIRECT_URI = defineString("GOOGLE_REDIRECT_URI");
 const WORKROOM_CONTROL_URL = defineString("WORKROOM_CONTROL_URL");
 const GOOGLE_CLIENT_SECRET = defineSecret("GOOGLE_CLIENT_SECRET");
 const WORKROOM_AUTOMATION_KEY = defineSecret("WORKROOM_AUTOMATION_KEY");
+const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
+const OPENAI_MODEL = defineString("OPENAI_MODEL", { default: "gpt-4o-mini" });
 
 const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
 const SEASON_ID = "2026-andrew-august-22";
@@ -44,9 +46,100 @@ const workroomAchCollectionRef = (uid) => db.collection("workrooms").doc(uid).co
 const workroomAutomationUsageRef = (uid, dateKey) => db.collection("workroomAutomationUsage").doc(`${uid}_${dateKey}`);
 const workroomAutomationIdempotencyRef = (uid, requestId) => db.collection("workroomAutomationIdempotency").doc(`${uid}_${requestId}`);
 const workroomAutomationAuditRef = (uid, auditId) => db.collection("workroomAutomationAudit").doc(uid).collection("entries").doc(auditId);
+const workroomAiRef = (uid) => db.collection("workroomAi").doc(uid);
+const workroomAiHistoryRef = (uid, dateKey) => workroomAiRef(uid).collection("briefings").doc(dateKey);
 
 const dashboardUrl = () => TRIATHLON_DASHBOARD_URL.value() || "https://savemhq.com/triathlon-tracker.html";
 const workroomControlUrl = () => WORKROOM_CONTROL_URL.value() || "https://savemhq.com/workroom-control.html";
+
+const briefingDateKey = () => new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Chicago",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date());
+
+const briefingValue = (value) => {
+  if (value == null) return null;
+  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (typeof value.toMillis === "function") return new Date(value.toMillis()).toISOString();
+  return value;
+};
+
+const briefingRecord = (snapshot) => ({
+  id: snapshot.id,
+  ...Object.fromEntries(Object.entries(snapshot.data() || {}).map(([key, value]) => [key, briefingValue(value)])),
+});
+
+const loadBriefingCollection = async (collectionRef, limit = 40) => {
+  const snapshot = await collectionRef.limit(limit).get();
+  return snapshot.docs.map(briefingRecord);
+};
+
+const loadWorkroomBriefingInput = async (uid) => {
+  const [tasks, projects, financeReminders, contactFollowUps, achEntries, summarySnapshot] = await Promise.all([
+    loadBriefingCollection(workroomTasksCollectionRef(uid), 60),
+    loadBriefingCollection(workroomProjectsCollectionRef(uid), 30),
+    loadBriefingCollection(workroomFinanceCollectionRef(uid), 30),
+    loadBriefingCollection(workroomContactCollectionRef(uid), 30),
+    loadBriefingCollection(workroomAchCollectionRef(uid), 30),
+    workroomSummaryRef(uid).get(),
+  ]);
+  const summary = summarySnapshot.exists ? briefingRecord(summarySnapshot) : {};
+  return {
+    tasks: tasks.filter((task) => task.status !== "done"),
+    projects: projects.filter((project) => project.status !== "complete"),
+    financeReminders: financeReminders.filter((item) => item.status !== "done"),
+    contactFollowUps: contactFollowUps.filter((item) => item.status !== "done"),
+    achEntries,
+    google: {
+      upcomingEvents: Array.isArray(summary.upcomingEvents) ? summary.upcomingEvents.slice(0, 18) : [],
+      recentMail: Array.isArray(summary.recentMail) ? summary.recentMail.slice(0, 12) : [],
+      unreadCount: Number(summary.unreadCount || 0),
+      lastSyncAt: summary.lastSyncAt || null,
+      syncError: summary.syncError || "",
+    },
+  };
+};
+
+const generateWorkroomBriefing = async (uid) => {
+  const input = await loadWorkroomBriefingInput(uid);
+  const dateKey = briefingDateKey();
+  const OpenAI = require("openai");
+  const client = new OpenAI({ apiKey: OPENAI_API_KEY.value() });
+  const response = await client.responses.create({
+    model: OPENAI_MODEL.value(),
+    instructions: "You are the private Workroom briefing assistant. Produce a concise, practical briefing in plain text with exactly these headings: DO TODAY, THIS WEEK, WAITING, WATCH. Use only the supplied facts. Do not invent dates, people, commitments, or task status. If a section has nothing relevant, write \"None noted.\" Keep the entire briefing under 1800 characters.",
+    input: JSON.stringify(input),
+    max_output_tokens: 700,
+  });
+  const text = String(response.output_text || "").trim();
+  if (!text) throw new Error("OpenAI returned an empty briefing.");
+  const metadata = {
+    status: "ready",
+    text: text.slice(0, 6000),
+    dateKey,
+    model: OPENAI_MODEL.value(),
+    generatedAt: FieldValue.serverTimestamp(),
+    sourceCounts: {
+      tasks: input.tasks.length,
+      projects: input.projects.length,
+      financeReminders: input.financeReminders.length,
+      contactFollowUps: input.contactFollowUps.length,
+      achEntries: input.achEntries.length,
+      calendarEvents: input.google.upcomingEvents.length,
+      recentMail: input.google.recentMail.length,
+    },
+    googleLastSyncAt: input.google.lastSyncAt || null,
+    googleSyncError: input.google.syncError || "",
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  await Promise.all([
+    workroomAiRef(uid).set(metadata, { merge: true }),
+    workroomAiHistoryRef(uid, dateKey).set(metadata, { merge: true }),
+  ]);
+  return { ok: true, dateKey, text: metadata.text, sourceCounts: metadata.sourceCounts };
+};
 
 const requireAuth = (request) => {
   if (!request.auth?.uid) {
@@ -936,6 +1029,20 @@ exports.scheduledWorkroomGoogleSync = onSchedule({ schedule: "every 10 minutes",
   const connections = await db.collectionGroup("connections").where("status", "==", "connected").get();
   const ownerUids = [...new Set(connections.docs.map((connection) => connection.ref.parent.parent?.id).filter(Boolean))];
   await Promise.all(ownerUids.map((uid) => syncWorkroomGoogle(uid)));
+});
+
+exports.generateWorkroomBriefing = onCall({ secrets: [OPENAI_API_KEY] }, async (request) => {
+  const auth = requireAuth(request);
+  requireWorkroomOwner(auth);
+  return generateWorkroomBriefing(auth.uid);
+});
+
+exports.scheduledWorkroomBriefing = onSchedule({
+  schedule: "30 7 * * 1-5",
+  timeZone: "America/Chicago",
+  secrets: [OPENAI_API_KEY],
+}, async () => {
+  await generateWorkroomBriefing("RHkEW2ABlqYmwBqeEE0JX40zNND3");
 });
 
 exports.parseWorkroomAutomationText = onCall(async (request) => {

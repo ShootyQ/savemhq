@@ -1000,6 +1000,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /workroomAi/{ownerUid} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow write: if false;
+    }
+
+    match /workroomAi/{ownerUid}/briefings/{briefingId} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow write: if false;
+    }
+
     match /workroomOAuthStates/{stateId} {
       allow read, write: if false;
     }

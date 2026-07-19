@@ -1,11 +1,11 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { doc, onSnapshot, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth } from "./auth-shared.js";
-import { achEntriesRef, asDate, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, formatDay, isOwner, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
+import { achEntriesRef, asDate, briefingRef, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, formatDay, formatDateTime, isOwner, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
-const elements = { gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), clock: $("workroom-clock"), date: $("workroom-date"), tasks: $("workroom-display-tasks"), taskCount: $("workroom-task-count"), projects: $("workroom-display-projects"), events: $("workroom-display-events"), mail: $("workroom-display-mail"), mailCount: $("workroom-mail-count"), finance: $("workroom-display-finance"), contacts: $("workroom-display-contacts"), ach: $("workroom-display-ach"), quote: $("workroom-quote-text"), completeToast: $("workroom-complete-toast") };
-let state = { user: null, tasks: [], projects: [], finance: [], contacts: [], ach: [], summary: {}, connections: [], unsubscribers: [] };
+const elements = { gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), clock: $("workroom-clock"), date: $("workroom-date"), tasks: $("workroom-display-tasks"), taskCount: $("workroom-task-count"), projects: $("workroom-display-projects"), events: $("workroom-display-events"), mail: $("workroom-display-mail"), mailCount: $("workroom-mail-count"), finance: $("workroom-display-finance"), contacts: $("workroom-display-contacts"), ach: $("workroom-display-ach"), briefing: $("workroom-display-briefing"), briefingUpdated: $("workroom-briefing-updated"), quote: $("workroom-quote-text"), completeToast: $("workroom-complete-toast") };
+let state = { user: null, tasks: [], projects: [], finance: [], contacts: [], ach: [], summary: {}, briefing: {}, connections: [], unsubscribers: [] };
 let celebrationTimer = null;
 const quotes = [
   ["Well begun is half done.", "Aristotle"],
@@ -87,6 +87,9 @@ const render = () => {
   elements.contacts.innerHTML = contacts.length ? contacts.map((item) => `<div class="workroom-tv-row"><time>${formatDay(item.followUpDate)}</time><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.method)} · ${escapeHtml(item.reason)}</small></div></div>`).join("") : blank("No follow-ups waiting.");
   const ach = [...state.ach].sort((a, b) => (asDate(a.withdrawalDate)?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b.withdrawalDate)?.getTime() || Number.MAX_SAFE_INTEGER)).slice(0, 3);
   elements.ach.innerHTML = ach.length ? ach.map((item) => `<div class="workroom-tv-row"><time>${formatDay(item.withdrawalDate)}</time><div><strong>${escapeHtml(item.name)} · $${Number(item.amount || 0).toFixed(2)}</strong><small>${escapeHtml(item.reason)}${item.recurring ? " · recurring" : ""}</small></div></div>`).join("") : blank("No ACH entries waiting.");
+  const briefingText = String(state.briefing.text || "").trim();
+  elements.briefing.textContent = briefingText || "Generate a briefing from the control room.";
+  elements.briefingUpdated.textContent = state.briefing.generatedAt ? `Updated ${formatDateTime(state.briefing.generatedAt)}` : "Waiting for the first briefing.";
 };
 
 const tick = () => { const now = new Date(); elements.clock.textContent = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(now); elements.date.textContent = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(now); };
@@ -127,6 +130,7 @@ onAuthStateChanged(auth, (user) => {
     onSnapshot(contactFollowUpsRef(user.uid), (snapshot) => { state.contacts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(achEntriesRef(user.uid), (snapshot) => { state.ach = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(summaryRef(user.uid), (snapshot) => { state.summary = snapshot.data() || {}; render(); }),
+    onSnapshot(briefingRef(user.uid), (snapshot) => { state.briefing = snapshot.data() || {}; render(); }),
     onSnapshot(connectionsRef(user.uid), (snapshot) => { state.connections = snapshot.docs.map((item) => item.data()); render(); }),
   );
 });

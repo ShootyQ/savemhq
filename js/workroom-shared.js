@@ -12,6 +12,7 @@ export const contactFollowUpsRef = (uid) => collection(workroomRef(uid), "contac
 export const achEntriesRef = (uid) => collection(workroomRef(uid), "achEntries");
 export const focusRef = (uid) => doc(workroomRef(uid), "settings", "focus");
 export const summaryRef = (uid) => doc(db, "workroomSummaries", uid);
+export const briefingRef = (uid) => doc(db, "workroomAi", uid);
 export const connectionsRef = (uid) => collection(db, "workroomConnections", uid, "connections");
 
 export const isOwner = (user = auth.currentUser) => isWorkroomOwner(user);
