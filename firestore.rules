@@ -1010,6 +1010,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /workroomAiUsage/{usageId} {
+      allow read, write: if false;
+    }
+
     match /workroomOAuthStates/{stateId} {
       allow read, write: if false;
     }

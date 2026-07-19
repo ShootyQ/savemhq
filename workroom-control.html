@@ -75,8 +75,11 @@
 
           <article class="workroom-panel workroom-google-panel">
             <h2>AI briefing</h2>
-            <p class="workroom-inline-hint">Build a short briefing from the current Workroom data and connected Google summary.</p>
-            <button id="workroom-briefing-generate" class="workroom-button workroom-button-primary" type="button">Generate briefing now</button>
+            <p class="workroom-inline-hint">Review current Workroom data, email metadata, Calendar, and selected Slack channels.</p>
+            <div class="workroom-inline-actions">
+              <button id="workroom-briefing-generate" class="workroom-button workroom-button-primary" type="button">Run email + Slack review</button>
+              <span id="workroom-briefing-count" class="workroom-inline-hint">Today: 0 runs</span>
+            </div>
           </article>
         </section>
 

@@ -3,6 +3,7 @@ const admin = require("firebase-admin");
 const { defineSecret, defineString } = require("firebase-functions/params");
 const { HttpsError, onCall, onRequest } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { WebClient } = require("@slack/web-api");
 
 admin.initializeApp();
 
@@ -20,6 +21,8 @@ const GOOGLE_CLIENT_SECRET = defineSecret("GOOGLE_CLIENT_SECRET");
 const WORKROOM_AUTOMATION_KEY = defineSecret("WORKROOM_AUTOMATION_KEY");
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 const OPENAI_MODEL = defineString("OPENAI_MODEL", { default: "gpt-4o-mini" });
+const SLACK_BOT_TOKEN = defineSecret("SLACK_BOT_TOKEN");
+const SLACK_CHANNELS = defineString("SLACK_CHANNELS");
 
 const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
 const SEASON_ID = "2026-andrew-august-22";
@@ -48,6 +51,7 @@ const workroomAutomationIdempotencyRef = (uid, requestId) => db.collection("work
 const workroomAutomationAuditRef = (uid, auditId) => db.collection("workroomAutomationAudit").doc(uid).collection("entries").doc(auditId);
 const workroomAiRef = (uid) => db.collection("workroomAi").doc(uid);
 const workroomAiHistoryRef = (uid, dateKey) => workroomAiRef(uid).collection("briefings").doc(dateKey);
+const workroomAiUsageRef = (uid, dateKey) => db.collection("workroomAiUsage").doc(`${uid}_${dateKey}`);
 
 const dashboardUrl = () => TRIATHLON_DASHBOARD_URL.value() || "https://savemhq.com/triathlon-tracker.html";
 const workroomControlUrl = () => WORKROOM_CONTROL_URL.value() || "https://savemhq.com/workroom-control.html";
@@ -76,14 +80,36 @@ const loadBriefingCollection = async (collectionRef, limit = 40) => {
   return snapshot.docs.map(briefingRecord);
 };
 
+const slackChannels = () => String(SLACK_CHANNELS.value() || "").split(",").map((entry) => {
+  const [id, ...labelParts] = entry.split(":");
+  return { id: id.trim(), label: labelParts.join(":").trim() || id.trim() };
+}).filter((channel) => /^[CG][A-Z0-9]+$/.test(channel.id)).slice(0, 10);
+
+const loadSlackBriefingInput = async () => {
+  const channels = slackChannels();
+  if (!channels.length || !SLACK_BOT_TOKEN.value()) return [];
+  const client = new WebClient(SLACK_BOT_TOKEN.value());
+  const oldest = String((Date.now() - 48 * 60 * 60 * 1000) / 1000);
+  const messages = [];
+  for (const channel of channels) {
+    const result = await client.conversations.history({ channel: channel.id, oldest, limit: 20 });
+    for (const message of result.messages || []) {
+      if (!message.text || message.subtype) continue;
+      messages.push({ channel: channel.label, channelId: channel.id, userId: message.user || "", timestamp: message.ts || "", text: String(message.text).slice(0, 1000) });
+    }
+  }
+  return messages.sort((left, right) => Number(left.timestamp) - Number(right.timestamp)).slice(-40);
+};
+
 const loadWorkroomBriefingInput = async (uid) => {
-  const [tasks, projects, financeReminders, contactFollowUps, achEntries, summarySnapshot] = await Promise.all([
+  const [tasks, projects, financeReminders, contactFollowUps, achEntries, summarySnapshot, slack] = await Promise.all([
     loadBriefingCollection(workroomTasksCollectionRef(uid), 60),
     loadBriefingCollection(workroomProjectsCollectionRef(uid), 30),
     loadBriefingCollection(workroomFinanceCollectionRef(uid), 30),
     loadBriefingCollection(workroomContactCollectionRef(uid), 30),
     loadBriefingCollection(workroomAchCollectionRef(uid), 30),
     workroomSummaryRef(uid).get(),
+    loadSlackBriefingInput(),
   ]);
   const summary = summarySnapshot.exists ? briefingRecord(summarySnapshot) : {};
   return {
@@ -99,6 +125,7 @@ const loadWorkroomBriefingInput = async (uid) => {
       lastSyncAt: summary.lastSyncAt || null,
       syncError: summary.syncError || "",
     },
+    slack,
   };
 };
 
@@ -115,11 +142,19 @@ const generateWorkroomBriefing = async (uid) => {
   });
   const text = String(response.output_text || "").trim();
   if (!text) throw new Error("OpenAI returned an empty briefing.");
+  const usageRef = workroomAiUsageRef(uid, dateKey);
+  const dailyRunCount = await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(usageRef);
+    const count = Number(snapshot.data()?.count || 0) + 1;
+    transaction.set(usageRef, { uid, dateKey, count, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    return count;
+  });
   const metadata = {
     status: "ready",
     text: text.slice(0, 6000),
     dateKey,
     model: OPENAI_MODEL.value(),
+    dailyRunCount,
     generatedAt: FieldValue.serverTimestamp(),
     sourceCounts: {
       tasks: input.tasks.length,
@@ -129,6 +164,7 @@ const generateWorkroomBriefing = async (uid) => {
       achEntries: input.achEntries.length,
       calendarEvents: input.google.upcomingEvents.length,
       recentMail: input.google.recentMail.length,
+      slackMessages: input.slack.length,
     },
     googleLastSyncAt: input.google.lastSyncAt || null,
     googleSyncError: input.google.syncError || "",
@@ -1031,7 +1067,7 @@ exports.scheduledWorkroomGoogleSync = onSchedule({ schedule: "every 10 minutes",
   await Promise.all(ownerUids.map((uid) => syncWorkroomGoogle(uid)));
 });
 
-exports.generateWorkroomBriefing = onCall({ secrets: [OPENAI_API_KEY] }, async (request) => {
+exports.generateWorkroomBriefing = onCall({ secrets: [OPENAI_API_KEY, SLACK_BOT_TOKEN] }, async (request) => {
   const auth = requireAuth(request);
   requireWorkroomOwner(auth);
   return generateWorkroomBriefing(auth.uid);
@@ -1040,7 +1076,7 @@ exports.generateWorkroomBriefing = onCall({ secrets: [OPENAI_API_KEY] }, async (
 exports.scheduledWorkroomBriefing = onSchedule({
   schedule: "30 7 * * 1-5",
   timeZone: "America/Chicago",
-  secrets: [OPENAI_API_KEY],
+  secrets: [OPENAI_API_KEY, SLACK_BOT_TOKEN],
 }, async () => {
   await generateWorkroomBriefing("RHkEW2ABlqYmwBqeEE0JX40zNND3");
 });

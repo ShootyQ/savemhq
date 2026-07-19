@@ -41,7 +41,7 @@ const elements = {
   taskForm: $("workroom-task-form"), taskTitle: $("workroom-task-title"), taskProject: $("workroom-task-project"), taskPriority: $("workroom-task-priority"), taskDate: $("workroom-task-date"), taskNotes: $("workroom-task-notes"), tasks: $("workroom-tasks"),
   financeForm: $("workroom-finance-form"), financeTitle: $("workroom-finance-title"), financeCategory: $("workroom-finance-category"), financeUrgency: $("workroom-finance-urgency"), financeDate: $("workroom-finance-date"), financeAmount: $("workroom-finance-amount"), financeReference: $("workroom-finance-reference"), finance: $("workroom-finance"),
   achForm: $("workroom-ach-form"), achName: $("workroom-ach-name"), achAmount: $("workroom-ach-amount"), achDate: $("workroom-ach-date"), achReason: $("workroom-ach-reason"), achRecurring: $("workroom-ach-recurring"), ach: $("workroom-ach"),
-  googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"),
+  googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"), briefingCount: $("workroom-briefing-count"),
 };
 const functions = getFunctions();
 const googleConnect = httpsCallable(functions, "createWorkroomGoogleAuthSession");
@@ -52,7 +52,7 @@ const saveGoogleCalendars = httpsCallable(functions, "setWorkroomGoogleCalendars
 const generateBriefing = httpsCallable(functions, "generateWorkroomBriefing");
 const parseAutomationText = httpsCallable(functions, "parseWorkroomAutomationText");
 const getAutomationStatus = httpsCallable(functions, "getWorkroomAutomationStatus");
-let state = { user: null, projects: [], tasks: [], finance: [], contacts: [], ach: [], connections: [], unsubscribers: [] };
+let state = { user: null, projects: [], tasks: [], finance: [], contacts: [], ach: [], briefing: {}, connections: [], unsubscribers: [] };
 let speechRecognition = null;
 let speechActive = false;
 let automationStatusInterval = null;
@@ -64,6 +64,7 @@ const notice = (message = "", error = false) => {
 const clean = (value) => String(value || "").trim();
 const timestampForDate = (value) => value ? new Date(`${value}T12:00:00`) : null;
 const cleanUp = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; };
+const renderBriefingCount = () => { if (elements.briefingCount) elements.briefingCount.textContent = `Today: ${Number(state.briefing.dailyRunCount || 0)} run${Number(state.briefing.dailyRunCount || 0) === 1 ? "" : "s"}`; };
 
 const clearAutomationStatusTimer = () => {
   if (automationStatusInterval) {
@@ -215,6 +216,7 @@ const subscribe = (user) => {
     onSnapshot(financeRef(user.uid), (snapshot) => { state.finance = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderFinance(); }),
     onSnapshot(contactFollowUpsRef(user.uid), (snapshot) => { state.contacts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderContacts(); }),
     onSnapshot(achEntriesRef(user.uid), (snapshot) => { state.ach = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderAch(); }),
+    onSnapshot(briefingRef(user.uid), (snapshot) => { state.briefing = snapshot.data() || {}; renderBriefingCount(); }),
     onSnapshot(connectionsRef(user.uid), (snapshot) => { state.connections = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderConnections(); }),
   );
 };
@@ -249,7 +251,7 @@ elements.financeForm.addEventListener("submit", (event) => { event.preventDefaul
 elements.achForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(achEntriesRef(state.user.uid), { name: clean(elements.achName.value), amount: Number(elements.achAmount.value), withdrawalDate: timestampForDate(elements.achDate.value), reason: clean(elements.achReason.value), recurring: elements.achRecurring.checked, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.achForm.reset(); }, "ACH entry added."); });
 elements.googleConnect.addEventListener("click", () => run(async () => { const result = await googleConnect(); window.location.assign(result.data.authorizeUrl); }));
 elements.googleSync.addEventListener("click", () => run(() => googleSync(), "Google data refreshed."));
-elements.briefingGenerate?.addEventListener("click", () => run(() => generateBriefing(), "Briefing generated. Open the TV display to see it."));
+elements.briefingGenerate?.addEventListener("click", () => run(() => generateBriefing(), "Email + Slack review complete. Open the TV display to see it."));
 
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button"); if (!button || !state.user) return;
