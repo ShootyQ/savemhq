@@ -317,6 +317,8 @@ document.querySelectorAll("[data-quick-add-type]").forEach((button) => button.ad
 document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !elements.quickAddDialog.hidden) closeQuickAdd(); });
 
 document.addEventListener("click", (event) => {
+  const closeTarget = event.target.closest("[data-close-quick-add]");
+  if (closeTarget) { closeQuickAdd(); return; }
   const button = event.target.closest("button"); if (!button || !state.user) return;
   const taskId = button.dataset.completeTask; const financeId = button.dataset.completeFinance;
   if (button.dataset.deleteProject) run(() => deleteDoc(doc(projectsRef(state.user.uid), button.dataset.deleteProject)));
