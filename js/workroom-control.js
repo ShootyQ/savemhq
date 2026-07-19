@@ -69,7 +69,9 @@ const renderBriefingCount = () => {
   const count = Number(state.briefing.dailyRunCount || 0);
   if (elements.briefingCount) elements.briefingCount.textContent = `Today: ${count} run${count === 1 ? "" : "s"}`;
   if (elements.briefingStatus) {
-    const generated = state.briefing.generatedAt ? `Updated ${formatDateTime(state.briefing.generatedAt)}` : "Waiting for the first review.";
+    const generated = state.briefing.status === "error"
+      ? `Latest review failed ${state.briefing.failedAt ? formatDateTime(state.briefing.failedAt) : ""}. ${clean(state.briefing.error)}`
+      : state.briefing.generatedAt ? `Updated ${formatDateTime(state.briefing.generatedAt)}` : "Waiting for the first review.";
     const sources = state.briefing.sourceCounts ? `${Number(state.briefing.sourceCounts.recentMail || 0)} mail · ${Number(state.briefing.sourceCounts.slackMessages || 0)} Slack` : "";
     elements.briefingStatus.textContent = [generated, sources].filter(Boolean).join(" · ");
   }
@@ -84,7 +86,8 @@ const renderBriefingCount = () => {
       ["tasks", "open tasks"], ["projects", "projects"], ["financeReminders", "finance reminders"], ["contactFollowUps", "follow-ups"], ["achEntries", "ACH entries"], ["calendarEvents", "calendar events"], ["recentMail", "email messages"], ["slackMessages", "Slack messages"],
     ].map(([key, label]) => `${Number(sourceCounts[key] || 0)} ${label}`).join(" · ");
     const syncNote = state.briefing.googleSyncError ? `<p class="workroom-briefing-warning">Google source issue: ${escapeHtml(state.briefing.googleSyncError)}</p>` : "";
-    elements.briefingResult.innerHTML = `<p class="workroom-briefing-sources"><strong>Review receipt</strong> · ${escapeHtml(sources)}</p>${syncNote}<pre>${escapeHtml(text)}</pre>`;
+    const failureNote = state.briefing.status === "error" ? `<p class="workroom-briefing-warning">Latest run failed: ${escapeHtml(state.briefing.error || "Unknown error")}</p>` : "";
+    elements.briefingResult.innerHTML = `<p class="workroom-briefing-sources"><strong>Review receipt</strong> · ${escapeHtml(sources)}</p>${failureNote}${syncNote}<pre>${escapeHtml(text)}</pre>`;
   }
 };
 

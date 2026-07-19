@@ -177,6 +177,13 @@ const generateWorkroomBriefing = async (uid) => {
   return { ok: true, dateKey, text: metadata.text, sourceCounts: metadata.sourceCounts };
 };
 
+const recordWorkroomBriefingFailure = async (uid, error) => workroomAiRef(uid).set({
+  status: "error",
+  error: String(error?.message || "The briefing could not be generated.").slice(0, 500),
+  failedAt: FieldValue.serverTimestamp(),
+  updatedAt: FieldValue.serverTimestamp(),
+}, { merge: true });
+
 const requireAuth = (request) => {
   if (!request.auth?.uid) {
     throw new HttpsError("unauthenticated", "Sign in before using Strava sync.");
@@ -1070,7 +1077,12 @@ exports.scheduledWorkroomGoogleSync = onSchedule({ schedule: "every 10 minutes",
 exports.generateWorkroomBriefing = onCall({ secrets: [OPENAI_API_KEY, SLACK_BOT_TOKEN] }, async (request) => {
   const auth = requireAuth(request);
   requireWorkroomOwner(auth);
-  return generateWorkroomBriefing(auth.uid);
+  try {
+    return await generateWorkroomBriefing(auth.uid);
+  } catch (error) {
+    await recordWorkroomBriefingFailure(auth.uid, error);
+    throw error;
+  }
 });
 
 exports.scheduledWorkroomBriefing = onSchedule({
@@ -1078,7 +1090,12 @@ exports.scheduledWorkroomBriefing = onSchedule({
   timeZone: "America/Chicago",
   secrets: [OPENAI_API_KEY, SLACK_BOT_TOKEN],
 }, async () => {
-  await generateWorkroomBriefing("RHkEW2ABlqYmwBqeEE0JX40zNND3");
+  try {
+    await generateWorkroomBriefing("RHkEW2ABlqYmwBqeEE0JX40zNND3");
+  } catch (error) {
+    await recordWorkroomBriefingFailure("RHkEW2ABlqYmwBqeEE0JX40zNND3", error);
+    throw error;
+  }
 });
 
 exports.parseWorkroomAutomationText = onCall(async (request) => {
