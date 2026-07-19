@@ -141,6 +141,7 @@ body[data-page^="workroom"] {
 .workroom-google-panel .workroom-connection-actions .workroom-button { min-height: 2rem; padding: 0.38rem 0.52rem; }
 
 .workroom-display-shell { display: flex; flex-direction: column; height: 100vh; min-height: 0; padding: clamp(0.75rem, 1.5vw, 1.5rem); overflow: hidden; }
+#workroom-display-app { display: flex; flex: 1; flex-direction: column; min-height: 0; }
 .workroom-display-header, .workroom-display-footer { display: flex; justify-content: space-between; align-items: end; gap: 1rem; }
 .workroom-display-date { margin: 0; color: #d8e3d3; font-size: clamp(1.1rem, 1.8vw, 2rem); font-weight: 650; }
 .workroom-clock { color: #f9f5e9; font-family: "Fraunces", Georgia, serif; font-size: clamp(3.4rem, 6vw, 7rem); line-height: 0.9; }
