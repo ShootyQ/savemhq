@@ -87,7 +87,7 @@ Both pages require Firebase Authentication with `andrewpcarlson85@gmail.com`. Th
 firebase functions:secrets:set GOOGLE_CLIENT_SECRET
 ```
 
-The integration requests Calendar read-only and Gmail metadata-only access. It intentionally stores only selected calendar events and Gmail sender/subject metadata in the browser-readable summary; email bodies, snippets, access tokens, and refresh tokens stay out of client-readable data.
+The integration requests Calendar read-only and Gmail read-only access. It intentionally stores only selected calendar events and Gmail sender/subject metadata in the browser-readable summary; email bodies, snippets, access tokens, and refresh tokens stay out of client-readable data.
 
 Deploy the Workroom backend before opening the pages:
 
@@ -96,6 +96,46 @@ firebase deploy --only firestore:rules,functions
 ```
 
 After deployment, open `workroom-control.html`, sign in with the owner account, connect each Google account, choose the calendars to display, and use **Sync now** to verify the TV display. The scheduled Function refreshes connected accounts every ten minutes.
+
+### Source Copilot (Gmail and Slack to Task Review)
+
+Source Copilot runs at 7:10 AM Central on weekdays and can also be run from **Automations > Source Copilot > Scan now**. It reads eligible unread Inbox messages and selected Slack sources, then proposes only clearly attributable owner obligations. The first release is deliberately **review-only**: it never creates tasks until the owner presses **Approve** on a suggestion.
+
+Privacy and retention:
+
+- Raw Gmail bodies and complete Slack messages are processed only in the Function and are never written to browser-readable summaries or task records.
+- Candidate records retain a short sanitized excerpt, task proposal, confidence, and rationale for up to 30 days in a server-only collection. The control room reaches them through authenticated callable Functions.
+- Gmail filters out common automated messages such as newsletters, receipts, shipping updates, password resets, list mail, and no-reply senders before AI analysis.
+
+Required configuration:
+
+1. Add the Functions parameters to `functions/.env` before deploying (or provide them when the Firebase CLI prompts during deployment):
+
+```dotenv
+WORKROOM_OWNER_UID=your-firebase-owner-uid
+SLACK_OWNER_USER_ID=your-slack-member-id
+SLACK_CHANNELS=C0123456789:Operations,C0987654321:Family
+```
+
+Set `WORKROOM_OWNER_UID` to the Firebase UID for `andrewpcarlson85@gmail.com`. Set `SLACK_OWNER_USER_ID` to that user's Slack member ID. Set `SLACK_CHANNELS` as a comma-separated list of selected channels in `CHANNEL_ID:Label` format, for example `C0123456789:Operations,C0987654321:Family`.
+
+2. Store the Slack bot token in Secret Manager:
+
+```bash
+firebase functions:secrets:set SLACK_BOT_TOKEN
+```
+
+3. Give the Slack app the scopes appropriate to the selected sources, then reinstall it. Public channels need `channels:history`; private selected channels need `groups:history`; Workbot direct messages need `im:history` and conversation discovery permissions. Add Workbot to every selected channel. Workbot direct messages mean messages with the bot, never personal human-to-human DMs.
+
+4. Reconnect every existing Google account from `workroom-control.html`. The Gmail permission changed from metadata-only to `gmail.readonly`, so existing grants cannot read source content until consent is renewed.
+
+5. Deploy rules and Functions:
+
+```bash
+firebase deploy --only firestore:rules,functions
+```
+
+Use several manual scans to review suggestions before changing the review-only server setting. Repeated scans reuse deterministic candidate IDs and do not create duplicate suggestions or tasks.
 
 ### ChatGPT Actions (Direct Auto-Execution)
 

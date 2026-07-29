@@ -37,6 +37,7 @@ const elements = {
   gate: $("workroom-gate"), gateMessage: $("workroom-gate-message"), signIn: $("workroom-sign-in"), signOut: $("workroom-sign-out"), app: $("workroom-control"), notice: $("workroom-notice"),
   automationForm: $("workroom-automation-form"), automationSource: $("workroom-automation-source"), automationText: $("workroom-automation-text"), automationVoice: $("workroom-automation-voice"),
   automationRefresh: $("workroom-automation-refresh"), automationUsage: $("workroom-automation-usage"), automationAudit: $("workroom-automation-audit"),
+  sourceScan: $("workroom-source-scan"), sourceRefresh: $("workroom-source-refresh"), sourceStatus: $("workroom-source-status"), sourceHealth: $("workroom-source-health"), sourceCandidates: $("workroom-source-candidates"),
   contactForm: $("workroom-contact-form"), contactName: $("workroom-contact-name"), contactDate: $("workroom-contact-date"), contactReason: $("workroom-contact-reason"), contactMethod: $("workroom-contact-method"), contactDetail: $("workroom-contact-detail"), contacts: $("workroom-contacts"),
   projectForm: $("workroom-project-form"), projectTitle: $("workroom-project-title"), projectDate: $("workroom-project-date"), projectColor: $("workroom-project-color"), projects: $("workroom-projects"),
   taskForm: $("workroom-task-form"), taskTitle: $("workroom-task-title"), taskProject: $("workroom-task-project"), taskPriority: $("workroom-task-priority"), taskDate: $("workroom-task-date"), taskNotes: $("workroom-task-notes"), tasks: $("workroom-tasks"),
@@ -53,6 +54,11 @@ const saveGoogleCalendars = httpsCallable(functions, "setWorkroomGoogleCalendars
 const generateBriefing = httpsCallable(functions, "generateWorkroomBriefing");
 const parseAutomationText = httpsCallable(functions, "parseWorkroomAutomationText");
 const getAutomationStatus = httpsCallable(functions, "getWorkroomAutomationStatus");
+const runSourceScan = httpsCallable(functions, "runWorkroomSourceScan");
+const getSourceAutomationStatus = httpsCallable(functions, "getWorkroomSourceAutomationStatus");
+const listSourceCandidates = httpsCallable(functions, "listWorkroomAutomationCandidates");
+const approveSourceCandidate = httpsCallable(functions, "approveWorkroomAutomationCandidate");
+const rejectSourceCandidate = httpsCallable(functions, "rejectWorkroomAutomationCandidate");
 let state = { user: null, projects: [], tasks: [], finance: [], contacts: [], ach: [], briefing: {}, connections: [], currentView: "today", quickAddType: "task", unsubscribers: [] };
 let speechRecognition = null;
 let speechActive = false;
@@ -119,7 +125,10 @@ const setActiveView = (view) => {
   state.currentView = view;
   document.querySelectorAll("[data-workroom-view-panel]").forEach((panel) => { panel.hidden = panel.dataset.workroomViewPanel !== view; panel.classList.toggle("is-active", panel.dataset.workroomViewPanel === view); });
   document.querySelectorAll(".workroom-view-tab").forEach((button) => { const active = button.dataset.workroomView === view; button.classList.toggle("is-active", active); button.setAttribute("aria-current", active ? "page" : "false"); });
-  if (view === "automations") refreshAutomationStatus(true);
+  if (view === "automations") {
+    refreshAutomationStatus(true);
+    refreshSourceAutomation(true);
+  }
 };
 
 const setQuickAddType = (type) => {
@@ -182,6 +191,43 @@ const refreshAutomationStatus = async (quiet = false) => {
     renderAutomationStatus(result.data || null);
   } catch (error) {
     if (!quiet) notice(String(error.message || "Could not refresh automation status."), true);
+  }
+};
+
+const renderSourceAutomation = ({ status, candidates } = {}) => {
+  if (!elements.sourceStatus || !elements.sourceHealth || !elements.sourceCandidates) return;
+  const pending = Number(status?.pendingReviewCount || 0);
+  elements.sourceStatus.textContent = status
+    ? `${status.reviewOnly ? "Review-only mode" : "Auto-create enabled"} · ${pending} suggestion${pending === 1 ? "" : "s"} waiting.`
+    : "Source Copilot is unavailable until you sign in.";
+  const sources = Array.isArray(status?.sources) ? status.sources : [];
+  elements.sourceHealth.innerHTML = sources.length ? sources.map((source) => {
+    const details = source.lastError
+      ? `Needs attention · ${source.lastError}`
+      : source.lastSuccessAt
+        ? `Last scan ${formatStatusStamp(source.lastSuccessAt)} · ${source.proposedCount} proposed`
+        : "Not scanned yet";
+    return `<div class="workroom-source-health-row"><strong>${escapeHtml(source.source === "gmail" ? "Gmail" : "Slack")}</strong><span>${escapeHtml(details)}</span></div>`;
+  }).join("") : `<p class="workroom-empty">No source health available yet.</p>`;
+  const items = Array.isArray(candidates) ? candidates : [];
+  elements.sourceCandidates.innerHTML = items.length ? items.map((candidate) => {
+    const dueDate = candidate.dueDate ? formatDay(candidate.dueDate) : "No due date";
+    const source = [candidate.sourceType === "gmail" ? "Gmail" : "Slack", candidate.sourceAuthor, candidate.sourceSubject].filter(Boolean).join(" · ");
+    const sourceLink = candidate.sourceUrl ? `<a href="${escapeHtml(candidate.sourceUrl)}" target="_blank" rel="noopener">Open source</a>` : "";
+    return `<article class="workroom-source-candidate"><div><small>${escapeHtml(source)}</small><strong>${escapeHtml(candidate.title)}</strong><span><span class="workroom-priority ${escapeHtml(candidate.priority)}">${escapeHtml(candidate.priority)}</span> · ${escapeHtml(dueDate)} · ${Math.round(Number(candidate.confidence || 0) * 100)}%</span></div><p>${escapeHtml(candidate.reason)}</p><p class="workroom-source-excerpt">${escapeHtml(candidate.excerpt)}</p><div class="workroom-inline-actions"><button class="workroom-button workroom-button-primary" data-approve-source-candidate="${escapeHtml(candidate.id)}" type="button">Approve</button><button class="workroom-button workroom-button-quiet" data-reject-source-candidate="${escapeHtml(candidate.id)}" type="button">Dismiss</button>${sourceLink}</div></article>`;
+  }).join("") : `<p class="workroom-empty">No source suggestions need review.</p>`;
+};
+
+const refreshSourceAutomation = async (quiet = false) => {
+  if (!state.user || !isOwner(state.user)) {
+    renderSourceAutomation(null);
+    return;
+  }
+  try {
+    const [statusResult, candidatesResult] = await Promise.all([getSourceAutomationStatus(), listSourceCandidates()]);
+    renderSourceAutomation({ status: statusResult.data || null, candidates: candidatesResult.data?.candidates || [] });
+  } catch (error) {
+    if (!quiet) notice(String(error.message || "Could not refresh Source Copilot."), true);
   }
 };
 
@@ -299,6 +345,18 @@ const run = async (action, success) => { try { await action(); if (success) noti
 elements.signIn.addEventListener("click", () => run(async () => signInWithPopup(auth, new GoogleAuthProvider())));
 elements.signOut.addEventListener("click", () => signOut(auth));
 elements.automationRefresh?.addEventListener("click", () => run(() => refreshAutomationStatus(), "Automation status refreshed."));
+elements.sourceRefresh?.addEventListener("click", () => run(() => refreshSourceAutomation(), "Source Copilot refreshed."));
+elements.sourceScan?.addEventListener("click", async () => {
+  elements.sourceScan.disabled = true;
+  await run(async () => {
+    const result = await runSourceScan();
+    const sources = Array.isArray(result.data?.sources) ? result.data.sources : [];
+    const proposed = sources.reduce((total, source) => total + Number(source.proposedCount || 0), 0);
+    await refreshSourceAutomation(true);
+    notice(`Source scan complete. ${proposed} suggestion${proposed === 1 ? "" : "s"} ready for review.`);
+  });
+  elements.sourceScan.disabled = false;
+});
 elements.automationVoice?.addEventListener("click", () => toggleVoiceCapture());
 elements.automationForm?.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -346,6 +404,8 @@ document.addEventListener("click", (event) => {
   if (financeId) { const item = state.finance.find((record) => record.id === financeId); run(() => updateDoc(doc(financeRef(state.user.uid), financeId), { status: item.status === "done" ? "open" : "done", completedAt: item.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
   if (button.dataset.completeContact) { const item = state.contacts.find((record) => record.id === button.dataset.completeContact); run(() => updateDoc(doc(contactFollowUpsRef(state.user.uid), item.id), { status: item.status === "done" ? "open" : "done", completedAt: item.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
   if (button.dataset.disconnectConnection) run(() => googleDisconnect({ connectionId: button.dataset.disconnectConnection }), "Google account disconnected.");
+  if (button.dataset.approveSourceCandidate) run(async () => { await approveSourceCandidate({ candidateId: button.dataset.approveSourceCandidate }); await refreshSourceAutomation(true); }, "Task created from source suggestion.");
+  if (button.dataset.rejectSourceCandidate) run(async () => { await rejectSourceCandidate({ candidateId: button.dataset.rejectSourceCandidate }); await refreshSourceAutomation(true); }, "Source suggestion dismissed.");
   if (button.dataset.manageConnection) run(async () => { const connectionId = button.dataset.manageConnection; const result = await googleCalendars({ connectionId }); const selected = state.connections.find((item) => item.id === connectionId)?.selectedCalendars || []; const choices = result.data.calendars.map((calendar) => `<label class="workroom-calendar-choice"><input type="checkbox" value="${escapeHtml(calendar.id)}" ${selected.includes(calendar.id) ? "checked" : ""} /> ${escapeHtml(calendar.summary)}${calendar.primary ? " (primary)" : ""}</label>`).join(""); elements.connections.innerHTML = `<div class="workroom-calendar-picker" data-connection-id="${connectionId}"><strong>Choose calendars for the TV</strong>${choices}<button class="workroom-button workroom-button-primary" data-save-calendars="${connectionId}" type="button">Save calendars</button></div>`; });
   if (button.dataset.saveCalendars) run(() => saveGoogleCalendars({ connectionId: button.dataset.saveCalendars, calendarIds: [...document.querySelectorAll(".workroom-calendar-picker input:checked")].map((input) => input.value) }), "Calendars saved and synced.");
 });
@@ -360,6 +420,7 @@ onAuthStateChanged(auth, async (user) => {
   await setDoc(workroomRef(user.uid), { title: "The Workroom", updatedAt: serverTimestamp() }, { merge: true });
   subscribe(user);
   await refreshAutomationStatus(true);
+  await refreshSourceAutomation(true);
   automationStatusInterval = window.setInterval(() => { refreshAutomationStatus(true); }, 60_000);
   const googleState = new URLSearchParams(window.location.search).get("google");
   const googleReason = new URLSearchParams(window.location.search).get("reason");

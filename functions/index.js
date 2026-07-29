@@ -23,6 +23,8 @@ const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 const OPENAI_MODEL = defineString("OPENAI_MODEL", { default: "gpt-4o-mini" });
 const SLACK_BOT_TOKEN = defineSecret("SLACK_BOT_TOKEN");
 const SLACK_CHANNELS = defineString("SLACK_CHANNELS");
+const SLACK_OWNER_USER_ID = defineString("SLACK_OWNER_USER_ID");
+const WORKROOM_OWNER_UID = defineString("WORKROOM_OWNER_UID");
 
 const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
 const SEASON_ID = "2026-andrew-august-22";
@@ -31,7 +33,7 @@ const GOOGLE_SCOPE = [
   "openid",
   "email",
   "https://www.googleapis.com/auth/calendar.readonly",
-  "https://www.googleapis.com/auth/gmail.metadata",
+  "https://www.googleapis.com/auth/gmail.readonly",
 ].join(" ");
 
 const seasonRef = db.collection("triathlonSeasons").doc(SEASON_ID);
@@ -49,6 +51,8 @@ const workroomAchCollectionRef = (uid) => db.collection("workrooms").doc(uid).co
 const workroomAutomationUsageRef = (uid, dateKey) => db.collection("workroomAutomationUsage").doc(`${uid}_${dateKey}`);
 const workroomAutomationIdempotencyRef = (uid, requestId) => db.collection("workroomAutomationIdempotency").doc(`${uid}_${requestId}`);
 const workroomAutomationAuditRef = (uid, auditId) => db.collection("workroomAutomationAudit").doc(uid).collection("entries").doc(auditId);
+const workroomAutomationStateRef = (uid, source) => db.collection("workroomAutomationState").doc(`${uid}_${source}`);
+const workroomAutomationCandidateRef = (uid, candidateId) => db.collection("workroomAutomationCandidates").doc(uid).collection("items").doc(candidateId);
 const workroomAiRef = (uid) => db.collection("workroomAi").doc(uid);
 const workroomAiHistoryRef = (uid, dateKey) => workroomAiRef(uid).collection("briefings").doc(dateKey);
 const workroomAiUsageRef = (uid, dateKey) => db.collection("workroomAiUsage").doc(`${uid}_${dateKey}`);
@@ -84,6 +88,67 @@ const slackChannels = () => String(SLACK_CHANNELS.value() || "").split(",").map(
   const [id, ...labelParts] = entry.split(":");
   return { id: id.trim(), label: labelParts.join(":").trim() || id.trim() };
 }).filter((channel) => /^[CG][A-Z0-9]+$/.test(channel.id)).slice(0, 10);
+
+const slackMessageUrl = (channelId, timestamp) => {
+  const compactTimestamp = String(timestamp || "").replace(".", "");
+  return channelId && compactTimestamp ? `https://slack.com/archives/${channelId}/p${compactTimestamp}` : "";
+};
+
+const isSlackOwnerCommitment = (text) => /\b(i(?:'ll| will| can| need to| should| am going to)|i'm going to)\b/i.test(String(text || ""));
+
+const normalizeSlackSourceRecord = ({ channel, message, isWorkbotDm = false }) => {
+  const ownerUserId = slackOwnerUserId();
+  const text = String(message.text || "").trim();
+  const ownerMentioned = ownerUserId && text.includes(`<@${ownerUserId}>`);
+  const ownerCommitment = ownerUserId && String(message.user || "") === ownerUserId && isSlackOwnerCommitment(text);
+  if (!text || message.subtype || (!ownerMentioned && !ownerCommitment && !isWorkbotDm)) return null;
+  return {
+    sourceType: "slack",
+    sourceId: `${channel.id}:${String(message.ts || "")}`,
+    accountId: channel.id,
+    accountLabel: channel.label,
+    author: String(message.user || ""),
+    subject: isWorkbotDm ? "Message to Workbot" : channel.label,
+    receivedAt: message.ts ? new Date(Number(message.ts) * 1000) : new Date(),
+    processingText: text.slice(0, 6000),
+    sourceUrl: slackMessageUrl(channel.id, message.ts),
+    assignmentSignals: {
+      ownerMentioned,
+      ownerCommitment,
+      workbotDm: isWorkbotDm,
+    },
+  };
+};
+
+const loadSlackSourceRecords = async () => {
+  const channels = slackChannels();
+  const ownerUserId = slackOwnerUserId();
+  if (!ownerUserId || !SLACK_BOT_TOKEN.value()) return [];
+  const client = new WebClient(SLACK_BOT_TOKEN.value());
+  const oldest = String((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+  const records = [];
+  for (const channel of channels) {
+    const result = await client.conversations.history({ channel: channel.id, oldest, limit: 50 });
+    for (const message of result.messages || []) {
+      const record = normalizeSlackSourceRecord({ channel, message });
+      if (record) records.push(record);
+    }
+  }
+  const conversations = await client.conversations.list({ types: "im", limit: 100 });
+  for (const conversation of conversations.channels || []) {
+    if (!conversation.id || !conversation.is_im || String(conversation.user || "") !== ownerUserId) continue;
+    const result = await client.conversations.history({ channel: conversation.id, oldest, limit: 50 });
+    for (const message of result.messages || []) {
+      const record = normalizeSlackSourceRecord({
+        channel: { id: conversation.id, label: "Workbot DM" },
+        message,
+        isWorkbotDm: true,
+      });
+      if (record) records.push(record);
+    }
+  }
+  return records.sort((left, right) => right.receivedAt.getTime() - left.receivedAt.getTime()).slice(0, 50);
+};
 
 const loadSlackBriefingInput = async () => {
   const channels = slackChannels();
@@ -205,7 +270,24 @@ const requireWorkroomOwner = (auth) => {
   }
 };
 
+const configuredWorkroomOwnerUid = () => clean(WORKROOM_OWNER_UID.value());
+const slackOwnerUserId = () => clean(SLACK_OWNER_USER_ID.value());
+
 const WORKROOM_INGESTION_SOURCES = new Set(["voice", "slack", "gmail", "gpt", "manual", "api"]);
+const WORKROOM_SOURCE_AUTOMATION_SOURCES = new Set(["gmail", "slack"]);
+const WORKROOM_SOURCE_CANDIDATE_STATUSES = new Set([
+  "proposed",
+  "auto_created",
+  "approved",
+  "rejected",
+  "duplicate",
+  "failed",
+  "expired",
+]);
+const WORKROOM_SOURCE_AUTOMATION_REVIEW_ONLY = true;
+const WORKROOM_SOURCE_AUTOMATION_AUTO_CONFIDENCE = 0.92;
+const WORKROOM_SOURCE_AUTOMATION_REVIEW_CONFIDENCE = 0.65;
+const WORKROOM_SOURCE_AUTOMATION_RETENTION_DAYS = 30;
 const WORKROOM_ACTION_OPERATIONS = new Set([
   "createTask",
   "createProject",
@@ -343,7 +425,7 @@ const buildTaskDoc = ({ payload, source, requestId }) => {
     dueDate: toTimestampOrNull(payload.dueDate, "dueDate"),
     notes,
     source,
-    ingestionHash: crypto.createHash("sha256").update(`gpt-action:${requestId}:${title.toLowerCase()}`).digest("hex"),
+    ingestionHash: crypto.createHash("sha256").update(`${source}:${requestId}:${title.toLowerCase()}`).digest("hex"),
     completedAt: null,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
@@ -590,6 +672,184 @@ const createTasksFromAutomationText = async ({ uid, source, text }) => {
     await batch.commit();
   }
   return { createdCount, skippedCount };
+};
+
+const compactSourceText = (value, maxLength) => String(value || "")
+  .replace(/\s+/g, " ")
+  .replace(/[\u0000-\u001f\u007f]/g, " ")
+  .trim()
+  .slice(0, maxLength);
+
+const sourceCandidateId = (uid, record, index = 0) => crypto
+  .createHash("sha256")
+  .update(`${uid}:${record.sourceType}:${record.sourceId}:${index}`)
+  .digest("hex")
+  .slice(0, 48);
+
+const validCandidateDueDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? String(value) : null;
+
+const extractSourceCandidate = async ({ record, openTaskTitles }) => {
+  const OpenAI = require("openai");
+  const client = new OpenAI({ apiKey: OPENAI_API_KEY.value() });
+  const response = await client.responses.create({
+    model: OPENAI_MODEL.value(),
+    instructions: "You extract Workroom task suggestions from a private source. Return actionable=true only for an explicit request assigned to the owner, an @owner mention requiring action, a direct message to Workbot asking the owner to act, or an explicit commitment written by the owner. Exclude FYIs, newsletters, status notices, meeting chatter, ideas, completed work, and tasks assigned to someone else. Do not invent dates; only preserve a YYYY-MM-DD due date directly grounded in the source. Notes must be a concise, privacy-preserving explanation, never a transcript. Return one proposed task at most.",
+    input: JSON.stringify({
+      today: briefingDateKey(),
+      source: {
+        type: record.sourceType,
+        sender: record.author,
+        subject: record.subject,
+        assignmentSignals: record.assignmentSignals,
+        content: record.processingText,
+      },
+      openTaskTitles: openTaskTitles.slice(0, 80),
+    }),
+    text: {
+      format: {
+        type: "json_schema",
+        name: "workroom_source_candidate",
+        strict: true,
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          required: ["actionable", "assignedToOwner", "title", "notes", "priority", "dueDate", "confidence", "assignmentEvidence", "reason", "duplicateTaskId"],
+          properties: {
+            actionable: { type: "boolean" },
+            assignedToOwner: { type: "boolean" },
+            title: { type: "string" },
+            notes: { type: "string" },
+            priority: { type: "string", enum: ["high", "medium", "low"] },
+            dueDate: { type: ["string", "null"] },
+            confidence: { type: "number", minimum: 0, maximum: 1 },
+            assignmentEvidence: { type: "string" },
+            reason: { type: "string" },
+            duplicateTaskId: { type: ["string", "null"] },
+          },
+        },
+      },
+    });
+  let extracted = null;
+  try {
+    extracted = JSON.parse(String(response.output_text || "{}"));
+  } catch {
+    throw new Error("Source extraction returned invalid JSON.");
+  }
+  const title = compactSourceText(extracted.title, 180);
+  const confidence = Math.min(1, Math.max(0, Number(extracted.confidence || 0)));
+  const priority = WORKROOM_PRIORITY.has(extracted.priority) ? extracted.priority : "medium";
+  return {
+    actionable: extracted.actionable === true,
+    assignedToOwner: extracted.assignedToOwner === true,
+    title,
+    notes: compactSourceText(extracted.notes, 700),
+    priority,
+    dueDate: validCandidateDueDate(extracted.dueDate),
+    confidence,
+    assignmentEvidence: compactSourceText(extracted.assignmentEvidence, 300),
+    reason: compactSourceText(extracted.reason, 400),
+    duplicateTaskId: compactSourceText(extracted.duplicateTaskId, 128),
+  };
+};
+
+const persistSourceCandidate = async ({ uid, record, candidate }) => {
+  if (!candidate.actionable || !candidate.assignedToOwner || !candidate.title || candidate.confidence < WORKROOM_SOURCE_AUTOMATION_REVIEW_CONFIDENCE) {
+    return { classification: "discarded", candidateId: "" };
+  }
+  const candidateId = sourceCandidateId(uid, record);
+  const candidateRef = workroomAutomationCandidateRef(uid, candidateId);
+  const existing = await candidateRef.get();
+  if (existing.exists) return { classification: String(existing.data()?.status || "proposed"), candidateId, replayed: true };
+  const duplicate = Boolean(candidate.duplicateTaskId);
+  const qualifiesForAutoCreate = !WORKROOM_SOURCE_AUTOMATION_REVIEW_ONLY
+    && !duplicate
+    && candidate.confidence >= WORKROOM_SOURCE_AUTOMATION_AUTO_CONFIDENCE
+    && Boolean(candidate.assignmentEvidence);
+  const status = duplicate ? "duplicate" : qualifiesForAutoCreate ? "auto_created" : "proposed";
+  const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + WORKROOM_SOURCE_AUTOMATION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const data = {
+    uid,
+    sourceType: record.sourceType,
+    sourceId: record.sourceId,
+    sourceAccount: compactSourceText(record.accountLabel, 120),
+    sourceAuthor: compactSourceText(record.author, 180),
+    sourceSubject: compactSourceText(record.subject, 240),
+    sourceReceivedAt: admin.firestore.Timestamp.fromDate(record.receivedAt),
+    sourceUrl: compactSourceText(record.sourceUrl, 500),
+    excerpt: compactSourceText(record.processingText, 500),
+    title: candidate.title,
+    notes: candidate.notes,
+    priority: candidate.priority,
+    dueDate: candidate.dueDate ? admin.firestore.Timestamp.fromDate(new Date(`${candidate.dueDate}T12:00:00`)) : null,
+    confidence: candidate.confidence,
+    assignmentEvidence: candidate.assignmentEvidence,
+    reason: candidate.reason,
+    duplicateTaskId: candidate.duplicateTaskId || "",
+    status,
+    expiresAt,
+    createdId: "",
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  await candidateRef.create(data);
+  if (qualifiesForAutoCreate) {
+    const result = await executeWorkroomAction({
+      uid,
+      requestId: `source-${candidateId}`,
+      operation: "createTask",
+      source: `${record.sourceType}-auto`,
+      payload: { title: candidate.title, notes: candidate.notes, priority: candidate.priority, dueDate: candidate.dueDate },
+    });
+    await candidateRef.set({ createdId: result.createdId, autoCreatedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  }
+  return { classification: status, candidateId, replayed: false };
+};
+
+const writeSourceScanState = async ({ uid, source, result, error = "" }) => {
+  const data = {
+    uid,
+    source,
+    lastScanAt: FieldValue.serverTimestamp(),
+    lastError: compactSourceText(error, 500),
+    sourceCount: Number(result?.sourceCount || 0),
+    proposedCount: Number(result?.proposedCount || 0),
+    duplicateCount: Number(result?.duplicateCount || 0),
+    discardedCount: Number(result?.discardedCount || 0),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (!error) data.lastSuccessAt = FieldValue.serverTimestamp();
+  return workroomAutomationStateRef(uid, source).set(data, { merge: true });
+};
+
+const scanWorkroomSource = async ({ uid, source, loader, openTaskTitles }) => {
+  try {
+    const records = await loader();
+    const totals = { sourceCount: records.length, proposedCount: 0, duplicateCount: 0, discardedCount: 0 };
+    for (const record of records) {
+      const candidate = await extractSourceCandidate({ record, openTaskTitles });
+      const stored = await persistSourceCandidate({ uid, record, candidate });
+      if (stored.classification === "proposed") totals.proposedCount += 1;
+      else if (stored.classification === "duplicate") totals.duplicateCount += 1;
+      else if (stored.classification === "discarded") totals.discardedCount += 1;
+    }
+    await writeSourceScanState({ uid, source, result: totals });
+    return { source, ok: true, ...totals };
+  } catch (error) {
+    const result = { sourceCount: 0, proposedCount: 0, duplicateCount: 0, discardedCount: 0 };
+    await writeSourceScanState({ uid, source, result, error: String(error?.message || "Source scan failed.") });
+    return { source, ok: false, ...result, error: "This source needs attention." };
+  }
+};
+
+const runWorkroomSourceScan = async (uid) => {
+  await ensureWorkroomOwnerUid(uid);
+  const taskSnapshot = await workroomTasksCollectionRef(uid).where("status", "!=", "done").limit(80).get();
+  const openTaskTitles = taskSnapshot.docs.map((task) => compactSourceText(task.data()?.title, 180)).filter(Boolean);
+  const [gmail, slack] = await Promise.all([
+    scanWorkroomSource({ uid, source: "gmail", loader: () => loadGmailSourceRecords(uid), openTaskTitles }),
+    scanWorkroomSource({ uid, source: "slack", loader: loadSlackSourceRecords, openTaskTitles }),
+  ]);
+  return { ok: gmail.ok || slack.ok, reviewOnly: WORKROOM_SOURCE_AUTOMATION_REVIEW_ONLY, sources: [gmail, slack] };
 };
 
 const fetchJson = async (url, options = {}) => {
@@ -877,6 +1137,85 @@ const googleApi = (path, tokenData) => fetchJson(`https://www.googleapis.com${pa
 
 const safeHeader = (headers, name) => String((headers || []).find((header) => String(header.name).toLowerCase() === name)?.value || "").trim();
 
+const decodeBase64Url = (value) => {
+  if (!value) return "";
+  try {
+    return Buffer.from(String(value).replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+  } catch {
+    return "";
+  }
+};
+
+const stripHtml = (value) => String(value || "")
+  .replace(/<style[\s\S]*?<\/style>/gi, " ")
+  .replace(/<script[\s\S]*?<\/script>/gi, " ")
+  .replace(/<[^>]+>/g, " ")
+  .replace(/&nbsp;/gi, " ")
+  .replace(/&amp;/gi, "&")
+  .replace(/&lt;/gi, "<")
+  .replace(/&gt;/gi, ">")
+  .replace(/\s+/g, " ")
+  .trim();
+
+const messageTextFromPayload = (payload) => {
+  const parts = [];
+  const visit = (part) => {
+    if (!part) return;
+    const mimeType = String(part.mimeType || "").toLowerCase();
+    const content = decodeBase64Url(part.body?.data);
+    if (mimeType === "text/plain" && content) parts.unshift(content);
+    if (mimeType === "text/html" && content) parts.push(stripHtml(content));
+    for (const child of part.parts || []) visit(child);
+  };
+  visit(payload);
+  return parts.join("\n").replace(/\s+/g, " ").trim().slice(0, 6000);
+};
+
+const isIgnoredGmailMessage = (message) => {
+  const headers = message.payload?.headers || [];
+  const from = safeHeader(headers, "from").toLowerCase();
+  const subject = safeHeader(headers, "subject").toLowerCase();
+  const listId = safeHeader(headers, "list-id");
+  const autoSubmitted = safeHeader(headers, "auto-submitted").toLowerCase();
+  if (listId || autoSubmitted && autoSubmitted !== "no") return true;
+  if (/\b(no[._-]?reply|donotreply|mailer-daemon)@/.test(from)) return true;
+  return /\b(newsletter|weekly digest|receipt|order confirmation|shipping update|password reset)\b/.test(subject);
+};
+
+const normalizeGmailSourceRecord = ({ connectionId, message }) => {
+  if (isIgnoredGmailMessage(message)) return null;
+  const headers = message.payload?.headers || [];
+  const body = messageTextFromPayload(message.payload);
+  if (!body) return null;
+  return {
+    sourceType: "gmail",
+    sourceId: `${connectionId}:${String(message.id || "")}`,
+    accountId: connectionId,
+    accountLabel: "Gmail",
+    author: safeHeader(headers, "from"),
+    subject: safeHeader(headers, "subject") || "(No subject)",
+    receivedAt: message.internalDate ? new Date(Number(message.internalDate)) : new Date(),
+    processingText: body,
+    sourceUrl: "",
+    assignmentSignals: { unreadInbox: true },
+  };
+};
+
+const loadGmailSourceRecords = async (uid) => {
+  const connections = await db.collection("workroomConnections").doc(uid).collection("connections").where("status", "==", "connected").get();
+  const records = [];
+  for (const connection of connections.docs) {
+    const tokenData = await getFreshGoogleToken(uid, connection.id);
+    const mailList = await googleApi("/gmail/v1/users/me/messages?labelIds=INBOX&labelIds=UNREAD&maxResults=20", tokenData);
+    const messages = await Promise.all((mailList.messages || []).slice(0, 20).map((item) => googleApi(`/gmail/v1/users/me/messages/${encodeURIComponent(item.id)}?format=full`, tokenData)));
+    for (const message of messages) {
+      const record = normalizeGmailSourceRecord({ connectionId: connection.id, message });
+      if (record) records.push(record);
+    }
+  }
+  return records.sort((left, right) => right.receivedAt.getTime() - left.receivedAt.getTime()).slice(0, 30);
+};
+
 const formatGoogleEvent = (event, calendarId, connectionId) => ({
   id: `${connectionId}:${calendarId}:${event.id}`,
   title: String(event.summary || "Busy"),
@@ -1074,6 +1413,128 @@ exports.scheduledWorkroomGoogleSync = onSchedule({ schedule: "every 10 minutes",
   await Promise.all(ownerUids.map((uid) => syncWorkroomGoogle(uid)));
 });
 
+exports.runWorkroomSourceScan = onCall({ secrets: [GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, SLACK_BOT_TOKEN] }, async (request) => {
+  const auth = requireAuth(request);
+  requireWorkroomOwner(auth);
+  return runWorkroomSourceScan(auth.uid);
+});
+
+exports.scheduledWorkroomSourceScan = onSchedule({
+  schedule: "10 7 * * 1-5",
+  timeZone: "America/Chicago",
+  secrets: [GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, SLACK_BOT_TOKEN],
+}, async () => {
+  const uid = configuredWorkroomOwnerUid();
+  if (!uid) throw new Error("WORKROOM_OWNER_UID must be configured before source scans can run.");
+  await runWorkroomSourceScan(uid);
+});
+
+exports.listWorkroomAutomationCandidates = onCall(async (request) => {
+  const auth = requireAuth(request);
+  requireWorkroomOwner(auth);
+  const snapshot = await db.collection("workroomAutomationCandidates")
+    .doc(auth.uid)
+    .collection("items")
+    .where("status", "==", "proposed")
+    .limit(40)
+    .get();
+  const candidates = snapshot.docs.map((item) => {
+    const data = item.data() || {};
+    return {
+      id: item.id,
+      sourceType: String(data.sourceType || ""),
+      sourceAccount: String(data.sourceAccount || ""),
+      sourceAuthor: String(data.sourceAuthor || ""),
+      sourceSubject: String(data.sourceSubject || ""),
+      sourceReceivedAt: briefingValue(data.sourceReceivedAt),
+      sourceUrl: String(data.sourceUrl || ""),
+      excerpt: String(data.excerpt || ""),
+      title: String(data.title || ""),
+      notes: String(data.notes || ""),
+      priority: String(data.priority || "medium"),
+      dueDate: briefingValue(data.dueDate),
+      confidence: Number(data.confidence || 0),
+      assignmentEvidence: String(data.assignmentEvidence || ""),
+      reason: String(data.reason || ""),
+      createdAt: briefingValue(data.createdAt),
+    };
+  }).sort((left, right) => String(right.createdAt || "").localeCompare(String(left.createdAt || "")));
+  return { reviewOnly: WORKROOM_SOURCE_AUTOMATION_REVIEW_ONLY, candidates };
+});
+
+exports.approveWorkroomAutomationCandidate = onCall(async (request) => {
+  const auth = requireAuth(request);
+  requireWorkroomOwner(auth);
+  const candidateId = ensureString(request.data?.candidateId, 80, "candidateId");
+  const candidateRef = workroomAutomationCandidateRef(auth.uid, candidateId);
+  const snapshot = await candidateRef.get();
+  if (!snapshot.exists) throw new HttpsError("not-found", "This task suggestion no longer exists.");
+  const candidate = snapshot.data() || {};
+  if (candidate.status !== "proposed") throw new HttpsError("failed-precondition", "This task suggestion has already been handled.");
+  const edits = typeof request.data?.task === "object" && request.data.task ? request.data.task : {};
+  const sourceType = WORKROOM_SOURCE_AUTOMATION_SOURCES.has(candidate.sourceType) ? candidate.sourceType : "gmail";
+  const payload = {
+    title: edits.title ?? candidate.title,
+    notes: edits.notes ?? candidate.notes,
+    priority: edits.priority ?? candidate.priority,
+    dueDate: edits.dueDate ?? briefingValue(candidate.dueDate),
+  };
+  const result = await executeWorkroomAction({
+    uid: auth.uid,
+    requestId: `source-${candidateId}`,
+    operation: "createTask",
+    source: `${sourceType}-review`,
+    payload,
+  });
+  await candidateRef.set({
+    status: "approved",
+    createdId: result.createdId,
+    approvedAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+  return { ok: true, createdId: result.createdId, replayed: result.replayed };
+});
+
+exports.rejectWorkroomAutomationCandidate = onCall(async (request) => {
+  const auth = requireAuth(request);
+  requireWorkroomOwner(auth);
+  const candidateId = ensureString(request.data?.candidateId, 80, "candidateId");
+  const candidateRef = workroomAutomationCandidateRef(auth.uid, candidateId);
+  const snapshot = await candidateRef.get();
+  if (!snapshot.exists) throw new HttpsError("not-found", "This task suggestion no longer exists.");
+  if (snapshot.data()?.status !== "proposed") throw new HttpsError("failed-precondition", "This task suggestion has already been handled.");
+  await candidateRef.set({ status: "rejected", rejectedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  return { ok: true };
+});
+
+exports.getWorkroomSourceAutomationStatus = onCall(async (request) => {
+  const auth = requireAuth(request);
+  requireWorkroomOwner(auth);
+  const [gmail, slack, proposed] = await Promise.all([
+    workroomAutomationStateRef(auth.uid, "gmail").get(),
+    workroomAutomationStateRef(auth.uid, "slack").get(),
+    db.collection("workroomAutomationCandidates").doc(auth.uid).collection("items").where("status", "==", "proposed").count().get(),
+  ]);
+  const sourceState = (snapshot, source) => {
+    const data = snapshot.data() || {};
+    return {
+      source,
+      lastScanAt: briefingValue(data.lastScanAt),
+      lastSuccessAt: briefingValue(data.lastSuccessAt),
+      lastError: String(data.lastError || ""),
+      sourceCount: Number(data.sourceCount || 0),
+      proposedCount: Number(data.proposedCount || 0),
+      duplicateCount: Number(data.duplicateCount || 0),
+      discardedCount: Number(data.discardedCount || 0),
+    };
+  };
+  return {
+    reviewOnly: WORKROOM_SOURCE_AUTOMATION_REVIEW_ONLY,
+    pendingReviewCount: Number(proposed.data().count || 0),
+    sources: [sourceState(gmail, "gmail"), sourceState(slack, "slack")],
+  };
+});
+
 exports.generateWorkroomBriefing = onCall({ secrets: [OPENAI_API_KEY, SLACK_BOT_TOKEN] }, async (request) => {
   const auth = requireAuth(request);
   requireWorkroomOwner(auth);
@@ -1090,10 +1551,12 @@ exports.scheduledWorkroomBriefing = onSchedule({
   timeZone: "America/Chicago",
   secrets: [OPENAI_API_KEY, SLACK_BOT_TOKEN],
 }, async () => {
+  const uid = configuredWorkroomOwnerUid();
+  if (!uid) throw new Error("WORKROOM_OWNER_UID must be configured before the briefing can run.");
   try {
-    await generateWorkroomBriefing("RHkEW2ABlqYmwBqeEE0JX40zNND3");
+    await generateWorkroomBriefing(uid);
   } catch (error) {
-    await recordWorkroomBriefingFailure("RHkEW2ABlqYmwBqeEE0JX40zNND3", error);
+    await recordWorkroomBriefingFailure(uid, error);
     throw error;
   }
 });
