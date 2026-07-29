@@ -17,17 +17,40 @@
       </section>
       <div id="workroom-display-app" class="hidden">
         <header class="workroom-display-header">
-          <p id="workroom-date" class="workroom-display-date">—</p>
-          <time id="workroom-clock" class="workroom-clock">—</time>
+          <div class="workroom-display-time">
+            <p id="workroom-date" class="workroom-display-date">—</p>
+            <time id="workroom-clock" class="workroom-clock">—</time>
+          </div>
+          <div class="workroom-display-toolbar">
+            <div class="workroom-display-modes" role="group" aria-label="Display view">
+              <button class="workroom-display-mode is-active" data-display-mode="focus" type="button" aria-pressed="true" title="Focus view (1)">Focus</button>
+              <button class="workroom-display-mode" data-display-mode="overview" type="button" aria-pressed="false" title="Overview (2)">Overview</button>
+              <button class="workroom-display-mode" data-display-mode="briefing" type="button" aria-pressed="false" title="Briefing (3)">Briefing</button>
+            </div>
+            <div class="workroom-display-controls" aria-label="Signal controls">
+              <button id="workroom-signal-previous" class="workroom-display-icon-button" type="button" aria-label="Previous signal" title="Previous signal (Left Arrow)">&#8249;</button>
+              <button id="workroom-signal-toggle" class="workroom-display-icon-button" type="button" aria-pressed="false" aria-label="Pause signal rotation" title="Pause signal rotation (Space)">&#10074;&#10074;</button>
+              <button id="workroom-signal-next" class="workroom-display-icon-button" type="button" aria-label="Next signal" title="Next signal (Right Arrow)">&#8250;</button>
+            </div>
+          </div>
         </header>
-        <section class="workroom-tv-grid">
-          <article class="workroom-tv-card workroom-tv-tasks"><div class="workroom-tv-heading"><h2>Tasks</h2><span id="workroom-task-count" class="workroom-tv-count">0</span></div><div id="workroom-display-tasks" class="workroom-tv-list"></div></article>
-          <article class="workroom-tv-card workroom-tv-projects"><div class="workroom-tv-heading"><h2>Projects</h2></div><div id="workroom-display-projects" class="workroom-tv-list"></div></article>
-          <article class="workroom-tv-card workroom-tv-calendar"><div class="workroom-tv-heading"><h2>Calendar</h2></div><div id="workroom-display-events" class="workroom-tv-list"></div></article>
-          <article class="workroom-tv-card workroom-tv-mail"><div class="workroom-tv-heading"><h2>Mail</h2><span id="workroom-mail-count" class="workroom-tv-count">0</span></div><div id="workroom-display-mail" class="workroom-tv-list"></div></article>
-          <article class="workroom-tv-card workroom-tv-finance"><div class="workroom-tv-heading"><h2>Finance</h2></div><div id="workroom-display-finance" class="workroom-tv-list"></div></article>
-          <article class="workroom-tv-card workroom-tv-contacts"><div class="workroom-tv-heading"><h2>Follow-ups</h2></div><div id="workroom-display-contacts" class="workroom-tv-list"></div></article>
-          <article class="workroom-tv-card workroom-tv-ach"><div class="workroom-tv-heading"><h2>ACH</h2></div><div id="workroom-display-ach" class="workroom-tv-list"></div></article>
+        <section class="workroom-display-canvas">
+          <article class="workroom-tv-card workroom-task-stage">
+            <div class="workroom-tv-heading"><div><p class="workroom-stage-kicker">Now working</p><h2>Action queue</h2></div><span id="workroom-task-count" class="workroom-tv-count">0</span></div>
+            <div id="workroom-display-tasks" class="workroom-tv-list workroom-task-list"></div>
+            <div id="workroom-task-page" class="workroom-stage-footer" aria-live="polite"></div>
+          </article>
+          <aside class="workroom-signal-rail">
+            <article id="workroom-signal-stage" class="workroom-tv-card workroom-signal-stage" aria-live="polite">
+              <div class="workroom-tv-heading"><div><p class="workroom-stage-kicker">Live signal</p><h2 id="workroom-signal-title">Follow-ups</h2></div><span id="workroom-signal-position" class="workroom-signal-position">1 / 1</span></div>
+              <div id="workroom-display-signal" class="workroom-tv-list workroom-signal-list"></div>
+            </article>
+            <section id="workroom-overview-signals" class="workroom-overview-signals" aria-label="Overview signals" hidden></section>
+          </aside>
+          <article id="workroom-briefing-stage" class="workroom-tv-card workroom-briefing-stage" hidden>
+            <div class="workroom-tv-heading"><div><p class="workroom-stage-kicker">Daily review</p><h2>Workroom briefing</h2></div><small id="workroom-briefing-stage-updated">Waiting for the first briefing.</small></div>
+            <p id="workroom-display-briefing-full" class="workroom-briefing-full">Generate a briefing from the control room.</p>
+          </article>
         </section>
         <section class="workroom-briefing-band" aria-live="polite">
           <div class="workroom-briefing-heading"><span class="workroom-quote-label">Workroom briefing</span><small id="workroom-briefing-updated">Waiting for the first briefing.</small></div>

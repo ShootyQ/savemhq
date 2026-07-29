@@ -4,8 +4,24 @@ import { auth } from "./auth-shared.js";
 import { achEntriesRef, asDate, briefingRef, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, formatDay, formatDateTime, isOwner, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
-const elements = { gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), clock: $("workroom-clock"), date: $("workroom-date"), tasks: $("workroom-display-tasks"), taskCount: $("workroom-task-count"), projects: $("workroom-display-projects"), events: $("workroom-display-events"), mail: $("workroom-display-mail"), mailCount: $("workroom-mail-count"), finance: $("workroom-display-finance"), contacts: $("workroom-display-contacts"), ach: $("workroom-display-ach"), briefing: $("workroom-display-briefing"), briefingUpdated: $("workroom-briefing-updated"), quote: $("workroom-quote-text"), completeToast: $("workroom-complete-toast") };
-let state = { user: null, tasks: [], projects: [], finance: [], contacts: [], ach: [], summary: {}, briefing: {}, connections: [], unsubscribers: [] };
+const elements = { gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), clock: $("workroom-clock"), date: $("workroom-date"), tasks: $("workroom-display-tasks"), taskCount: $("workroom-task-count"), taskPage: $("workroom-task-page"), signalStage: $("workroom-signal-stage"), signalTitle: $("workroom-signal-title"), signalPosition: $("workroom-signal-position"), signal: $("workroom-display-signal"), overviewSignals: $("workroom-overview-signals"), briefingStage: $("workroom-briefing-stage"), briefingFull: $("workroom-display-briefing-full"), briefingStageUpdated: $("workroom-briefing-stage-updated"), briefing: $("workroom-display-briefing"), briefingUpdated: $("workroom-briefing-updated"), quote: $("workroom-quote-text"), completeToast: $("workroom-complete-toast"), signalPrevious: $("workroom-signal-previous"), signalToggle: $("workroom-signal-toggle"), signalNext: $("workroom-signal-next"), modeButtons: [...document.querySelectorAll("[data-display-mode]")] };
+const DISPLAY_MODE_KEY = "workroom-display-mode";
+const ROTATION_PAUSED_KEY = "workroom-display-rotation-paused";
+const TASKS_PER_PAGE = 7;
+const ROTATION_INTERVAL = 12_000;
+const preferredDisplayMode = () => {
+  try {
+    const mode = window.localStorage.getItem(DISPLAY_MODE_KEY);
+    return ["focus", "overview", "briefing"].includes(mode) ? mode : "focus";
+  } catch { return "focus"; }
+};
+const preferredRotationPaused = () => {
+  try { return window.localStorage.getItem(ROTATION_PAUSED_KEY) === "true"; } catch { return false; }
+};
+const savePreference = (key, value) => {
+  try { window.localStorage.setItem(key, String(value)); } catch { }
+};
+let state = { user: null, tasks: [], projects: [], finance: [], contacts: [], ach: [], summary: {}, briefing: {}, connections: [], unsubscribers: [], displayMode: preferredDisplayMode(), signalIndex: 0, taskPage: 0, rotationPaused: preferredRotationPaused() };
 let celebrationTimer = null;
 const quotes = [
   ["Well begun is half done.", "Aristotle"],
@@ -66,30 +82,68 @@ const showQuote = () => {
   elements.quote.classList.add("is-running");
 };
 
+const taskRows = (tasks) => tasks.map((task) => `<div class="workroom-tv-row workroom-task-row priority-${escapeHtml(task.priority)}"><button class="workroom-display-check" data-complete-task="${escapeHtml(task.id)}" type="button" aria-label="Complete ${escapeHtml(task.title)}"></button><div><strong>${escapeHtml(task.title)}</strong><small><span class="workroom-task-priority ${escapeHtml(task.priority)}">${escapeHtml(task.priority)}</span>${task.dueDate ? ` - Due ${formatDay(task.dueDate)}` : ""}</small></div></div>`).join("");
+const simpleRows = (items) => items.map((item) => `<div class="workroom-tv-row"><span class="workroom-tv-marker ${escapeHtml(item.priority || "low")}"></span><div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.detail)}</small></div></div>`).join("");
+const getSignals = () => {
+  const contacts = [...state.contacts].filter((item) => item.status !== "done").sort((a, b) => (asDate(a.followUpDate)?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b.followUpDate)?.getTime() || Number.MAX_SAFE_INTEGER)).slice(0, 3);
+  const finance = soonest(state.finance.filter((item) => item.status !== "done")).slice(0, 3);
+  const ach = [...state.ach].sort((a, b) => (asDate(a.withdrawalDate)?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b.withdrawalDate)?.getTime() || Number.MAX_SAFE_INTEGER)).slice(0, 3);
+  const events = (state.summary.upcomingEvents || []).slice(0, 3);
+  const mail = (state.summary.recentMail || []).slice(0, 3);
+  const projects = state.projects.filter((project) => project.status === "active").slice(0, 3);
+  return [
+    { id: "follow-ups", title: "Follow-ups", count: contacts.length, summary: contacts[0] ? `${contacts[0].name} - ${formatDay(contacts[0].followUpDate)}` : "No follow-ups waiting.", rows: simpleRows(contacts.map((item) => ({ title: item.name, detail: `${item.method} - ${item.reason}`, priority: "medium" }))) },
+    { id: "finance", title: "Finance", count: finance.length, summary: finance[0] ? `${finance[0].title}${finance[0].dueDate ? ` - ${formatDay(finance[0].dueDate)}` : ""}` : "No financial reminders are waiting.", rows: simpleRows(finance.map((item) => ({ title: item.title, detail: `${item.category || "Reminder"}${item.dueDate ? ` - ${formatDay(item.dueDate)}` : ""}`, priority: item.urgency }))) },
+    { id: "ach", title: "ACH", count: ach.length, summary: ach[0] ? `${ach[0].name} - ${formatDay(ach[0].withdrawalDate)}` : "No ACH entries waiting.", rows: simpleRows(ach.map((item) => ({ title: `${item.name} - $${Number(item.amount || 0).toFixed(2)}`, detail: `${item.reason}${item.recurring ? " - recurring" : ""}`, priority: "medium" }))) },
+    { id: "calendar", title: "Calendar", count: events.length, summary: events[0] ? `${events[0].title} - ${calendarWhen(events[0])}` : "Nothing scheduled in the next 7 days.", rows: events.map((event) => `<div class="workroom-tv-row"><time>${escapeHtml(calendarWhen(event))}</time><div><strong>${escapeHtml(event.title)}</strong><small>${escapeHtml(event.location || "Google Calendar")}</small></div></div>`).join("") },
+    { id: "mail", title: "Mail", count: Number(state.summary.unreadCount || mail.length || 0), summary: mail[0] ? mail[0].subject : "No unread messages in connected inboxes.", rows: mail.map((message) => `<div class="workroom-tv-row"><span class="workroom-mail-dot"></span><div><strong>${escapeHtml(message.subject)}</strong><small>${escapeHtml(message.from || "Google Mail")}</small></div></div>`).join("") },
+    { id: "projects", title: "Projects", count: projects.length, summary: projects[0] ? projects[0].title : "No active projects.", rows: projects.map((project) => { const projectTasks = state.tasks.filter((task) => task.projectId === project.id); const complete = projectTasks.filter((task) => task.status === "done").length; const percent = projectTasks.length ? Math.round(complete / projectTasks.length * 100) : 0; return `<div class="workroom-project-progress"><div><strong>${escapeHtml(project.title)}</strong><small>${project.targetDate ? `Target ${formatDay(project.targetDate)}` : "No target date"}</small></div><div class="workroom-progress-track"><span style="width:${percent}%"></span></div><small>${percent}%</small></div>`; }).join("") },
+  ];
+};
+const updateControls = (signalCount) => {
+  const disabled = signalCount < 2;
+  elements.signalPrevious.disabled = disabled;
+  elements.signalNext.disabled = disabled;
+  elements.signalToggle.disabled = signalCount < 2;
+  elements.signalToggle.textContent = state.rotationPaused ? ">" : "||";
+  elements.signalToggle.setAttribute("aria-pressed", String(state.rotationPaused));
+  elements.signalToggle.setAttribute("aria-label", state.rotationPaused ? "Resume signal rotation" : "Pause signal rotation");
+  elements.modeButtons.forEach((button) => {
+    const active = button.dataset.displayMode === state.displayMode;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+};
+const renderDisplayMode = () => {
+  document.body.dataset.displayMode = state.displayMode;
+  elements.briefingStage.hidden = state.displayMode !== "briefing";
+  elements.overviewSignals.hidden = state.displayMode !== "overview";
+};
 const render = () => {
   const openTasks = soonest(state.tasks.filter((task) => task.status !== "done"));
-  const completedTasks = [...state.tasks]
-    .filter((task) => task.status === "done")
-    .sort((left, right) => (asDate(right.completedAt)?.getTime() || 0) - (asDate(left.completedAt)?.getTime() || 0));
-  const visibleTasks = [...openTasks, ...completedTasks].slice(0, 8);
   elements.taskCount.textContent = String(openTasks.length);
-  elements.tasks.innerHTML = visibleTasks.length ? visibleTasks.map((task) => `<div class="workroom-tv-row workroom-task-row priority-${escapeHtml(task.priority)} ${task.status === "done" ? "is-done" : ""}"><button class="workroom-display-check" data-complete-task="${escapeHtml(task.id)}" type="button" aria-label="${task.status === "done" ? "Reopen" : "Complete"} ${escapeHtml(task.title)}">${task.status === "done" ? "✓" : ""}</button><span class="workroom-tv-marker ${escapeHtml(task.priority)}"></span><div><strong>${escapeHtml(task.title)}</strong><small><span class="workroom-task-priority ${escapeHtml(task.priority)}">${escapeHtml(task.priority)}</span>${task.dueDate ? ` · Due ${formatDay(task.dueDate)}` : ""}</small></div></div>`).join("") : blank("Your action queue is clear.");
-  const activeProjects = state.projects.filter((project) => project.status === "active").slice(0, 3);
-  elements.projects.innerHTML = activeProjects.length ? activeProjects.map((project) => { const projectTasks = state.tasks.filter((task) => task.projectId === project.id); const complete = projectTasks.filter((task) => task.status === "done").length; const percent = projectTasks.length ? Math.round(complete / projectTasks.length * 100) : 0; return `<div class="workroom-project-progress"><div><strong>${escapeHtml(project.title)}</strong><small>${project.targetDate ? `Target ${formatDay(project.targetDate)}` : "No target date"}</small></div><div class="workroom-progress-track"><span style="width:${percent}%"></span></div><small>${percent}%</small></div>`; }).join("") : blank("Add a project in the control room.");
-  const events = (state.summary.upcomingEvents || []).slice(0, 4);
-  elements.events.innerHTML = events.length ? events.map((event) => `<div class="workroom-tv-row"><time>${escapeHtml(calendarWhen(event))}</time><div><strong>${escapeHtml(event.title)}</strong><small>${escapeHtml(event.location || "Google Calendar")}</small></div></div>`).join("") : blank("Nothing is scheduled in the next 7 days.");
-  const mail = (state.summary.recentMail || []).slice(0, 3);
-  elements.mailCount.textContent = String(state.summary.unreadCount || mail.length || 0);
-  elements.mail.innerHTML = mail.length ? mail.map((message) => `<div class="workroom-tv-row"><span class="workroom-mail-dot"></span><div><strong>${escapeHtml(message.subject)}</strong><small>${escapeHtml(message.from || "Google Mail")}</small></div></div>`).join("") : blank("No unread messages in connected inboxes.");
-  const finance = soonest(state.finance.filter((item) => item.status !== "done")).slice(0, 3);
-  elements.finance.innerHTML = finance.length ? finance.map((item) => `<div class="workroom-tv-row"><span class="workroom-tv-marker ${escapeHtml(item.urgency)}"></span><div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.category || "Reminder")}${item.dueDate ? ` · ${formatDay(item.dueDate)}` : ""}</small></div></div>`).join("") : blank("No financial reminders are waiting.");
-  const contacts = [...state.contacts].filter((item) => item.status !== "done").sort((a, b) => (asDate(a.followUpDate)?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b.followUpDate)?.getTime() || Number.MAX_SAFE_INTEGER)).slice(0, 3);
-  elements.contacts.innerHTML = contacts.length ? contacts.map((item) => `<div class="workroom-tv-row"><time>${formatDay(item.followUpDate)}</time><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.method)} · ${escapeHtml(item.reason)}</small></div></div>`).join("") : blank("No follow-ups waiting.");
-  const ach = [...state.ach].sort((a, b) => (asDate(a.withdrawalDate)?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b.withdrawalDate)?.getTime() || Number.MAX_SAFE_INTEGER)).slice(0, 3);
-  elements.ach.innerHTML = ach.length ? ach.map((item) => `<div class="workroom-tv-row"><time>${formatDay(item.withdrawalDate)}</time><div><strong>${escapeHtml(item.name)} · $${Number(item.amount || 0).toFixed(2)}</strong><small>${escapeHtml(item.reason)}${item.recurring ? " · recurring" : ""}</small></div></div>`).join("") : blank("No ACH entries waiting.");
+  const pageCount = Math.max(1, Math.ceil(openTasks.length / TASKS_PER_PAGE));
+  state.taskPage %= pageCount;
+  const firstTask = state.taskPage * TASKS_PER_PAGE;
+  const visibleTasks = openTasks.slice(firstTask, firstTask + TASKS_PER_PAGE);
+  elements.tasks.innerHTML = visibleTasks.length ? taskRows(visibleTasks) : blank("Your action queue is clear.");
+  elements.taskPage.textContent = openTasks.length > TASKS_PER_PAGE ? `Tasks ${firstTask + 1}-${Math.min(firstTask + TASKS_PER_PAGE, openTasks.length)} of ${openTasks.length}` : openTasks.length ? `${openTasks.length} open task${openTasks.length === 1 ? "" : "s"}` : "All clear";
+  const allSignals = getSignals();
+  const activeSignals = allSignals.filter((signal) => signal.count > 0);
+  state.signalIndex = activeSignals.length ? state.signalIndex % activeSignals.length : 0;
+  const signal = activeSignals[state.signalIndex];
+  elements.signalTitle.textContent = signal?.title || "Signals";
+  elements.signalPosition.textContent = activeSignals.length ? `${state.signalIndex + 1} / ${activeSignals.length}` : "0 / 0";
+  elements.signal.innerHTML = signal ? signal.rows || blank(signal.summary) : blank("No active signals right now.");
+  elements.signalStage.dataset.signal = signal?.id || "empty";
+  elements.overviewSignals.innerHTML = allSignals.map((item) => `<article class="workroom-overview-tile"><span>${escapeHtml(item.title)}</span><strong>${item.count}</strong><small>${escapeHtml(item.summary)}</small></article>`).join("");
   const briefingText = String(state.briefing.text || "").trim();
   elements.briefing.textContent = briefingText || "Generate a briefing from the control room.";
+  elements.briefingFull.textContent = briefingText || "Generate a briefing from the control room.";
   elements.briefingUpdated.textContent = state.briefing.generatedAt ? `Updated ${formatDateTime(state.briefing.generatedAt)}` : "Waiting for the first briefing.";
+  elements.briefingStageUpdated.textContent = elements.briefingUpdated.textContent;
+  renderDisplayMode();
+  updateControls(activeSignals.length);
 };
 
 const tick = () => { const now = new Date(); elements.clock.textContent = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(now); elements.date.textContent = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(now); };
@@ -97,7 +151,41 @@ tick(); setInterval(tick, 15_000);
 showQuote();
 setInterval(showQuote, 18_000);
 
+const setDisplayMode = (mode) => {
+  if (!["focus", "overview", "briefing"].includes(mode)) return;
+  state.displayMode = mode;
+  savePreference(DISPLAY_MODE_KEY, mode);
+  render();
+};
+const changeSignal = (direction) => {
+  const count = getSignals().filter((signal) => signal.count > 0).length;
+  if (count < 2) return;
+  state.signalIndex = (state.signalIndex + direction + count) % count;
+  state.rotationPaused = true;
+  savePreference(ROTATION_PAUSED_KEY, true);
+  render();
+};
+const toggleRotation = () => {
+  state.rotationPaused = !state.rotationPaused;
+  savePreference(ROTATION_PAUSED_KEY, state.rotationPaused);
+  render();
+};
+const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+setInterval(() => {
+  if (!state.user || state.rotationPaused || reducedMotion()) return;
+  const signalCount = getSignals().filter((signal) => signal.count > 0).length;
+  const openTaskCount = state.tasks.filter((task) => task.status !== "done").length;
+  if (signalCount > 1) state.signalIndex = (state.signalIndex + 1) % signalCount;
+  if (openTaskCount > TASKS_PER_PAGE) state.taskPage = (state.taskPage + 1) % Math.ceil(openTaskCount / TASKS_PER_PAGE);
+  if (signalCount > 1 || openTaskCount > TASKS_PER_PAGE) render();
+}, ROTATION_INTERVAL);
+
 document.addEventListener("click", async (event) => {
+  const modeButton = event.target.closest("[data-display-mode]");
+  if (modeButton) { setDisplayMode(modeButton.dataset.displayMode); return; }
+  if (event.target.closest("#workroom-signal-previous")) { changeSignal(-1); return; }
+  if (event.target.closest("#workroom-signal-next")) { changeSignal(1); return; }
+  if (event.target.closest("#workroom-signal-toggle")) { toggleRotation(); return; }
   const button = event.target.closest("button[data-complete-task]");
   if (!button || !state.user) return;
   const task = state.tasks.find((item) => item.id === button.dataset.completeTask);
@@ -116,6 +204,17 @@ document.addEventListener("click", async (event) => {
   } finally {
     button.disabled = false;
   }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!state.user || event.target.closest("button, input, select, textarea, a")) return;
+  if (["1", "2", "3"].includes(event.key)) {
+    setDisplayMode({ 1: "focus", 2: "overview", 3: "briefing" }[event.key]);
+    return;
+  }
+  if (event.key === "ArrowLeft") { event.preventDefault(); changeSignal(-1); return; }
+  if (event.key === "ArrowRight") { event.preventDefault(); changeSignal(1); return; }
+  if (event.code === "Space") { event.preventDefault(); toggleRotation(); }
 });
 
 onAuthStateChanged(auth, (user) => {
