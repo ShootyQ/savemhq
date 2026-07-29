@@ -4,226 +4,111 @@ import { auth } from "./auth-shared.js";
 import { achEntriesRef, asDate, briefingRef, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, formatDay, formatDateTime, isOwner, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
-const elements = { gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), clock: $("workroom-clock"), date: $("workroom-date"), tasks: $("workroom-display-tasks"), taskCount: $("workroom-task-count"), taskPage: $("workroom-task-page"), signalStage: $("workroom-signal-stage"), signalTitle: $("workroom-signal-title"), signalPosition: $("workroom-signal-position"), signal: $("workroom-display-signal"), overviewSignals: $("workroom-overview-signals"), briefingStage: $("workroom-briefing-stage"), briefingFull: $("workroom-display-briefing-full"), briefingStageUpdated: $("workroom-briefing-stage-updated"), briefing: $("workroom-display-briefing"), briefingUpdated: $("workroom-briefing-updated"), quote: $("workroom-quote-text"), completeToast: $("workroom-complete-toast"), signalPrevious: $("workroom-signal-previous"), signalToggle: $("workroom-signal-toggle"), signalNext: $("workroom-signal-next"), modeButtons: [...document.querySelectorAll("[data-display-mode]")] };
-const DISPLAY_MODE_KEY = "workroom-display-mode";
-const ROTATION_PAUSED_KEY = "workroom-display-rotation-paused";
-const TASKS_PER_PAGE = 7;
-const ROTATION_INTERVAL = 12_000;
-const preferredDisplayMode = () => {
-  try {
-    const mode = window.localStorage.getItem(DISPLAY_MODE_KEY);
-    return ["focus", "overview", "briefing"].includes(mode) ? mode : "focus";
-  } catch { return "focus"; }
+const elements = {
+  gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), clock: $("workroom-clock"), date: $("workroom-date"), completedCount: $("workroom-completed-count"), overdueCount: $("workroom-overdue-count"), overdueStat: $("workroom-overdue-stat"), allCount: $("workroom-all-count"), dayline: $("workroom-dayline-events"), nowReason: $("workroom-now-reason"), nowContent: $("workroom-now-content"), clearPin: $("workroom-clear-pin"), tasks: $("workroom-display-tasks"), radar: $("workroom-radar-list"), radarCounts: $("workroom-radar-counts"), briefingTitle: $("workroom-briefing-title"), briefingPreview: $("workroom-briefing-preview"), briefingUpdated: $("workroom-briefing-updated"), footer: $("workroom-context-footer"), completeToast: $("workroom-complete-toast"), allDialog: $("workroom-all-dialog"), allGroups: $("workroom-all-groups"), briefingDialog: $("workroom-briefing-dialog"), fullBriefing: $("workroom-full-briefing"), openAll: $("workroom-open-all"), viewAll: $("workroom-view-all"), openBriefing: $("workroom-open-briefing"), focusRing: $("workroom-focus-ring"), focusTime: $("workroom-focus-time"), focusLabel: $("workroom-focus-label"), focusStatus: $("workroom-focus-status"), sprintToggle: $("workroom-sprint-toggle"), sprintCancel: $("workroom-sprint-cancel"), sprintChoices: [...document.querySelectorAll("[data-sprint-minutes]")],
 };
-const preferredRotationPaused = () => {
-  try { return window.localStorage.getItem(ROTATION_PAUSED_KEY) === "true"; } catch { return false; }
-};
-const savePreference = (key, value) => {
-  try { window.localStorage.setItem(key, String(value)); } catch { }
-};
-let state = { user: null, tasks: [], projects: [], finance: [], contacts: [], ach: [], summary: {}, briefing: {}, connections: [], unsubscribers: [], displayMode: preferredDisplayMode(), signalIndex: 0, taskPage: 0, rotationPaused: preferredRotationPaused() };
+const PIN_KEY = "workroom-compass-pinned-task";
+const SPRINT_KEY = "workroom-compass-sprint";
+const QUEUE_LIMIT = 6;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const quotes = ["Well begun is half done. - Aristotle", "The obstacle is the path. - Zen proverb", "Start where you are. Use what you have. Do what you can. - Arthur Ashe", "The most effective way to do it, is to do it. - Amelia Earhart"];
+let state = { user: null, tasks: [], tasksLoaded: false, projects: [], finance: [], contacts: [], ach: [], summary: {}, briefing: {}, connections: [], unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25, activeDialog: null, dialogTrigger: null };
 let celebrationTimer = null;
-const quotes = [
-  ["Well begun is half done.", "Aristotle"],
-  ["No great thing is created suddenly.", "Epictetus"],
-  ["Luck is what happens when preparation meets opportunity.", "Seneca"],
-  ["The obstacle is the path.", "Zen proverb"],
-  ["What we think, we become.", "Buddha"],
-  ["The secret of getting ahead is getting started.", "Mark Twain"],
-  ["Energy and persistence conquer all things.", "Benjamin Franklin"],
-  ["Nothing great was ever achieved without enthusiasm.", "Ralph Waldo Emerson"],
-  ["The future depends on what you do today.", "Mahatma Gandhi"],
-  ["Do what you can, with what you have, where you are.", "Theodore Roosevelt"],
-  ["It is never too late to be what you might have been.", "George Eliot"],
-  ["The only way out is through.", "Robert Frost"],
-  ["The journey of a thousand miles begins with one step.", "Lao Tzu"],
-  ["He who has a why can endure almost any how.", "Friedrich Nietzsche"],
-  ["The best way out is always through.", "Robert Frost"],
-  ["Action may not always bring happiness, but there is no happiness without action.", "William James"],
-  ["The future is completely open, and we are writing it moment to moment.", "Pema Chödrön"],
-  ["To improve is to change; to be perfect is to change often.", "Winston Churchill"],
-  ["Start where you are. Use what you have. Do what you can.", "Arthur Ashe"],
-  ["What you do speaks so loudly that I cannot hear what you say.", "Ralph Waldo Emerson"],
-  ["The greatest glory in living lies not in never falling, but in rising every time we fall.", "Nelson Mandela"],
-  ["A person who never made a mistake never tried anything new.", "Albert Einstein"],
-  ["Do not wait; the time will never be just right.", "Napoleon Hill"],
-  ["The most effective way to do it, is to do it.", "Amelia Earhart"],
-  ["Work gives you meaning and purpose.", "Stephen Hawking"],
-  ["The important thing is not to stop questioning.", "Albert Einstein"],
-  ["Be faithful to that which exists within yourself.", "André Gide"],
-  ["A goal without a plan is just a wish.", "Antoine de Saint-Exupéry"],
-  ["We become what we repeatedly do.", "Will Durant"],
-  ["Live out of your imagination, not your history.", "Stephen Covey"],
-];
-let quoteIndex = 0;
+
+const loadStored = (key, fallback = null) => { try { return JSON.parse(window.localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
+const saveStored = (key, value) => { try { if (value == null || value === "") window.localStorage.removeItem(key); else window.localStorage.setItem(key, JSON.stringify(value)); } catch { } };
+state.pinnedTaskId = loadStored(PIN_KEY, "");
+state.sprint = loadStored(SPRINT_KEY, null);
+
 const removeSubscriptions = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; };
-const soonest = (items, dateKey = "dueDate") => [...items].sort((a, b) => priorityRank(a.priority || a.urgency) - priorityRank(b.priority || b.urgency) || ((asDate(a[dateKey])?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b[dateKey])?.getTime() || Number.MAX_SAFE_INTEGER)));
-const blank = (copy) => `<p class="workroom-tv-empty">${copy}</p>`;
-const calendarWhen = (event) => {
-  const date = event.allDay
-    ? (() => { const [year, month, day] = String(event.date || "").split("-").map(Number); return new Date(year, month - 1, day); })()
-    : asDate(event.start);
-  if (!date || Number.isNaN(date.getTime())) return event.allDay ? "All day" : "—";
-  const day = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(date);
-  return event.allDay ? `${day} · All day` : `${day} · ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date)}`;
+const blank = (copy) => `<p class="workroom-tv-empty">${escapeHtml(copy)}</p>`;
+const startOfDay = (value = new Date()) => { const date = asDate(value) || new Date(); return new Date(date.getFullYear(), date.getMonth(), date.getDate()); };
+const dateKey = (value = new Date()) => { const date = asDate(value); return date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : ""; };
+const dayOffset = (value, now = new Date()) => { const date = asDate(value); return date ? Math.round((startOfDay(date) - startOfDay(now)) / DAY_MS) : null; };
+const relativeDay = (value, now = new Date()) => { const offset = dayOffset(value, now); if (offset == null) return "No date"; if (offset < -1) return `${Math.abs(offset)} days overdue`; if (offset === -1) return "Yesterday"; if (offset === 0) return "Today"; if (offset === 1) return "Tomorrow"; return formatDay(value); };
+const dayPhase = (now) => { const minutes = now.getHours() * 60 + now.getMinutes(); if (minutes >= 480 && minutes < 600) return "morning"; if (minutes >= 600 && minutes < 930) return "execution"; if (minutes >= 930 && minutes < 1050) return "wrap"; return "after-hours"; };
+const taskBucket = (task, now = new Date()) => { const offset = dayOffset(task.dueDate, now); if (offset != null && offset < 0) return { id: "overdue", label: "Overdue", rank: 0 }; if (offset === 0) return { id: "today", label: "Today", rank: 1 }; if (offset != null && offset <= 7) return { id: "week", label: offset === 1 ? "Tomorrow" : "This week", rank: 2 }; if (offset == null && task.priority === "high") return { id: "high-unscheduled", label: "High priority", rank: 3 }; if (offset != null) return { id: "later", label: "Later", rank: 4 }; return { id: "unscheduled", label: "Unscheduled", rank: 5 }; };
+const rankTasks = (tasks, now = new Date()) => [...tasks].sort((left, right) => taskBucket(left, now).rank - taskBucket(right, now).rank || priorityRank(left.priority) - priorityRank(right.priority) || ((asDate(left.dueDate)?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(right.dueDate)?.getTime() || Number.MAX_SAFE_INTEGER)) || ((asDate(left.createdAt)?.getTime() || 0) - (asDate(right.createdAt)?.getTime() || 0)) || String(left.id).localeCompare(String(right.id)));
+const eventDate = (event) => { if (event.allDay && event.date) { const [year, month, day] = String(event.date).split("-").map(Number); return new Date(year, month - 1, day); } return asDate(event.start); };
+const eventWhen = (event) => { const date = eventDate(event); if (!date || Number.isNaN(date.getTime())) return "Time unavailable"; if (event.allDay) return "All day"; return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date); };
+const parseBriefing = (text) => {
+  const sections = { "DO TODAY": [], "THIS WEEK": [], WAITING: [], WATCH: [] };
+  let active = "";
+  String(text || "").split(/\r?\n/).forEach((line) => { const heading = line.trim().replace(/^#+\s*/, "").replace(/:$/, "").toUpperCase(); if (sections[heading]) { active = heading; return; } if (active && line.trim() && !/^none noted\.?$/i.test(line.trim())) sections[active].push(line.trim().replace(/^[-*]\s*/, "")); });
+  return sections;
 };
-const celebrate = (message) => {
-  elements.completeToast.textContent = message;
-  elements.completeToast.classList.add("is-visible");
-  window.clearTimeout(celebrationTimer);
-  celebrationTimer = window.setTimeout(() => elements.completeToast.classList.remove("is-visible"), 2400);
+const radarItem = (type, title, detail, time, score, id = "", canComplete = false) => ({ type, title, detail, time, score, id, canComplete });
+const deriveRadar = (now) => {
+  const items = [];
+  state.contacts.filter((item) => item.status !== "done").forEach((item) => { const offset = dayOffset(item.followUpDate, now); const score = offset < 0 ? 0 : offset === 0 ? 2 : offset === 1 ? 5 : 20 + (offset ?? 30); items.push(radarItem("Follow-up", item.name, item.reason, relativeDay(item.followUpDate, now), score, item.id, true)); });
+  state.finance.filter((item) => item.status !== "done").forEach((item) => { const offset = dayOffset(item.dueDate, now); const score = offset < 0 ? 0 : offset === 0 ? 2 : offset === 1 ? 5 : 20 + (offset ?? 30); items.push(radarItem("Finance", item.title, item.category || "Reminder", relativeDay(item.dueDate, now), score, item.id, true)); });
+  (state.summary.upcomingEvents || []).forEach((event, index) => { const date = eventDate(event); if (!date) return; const minutes = (date - now) / 60000; if (minutes >= -30 && minutes <= 24 * 60) items.push(radarItem("Calendar", event.title, event.location || "Calendar", minutes <= 60 && minutes >= 0 ? `In ${Math.max(1, Math.round(minutes))} min` : eventWhen(event), minutes <= 60 ? 1 : 8 + minutes / 60, `event-${index}`)); });
+  state.ach.forEach((item) => { const offset = dayOffset(item.withdrawalDate, now); if (offset != null && offset >= 0 && offset <= 3) items.push(radarItem("ACH", `${item.name} - $${Number(item.amount || 0).toFixed(2)}`, item.reason, relativeDay(item.withdrawalDate, now), 6 + offset, item.id)); });
+  state.projects.filter((item) => item.status === "active").forEach((item) => { const offset = dayOffset(item.targetDate, now); if (offset != null && offset <= 7) items.push(radarItem("Project", item.title, "Target date approaching", relativeDay(item.targetDate, now), offset < 0 ? 3 : 12 + offset, item.id)); });
+  const unread = Number(state.summary.unreadCount || 0); if (unread) items.push(radarItem("Mail", `${unread} unread message${unread === 1 ? "" : "s"}`, state.summary.recentMail?.[0]?.subject || "Inbox needs a look", "Inbox", 50));
+  return items.sort((left, right) => left.score - right.score || left.title.localeCompare(right.title));
 };
-const showQuote = () => {
-  const [quote, author] = quotes[quoteIndex];
-  quoteIndex = (quoteIndex + 1) % quotes.length;
-  elements.quote.textContent = `“${quote}” — ${author}`;
-  elements.quote.classList.remove("is-running");
-  void elements.quote.offsetWidth;
-  elements.quote.classList.add("is-running");
-};
-
-const taskRows = (tasks) => tasks.map((task) => `<div class="workroom-tv-row workroom-task-row priority-${escapeHtml(task.priority)}"><button class="workroom-display-check" data-complete-task="${escapeHtml(task.id)}" type="button" aria-label="Complete ${escapeHtml(task.title)}"></button><div><strong>${escapeHtml(task.title)}</strong><small><span class="workroom-task-priority ${escapeHtml(task.priority)}">${escapeHtml(task.priority)}</span>${task.dueDate ? ` - Due ${formatDay(task.dueDate)}` : ""}</small></div></div>`).join("");
-const simpleRows = (items) => items.map((item) => `<div class="workroom-tv-row"><span class="workroom-tv-marker ${escapeHtml(item.priority || "low")}"></span><div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.detail)}</small></div></div>`).join("");
-const getSignals = () => {
-  const contacts = [...state.contacts].filter((item) => item.status !== "done").sort((a, b) => (asDate(a.followUpDate)?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b.followUpDate)?.getTime() || Number.MAX_SAFE_INTEGER)).slice(0, 3);
-  const finance = soonest(state.finance.filter((item) => item.status !== "done")).slice(0, 3);
-  const ach = [...state.ach].sort((a, b) => (asDate(a.withdrawalDate)?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(b.withdrawalDate)?.getTime() || Number.MAX_SAFE_INTEGER)).slice(0, 3);
-  const events = (state.summary.upcomingEvents || []).slice(0, 3);
-  const mail = (state.summary.recentMail || []).slice(0, 3);
-  const projects = state.projects.filter((project) => project.status === "active").slice(0, 3);
-  return [
-    { id: "follow-ups", title: "Follow-ups", count: contacts.length, summary: contacts[0] ? `${contacts[0].name} - ${formatDay(contacts[0].followUpDate)}` : "No follow-ups waiting.", rows: simpleRows(contacts.map((item) => ({ title: item.name, detail: `${item.method} - ${item.reason}`, priority: "medium" }))) },
-    { id: "finance", title: "Finance", count: finance.length, summary: finance[0] ? `${finance[0].title}${finance[0].dueDate ? ` - ${formatDay(finance[0].dueDate)}` : ""}` : "No financial reminders are waiting.", rows: simpleRows(finance.map((item) => ({ title: item.title, detail: `${item.category || "Reminder"}${item.dueDate ? ` - ${formatDay(item.dueDate)}` : ""}`, priority: item.urgency }))) },
-    { id: "ach", title: "ACH", count: ach.length, summary: ach[0] ? `${ach[0].name} - ${formatDay(ach[0].withdrawalDate)}` : "No ACH entries waiting.", rows: simpleRows(ach.map((item) => ({ title: `${item.name} - $${Number(item.amount || 0).toFixed(2)}`, detail: `${item.reason}${item.recurring ? " - recurring" : ""}`, priority: "medium" }))) },
-    { id: "calendar", title: "Calendar", count: events.length, summary: events[0] ? `${events[0].title} - ${calendarWhen(events[0])}` : "Nothing scheduled in the next 7 days.", rows: events.map((event) => `<div class="workroom-tv-row"><time>${escapeHtml(calendarWhen(event))}</time><div><strong>${escapeHtml(event.title)}</strong><small>${escapeHtml(event.location || "Google Calendar")}</small></div></div>`).join("") },
-    { id: "mail", title: "Mail", count: Number(state.summary.unreadCount || mail.length || 0), summary: mail[0] ? mail[0].subject : "No unread messages in connected inboxes.", rows: mail.map((message) => `<div class="workroom-tv-row"><span class="workroom-mail-dot"></span><div><strong>${escapeHtml(message.subject)}</strong><small>${escapeHtml(message.from || "Google Mail")}</small></div></div>`).join("") },
-    { id: "projects", title: "Projects", count: projects.length, summary: projects[0] ? projects[0].title : "No active projects.", rows: projects.map((project) => { const projectTasks = state.tasks.filter((task) => task.projectId === project.id); const complete = projectTasks.filter((task) => task.status === "done").length; const percent = projectTasks.length ? Math.round(complete / projectTasks.length * 100) : 0; return `<div class="workroom-project-progress"><div><strong>${escapeHtml(project.title)}</strong><small>${project.targetDate ? `Target ${formatDay(project.targetDate)}` : "No target date"}</small></div><div class="workroom-progress-track"><span style="width:${percent}%"></span></div><small>${percent}%</small></div>`; }).join("") },
-  ];
-};
-const updateControls = (signalCount) => {
-  const disabled = signalCount < 2;
-  elements.signalPrevious.disabled = disabled;
-  elements.signalNext.disabled = disabled;
-  elements.signalToggle.disabled = signalCount < 2;
-  elements.signalToggle.textContent = state.rotationPaused ? ">" : "||";
-  elements.signalToggle.setAttribute("aria-pressed", String(state.rotationPaused));
-  elements.signalToggle.setAttribute("aria-label", state.rotationPaused ? "Resume signal rotation" : "Pause signal rotation");
-  elements.modeButtons.forEach((button) => {
-    const active = button.dataset.displayMode === state.displayMode;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
-};
-const renderDisplayMode = () => {
-  document.body.dataset.displayMode = state.displayMode;
-  elements.briefingStage.hidden = state.displayMode !== "briefing";
-  elements.overviewSignals.hidden = state.displayMode !== "overview";
-};
-const render = () => {
-  const openTasks = soonest(state.tasks.filter((task) => task.status !== "done"));
-  elements.taskCount.textContent = String(openTasks.length);
-  const pageCount = Math.max(1, Math.ceil(openTasks.length / TASKS_PER_PAGE));
-  state.taskPage %= pageCount;
-  const firstTask = state.taskPage * TASKS_PER_PAGE;
-  const visibleTasks = openTasks.slice(firstTask, firstTask + TASKS_PER_PAGE);
-  elements.tasks.innerHTML = visibleTasks.length ? taskRows(visibleTasks) : blank("Your action queue is clear.");
-  elements.taskPage.textContent = openTasks.length > TASKS_PER_PAGE ? `Tasks ${firstTask + 1}-${Math.min(firstTask + TASKS_PER_PAGE, openTasks.length)} of ${openTasks.length}` : openTasks.length ? `${openTasks.length} open task${openTasks.length === 1 ? "" : "s"}` : "All clear";
-  const allSignals = getSignals();
-  const activeSignals = allSignals.filter((signal) => signal.count > 0);
-  state.signalIndex = activeSignals.length ? state.signalIndex % activeSignals.length : 0;
-  const signal = activeSignals[state.signalIndex];
-  elements.signalTitle.textContent = signal?.title || "Signals";
-  elements.signalPosition.textContent = activeSignals.length ? `${state.signalIndex + 1} / ${activeSignals.length}` : "0 / 0";
-  elements.signal.innerHTML = signal ? signal.rows || blank(signal.summary) : blank("No active signals right now.");
-  elements.signalStage.dataset.signal = signal?.id || "empty";
-  elements.overviewSignals.innerHTML = allSignals.map((item) => `<article class="workroom-overview-tile"><span>${escapeHtml(item.title)}</span><strong>${item.count}</strong><small>${escapeHtml(item.summary)}</small></article>`).join("");
-  const briefingText = String(state.briefing.text || "").trim();
-  elements.briefing.textContent = briefingText || "Generate a briefing from the control room.";
-  elements.briefingFull.textContent = briefingText || "Generate a briefing from the control room.";
-  elements.briefingUpdated.textContent = state.briefing.generatedAt ? `Updated ${formatDateTime(state.briefing.generatedAt)}` : "Waiting for the first briefing.";
-  elements.briefingStageUpdated.textContent = elements.briefingUpdated.textContent;
-  renderDisplayMode();
-  updateControls(activeSignals.length);
+const deriveDayModel = (now = new Date()) => {
+  const openTasks = rankTasks(state.tasks.filter((task) => task.status !== "done"), now);
+  const pinned = openTasks.find((task) => task.id === state.pinnedTaskId);
+  if (state.tasksLoaded && state.pinnedTaskId && !pinned) { state.pinnedTaskId = ""; saveStored(PIN_KEY, null); }
+  const current = pinned || openTasks[0] || null;
+  const queued = openTasks.filter((task) => task.id !== current?.id);
+  const completedToday = state.tasks.filter((task) => task.status === "done" && dateKey(task.completedAt) === dateKey(now));
+  const events = (state.summary.upcomingEvents || []).map((event) => ({ ...event, startDate: eventDate(event) })).filter((event) => event.startDate && dayOffset(event.startDate, now) === 0).sort((left, right) => left.startDate - right.startDate);
+  return { now, phase: dayPhase(now), openTasks, current, queued, completedToday, overdueCount: openTasks.filter((task) => taskBucket(task, now).id === "overdue").length, events, radar: deriveRadar(now), briefingSections: parseBriefing(state.briefing.text), briefingStale: Boolean(state.briefing.text) && state.briefing.dateKey !== dateKey(now), tomorrowCount: openTasks.filter((task) => dayOffset(task.dueDate, now) === 1).length };
 };
 
-const tick = () => { const now = new Date(); elements.clock.textContent = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(now); elements.date.textContent = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(now); };
-tick(); setInterval(tick, 15_000);
-showQuote();
-setInterval(showQuote, 18_000);
+const projectName = (task) => state.projects.find((project) => project.id === task?.projectId)?.title || "";
+const completeButton = (type, item, label = item.title || item.name) => `<button class="workroom-display-check" data-complete-${type}="${escapeHtml(item.id)}" type="button" aria-label="Complete ${escapeHtml(label)}"></button>`;
+const taskRow = (task, now) => { const bucket = taskBucket(task, now); const project = projectName(task); return `<div class="workroom-compass-task priority-${escapeHtml(task.priority)}"><button class="workroom-task-select" data-pin-task="${escapeHtml(task.id)}" type="button"><span class="workroom-task-title">${escapeHtml(task.title)}</span><small><span class="workroom-status-label status-${bucket.id}">${escapeHtml(bucket.label)}</span>${project ? ` <span>${escapeHtml(project)}</span>` : ""}${task.dueDate ? ` <span>${escapeHtml(formatDay(task.dueDate))}</span>` : ""}</small></button>${completeButton("task", task)}</div>`; };
+const renderDayline = (model) => { if (!model.events.length) { elements.dayline.innerHTML = `<span class="workroom-dayline-clear">Open runway - no calendar events today.</span>`; return; } const next = model.events.find((event) => !event.allDay && (event.startDate - model.now) / 60000 >= -30); elements.dayline.innerHTML = model.events.slice(0, 5).map((event) => { const minutes = (event.startDate - model.now) / 60000; const elapsed = !event.allDay && minutes < -30; const isNext = event === next; const countdown = isNext && minutes >= 0 && minutes <= 60 ? `In ${Math.max(1, Math.round(minutes))} min` : eventWhen(event); return `<div class="workroom-dayline-event ${elapsed ? "is-elapsed" : ""} ${isNext ? "is-next" : ""}"><time>${escapeHtml(countdown)}</time><strong>${escapeHtml(event.title)}</strong></div>`; }).join(""); };
+const renderNow = (model) => { const task = model.current; elements.clearPin.hidden = !state.pinnedTaskId; elements.nowReason.textContent = task ? (state.pinnedTaskId ? "Pinned focus" : taskBucket(task, model.now).label) : "Queue clear"; elements.nowContent.innerHTML = task ? `<div class="workroom-now-task"><div><span class="workroom-now-project">${escapeHtml(projectName(task) || "Independent task")}</span><h1>${escapeHtml(task.title)}</h1><p>${task.notes ? escapeHtml(task.notes) : task.dueDate ? `${escapeHtml(relativeDay(task.dueDate, model.now))} - ${escapeHtml(formatDay(task.dueDate))}` : "No due date - ready when you are."}</p></div>${completeButton("task", task)}</div>` : `<div class="workroom-now-empty"><h1>All clear.</h1><p>Nothing open is asking for your attention.</p></div>`; };
+const renderQueue = (model) => { elements.tasks.innerHTML = model.queued.length ? model.queued.slice(0, QUEUE_LIMIT).map((task) => taskRow(task, model.now)).join("") : blank(model.current ? "This is the only open task." : "The queue is clear."); const remaining = Math.max(0, model.queued.length - QUEUE_LIMIT); elements.viewAll.textContent = remaining ? `View all +${remaining}` : "View all"; elements.viewAll.hidden = !model.openTasks.length; };
+const renderRadar = (model) => { elements.radar.innerHTML = model.radar.length ? model.radar.slice(0, 4).map((item) => `<div class="workroom-radar-item radar-${item.score <= 3 ? "urgent" : "normal"}"><div><span>${escapeHtml(item.type)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}${item.detail ? ` - ${escapeHtml(item.detail)}` : ""}</small></div>${item.canComplete ? completeButton(item.type === "Finance" ? "finance" : "contact", item) : ""}</div>`).join("") : blank("Nothing else needs attention right now."); const counts = [{ label: "Follow-ups", value: state.contacts.filter((item) => item.status !== "done").length }, { label: "Finance", value: state.finance.filter((item) => item.status !== "done").length }, { label: "ACH", value: state.ach.filter((item) => (dayOffset(item.withdrawalDate, model.now) ?? -1) >= 0).length }, { label: "Mail", value: Number(state.summary.unreadCount || 0) }]; elements.radarCounts.innerHTML = counts.map((item) => `<span><strong>${item.value}</strong>${escapeHtml(item.label)}</span>`).join(""); };
+const renderBriefing = (model) => { const today = model.briefingSections["DO TODAY"]; const waiting = model.briefingSections.WAITING; const failed = state.briefing.status === "error"; elements.briefingTitle.textContent = failed ? "Briefing unavailable" : model.briefingStale ? "Briefing needs refresh" : "Do today"; const lines = [...today.slice(0, 2), ...waiting.slice(0, 1).map((line) => `Waiting: ${line}`)]; elements.briefingPreview.innerHTML = failed ? blank(state.briefing.error || "The latest briefing could not be generated.") : lines.length ? lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("") : blank(state.briefing.text ? "No immediate items noted." : "Generate a briefing from the control room."); elements.briefingUpdated.textContent = failed ? "Run a new review from the control room." : state.briefing.generatedAt ? `${model.briefingStale ? "Stale - " : ""}Updated ${formatDateTime(state.briefing.generatedAt)}` : "Waiting for the first briefing."; elements.fullBriefing.innerHTML = (failed ? `<p class="workroom-briefing-error">${escapeHtml(state.briefing.error || "The latest briefing could not be generated.")}</p>` : "") + Object.entries(model.briefingSections).map(([heading, items]) => `<section><h3>${escapeHtml(heading)}</h3>${items.length ? items.map((item) => `<p>${escapeHtml(item)}</p>`).join("") : `<p class="workroom-tv-empty">None noted.</p>`}</section>`).join("") + (state.briefing.sourceCounts ? `<p class="workroom-briefing-receipt">Reviewed ${Number(state.briefing.sourceCounts.tasks || 0)} tasks, ${Number(state.briefing.sourceCounts.calendarEvents || 0)} events, ${Number(state.briefing.sourceCounts.recentMail || 0)} mail messages, and ${Number(state.briefing.sourceCounts.slackMessages || 0)} Slack messages.</p>` : ""); };
+const renderAllWork = (model) => { const groups = [{ id: "overdue", title: "Overdue" }, { id: "today", title: "Today" }, { id: "week", title: "This week" }, { id: "high-unscheduled", title: "High priority" }, { id: "later", title: "Later" }, { id: "unscheduled", title: "Unscheduled" }]; elements.allGroups.innerHTML = groups.map((group) => { const tasks = model.openTasks.filter((task) => taskBucket(task, model.now).id === group.id); return tasks.length ? `<section><h3>${group.title} <span>${tasks.length}</span></h3>${tasks.map((task) => taskRow(task, model.now)).join("")}</section>` : ""; }).join("") + (model.completedToday.length ? `<section><h3>Finished today <span>${model.completedToday.length}</span></h3>${model.completedToday.map((task) => `<div class="workroom-finished-task">${escapeHtml(task.title)}</div>`).join("")}</section>` : ""); };
+const renderFooter = (model) => { if (!model.openTasks.length) elements.footer.textContent = `${model.completedToday.length} finished today. The room is clear.`; else if (model.phase === "wrap") elements.footer.textContent = `${model.completedToday.length} finished today - ${model.tomorrowCount} due tomorrow.`; else if (model.overdueCount) elements.footer.textContent = `${model.overdueCount} overdue item${model.overdueCount === 1 ? "" : "s"}. Clear the oldest promise first.`; else elements.footer.textContent = quotes[new Date().getDate() % quotes.length]; };
+const renderSprint = (now = Date.now()) => { const task = state.tasks.find((item) => item.id === state.sprint?.taskId && item.status !== "done"); if (state.tasksLoaded && state.sprint && !task) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } const sprint = state.sprint; let remaining = state.sprintMinutes * 60 * 1000; let progress = 0; if (sprint) { remaining = sprint.running ? Math.max(0, sprint.endAt - now) : sprint.remainingMs; progress = 1 - remaining / sprint.durationMs; if (remaining <= 0 && sprint.running) { sprint.running = false; sprint.remainingMs = 0; document.title = "Focus complete - The Workroom"; saveStored(SPRINT_KEY, sprint); } } const minutes = Math.floor(remaining / 60000); const seconds = Math.floor((remaining % 60000) / 1000); elements.focusTime.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`; elements.focusRing.style.setProperty("--focus-progress", `${Math.max(0, Math.min(1, progress)) * 360}deg`); elements.focusLabel.textContent = sprint ? task?.title || "Focus sprint" : "Focus sprint"; elements.focusStatus.textContent = !sprint ? "Choose a quiet block for this task." : remaining <= 0 ? "Sprint complete. Take a breath." : sprint.running ? "In progress" : "Paused"; elements.sprintToggle.disabled = !deriveDayModel().current; elements.sprintToggle.textContent = !sprint ? "Start" : sprint.running ? "Pause" : remaining <= 0 ? "Restart" : "Resume"; elements.sprintCancel.hidden = !sprint; elements.sprintChoices.forEach((button) => button.classList.toggle("is-active", Number(button.dataset.sprintMinutes) === state.sprintMinutes)); };
+const render = () => { const model = deriveDayModel(); document.body.dataset.dayPhase = model.phase; elements.completedCount.textContent = String(model.completedToday.length); elements.overdueCount.textContent = String(model.overdueCount); elements.overdueStat.classList.toggle("is-urgent", model.overdueCount > 0); elements.allCount.textContent = String(model.openTasks.length); renderDayline(model); renderNow(model); renderQueue(model); renderRadar(model); renderBriefing(model); renderAllWork(model); renderFooter(model); renderSprint(); };
 
-const setDisplayMode = (mode) => {
-  if (!["focus", "overview", "briefing"].includes(mode)) return;
-  state.displayMode = mode;
-  savePreference(DISPLAY_MODE_KEY, mode);
-  render();
-};
-const changeSignal = (direction) => {
-  const count = getSignals().filter((signal) => signal.count > 0).length;
-  if (count < 2) return;
-  state.signalIndex = (state.signalIndex + direction + count) % count;
-  state.rotationPaused = true;
-  savePreference(ROTATION_PAUSED_KEY, true);
-  render();
-};
-const toggleRotation = () => {
-  state.rotationPaused = !state.rotationPaused;
-  savePreference(ROTATION_PAUSED_KEY, state.rotationPaused);
-  render();
-};
-const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-setInterval(() => {
-  if (!state.user || state.rotationPaused || reducedMotion()) return;
-  const signalCount = getSignals().filter((signal) => signal.count > 0).length;
-  const openTaskCount = state.tasks.filter((task) => task.status !== "done").length;
-  if (signalCount > 1) state.signalIndex = (state.signalIndex + 1) % signalCount;
-  if (openTaskCount > TASKS_PER_PAGE) state.taskPage = (state.taskPage + 1) % Math.ceil(openTaskCount / TASKS_PER_PAGE);
-  if (signalCount > 1 || openTaskCount > TASKS_PER_PAGE) render();
-}, ROTATION_INTERVAL);
+const celebrate = (message) => { elements.completeToast.textContent = message; elements.completeToast.classList.add("is-visible"); window.clearTimeout(celebrationTimer); celebrationTimer = window.setTimeout(() => elements.completeToast.classList.remove("is-visible"), 2400); };
+const writeCompletion = async (type, id) => { const collection = type === "task" ? tasksRef : type === "finance" ? financeRef : contactFollowUpsRef; const item = (type === "task" ? state.tasks : type === "finance" ? state.finance : state.contacts).find((entry) => entry.id === id); if (!item || !state.user) return; await updateDoc(doc(collection(state.user.uid), id), { status: "done", completedAt: serverTimestamp(), updatedAt: serverTimestamp() }); if (type === "task" && state.pinnedTaskId === id) { state.pinnedTaskId = ""; saveStored(PIN_KEY, null); } if (type === "task" && state.sprint?.taskId === id) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } };
+const openDialog = (dialog, trigger) => { state.activeDialog = dialog; state.dialogTrigger = trigger; dialog.hidden = false; document.body.classList.add("workroom-dialog-open"); dialog.querySelector(".workroom-dialog-close")?.focus(); };
+const closeDialog = () => { if (!state.activeDialog) return; state.activeDialog.hidden = true; document.body.classList.remove("workroom-dialog-open"); state.dialogTrigger?.focus(); state.activeDialog = null; state.dialogTrigger = null; };
+const toggleSprint = () => { const current = deriveDayModel().current; if (!current) return; if (!state.sprint || state.sprint.remainingMs <= 0 || state.sprint.taskId !== current.id) { const durationMs = state.sprintMinutes * 60 * 1000; state.sprint = { taskId: current.id, durationMs, remainingMs: durationMs, endAt: Date.now() + durationMs, running: true }; state.pinnedTaskId = current.id; saveStored(PIN_KEY, current.id); } else if (state.sprint.running) { state.sprint.remainingMs = Math.max(0, state.sprint.endAt - Date.now()); state.sprint.running = false; } else { state.sprint.endAt = Date.now() + state.sprint.remainingMs; state.sprint.running = true; } saveStored(SPRINT_KEY, state.sprint); render(); };
 
 document.addEventListener("click", async (event) => {
-  const modeButton = event.target.closest("[data-display-mode]");
-  if (modeButton) { setDisplayMode(modeButton.dataset.displayMode); return; }
-  if (event.target.closest("#workroom-signal-previous")) { changeSignal(-1); return; }
-  if (event.target.closest("#workroom-signal-next")) { changeSignal(1); return; }
-  if (event.target.closest("#workroom-signal-toggle")) { toggleRotation(); return; }
-  const button = event.target.closest("button[data-complete-task]");
-  if (!button || !state.user) return;
-  const task = state.tasks.find((item) => item.id === button.dataset.completeTask);
-  if (!task) return;
-  button.disabled = true;
-  try {
-    const completing = task.status !== "done";
-    await updateDoc(doc(tasksRef(state.user.uid), task.id), {
-      status: completing ? "done" : "next",
-      completedAt: completing ? serverTimestamp() : null,
-      updatedAt: serverTimestamp(),
-    });
-    if (completing) celebrate("✓ Done — nice work.");
-  } catch {
-    celebrate("Couldn’t update that task.");
-  } finally {
-    button.disabled = false;
-  }
+  const pin = event.target.closest("[data-pin-task]"); if (pin) { if (state.sprint?.taskId && state.sprint.taskId !== pin.dataset.pinTask) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } state.pinnedTaskId = pin.dataset.pinTask; saveStored(PIN_KEY, state.pinnedTaskId); closeDialog(); render(); return; }
+  if (event.target.closest("#workroom-clear-pin")) { if (state.sprint?.taskId === state.pinnedTaskId) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } state.pinnedTaskId = ""; saveStored(PIN_KEY, null); render(); return; }
+  if (event.target.closest("#workroom-open-all, #workroom-view-all")) { openDialog(elements.allDialog, event.target.closest("button")); return; }
+  if (event.target.closest("#workroom-open-briefing, [data-open-briefing]")) { openDialog(elements.briefingDialog, event.target.closest("button")); return; }
+  if (event.target.closest("[data-close-display-dialog]")) { closeDialog(); return; }
+  const sprintChoice = event.target.closest("[data-sprint-minutes]"); if (sprintChoice) { state.sprintMinutes = Number(sprintChoice.dataset.sprintMinutes); if (!state.sprint) renderSprint(); return; }
+  if (event.target.closest("#workroom-sprint-toggle")) { toggleSprint(); return; }
+  if (event.target.closest("#workroom-sprint-cancel")) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; render(); return; }
+  const complete = event.target.closest("[data-complete-task], [data-complete-contact], [data-complete-finance]"); if (!complete) return;
+  const type = complete.dataset.completeTask ? "task" : complete.dataset.completeFinance ? "finance" : "contact"; const id = complete.dataset.completeTask || complete.dataset.completeFinance || complete.dataset.completeContact;
+  complete.disabled = true; try { await writeCompletion(type, id); celebrate("Done - nice work."); } catch { celebrate("Could not update that item."); complete.disabled = false; }
 });
-
 document.addEventListener("keydown", (event) => {
-  if (!state.user || event.target.closest("button, input, select, textarea, a")) return;
-  if (["1", "2", "3"].includes(event.key)) {
-    setDisplayMode({ 1: "focus", 2: "overview", 3: "briefing" }[event.key]);
-    return;
-  }
-  if (event.key === "ArrowLeft") { event.preventDefault(); changeSignal(-1); return; }
-  if (event.key === "ArrowRight") { event.preventDefault(); changeSignal(1); return; }
-  if (event.code === "Space") { event.preventDefault(); toggleRotation(); }
+  if (event.key === "Escape") { closeDialog(); return; }
+  if (event.key !== "Tab" || !state.activeDialog) return;
+  const focusable = [...state.activeDialog.querySelectorAll("button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])")];
+  if (!focusable.length) return;
+  const first = focusable[0]; const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 });
+const tick = () => { const now = new Date(); elements.clock.textContent = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(now); elements.date.textContent = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(now); renderSprint(now.getTime()); };
+tick(); window.setInterval(tick, 1000); window.setInterval(() => { if (state.user) render(); }, 60_000);
 
 onAuthStateChanged(auth, (user) => {
-  removeSubscriptions();
-  state.user = user;
+  removeSubscriptions(); state.user = user;
   if (!user || !isOwner(user)) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.toggle("hidden", Boolean(user)); elements.gateMessage.textContent = user ? "This private display is reserved for its owner." : "Sign in with the Workroom owner account to view the dashboard."; return; }
   elements.gate.classList.add("hidden"); elements.app.classList.remove("hidden");
   state.unsubscribers.push(
-    onSnapshot(tasksRef(user.uid), (snapshot) => { state.tasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
+    onSnapshot(tasksRef(user.uid), (snapshot) => { state.tasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); state.tasksLoaded = true; render(); }),
     onSnapshot(projectsRef(user.uid), (snapshot) => { state.projects = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(financeRef(user.uid), (snapshot) => { state.finance = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(contactFollowUpsRef(user.uid), (snapshot) => { state.contacts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),

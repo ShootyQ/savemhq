@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>The Workroom</title>
     <meta name="description" content="Private office command center display." />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=workroom-compass-20260729" />
   </head>
   <body data-page="workroom-display">
     <main id="workroom-display" class="workroom-display-shell">
@@ -21,48 +21,74 @@
             <p id="workroom-date" class="workroom-display-date">—</p>
             <time id="workroom-clock" class="workroom-clock">—</time>
           </div>
-          <div class="workroom-display-toolbar">
-            <div class="workroom-display-modes" role="group" aria-label="Display view">
-              <button class="workroom-display-mode is-active" data-display-mode="focus" type="button" aria-pressed="true" title="Focus view (1)">Focus</button>
-              <button class="workroom-display-mode" data-display-mode="overview" type="button" aria-pressed="false" title="Overview (2)">Overview</button>
-              <button class="workroom-display-mode" data-display-mode="briefing" type="button" aria-pressed="false" title="Briefing (3)">Briefing</button>
+          <div class="workroom-command-bar">
+            <div class="workroom-day-stats" aria-label="Today's status">
+              <span><strong id="workroom-completed-count">0</strong> finished</span>
+              <span id="workroom-overdue-stat"><strong id="workroom-overdue-count">0</strong> overdue</span>
             </div>
-            <div class="workroom-display-controls" aria-label="Signal controls">
-              <button id="workroom-signal-previous" class="workroom-display-icon-button" type="button" aria-label="Previous signal" title="Previous signal (Left Arrow)">&#8249;</button>
-              <button id="workroom-signal-toggle" class="workroom-display-icon-button" type="button" aria-pressed="false" aria-label="Pause signal rotation" title="Pause signal rotation (Space)">&#10074;&#10074;</button>
-              <button id="workroom-signal-next" class="workroom-display-icon-button" type="button" aria-label="Next signal" title="Next signal (Right Arrow)">&#8250;</button>
+            <div class="workroom-display-controls">
+              <button id="workroom-open-all" class="workroom-display-command" type="button">All work <span id="workroom-all-count">0</span></button>
+              <button id="workroom-open-briefing" class="workroom-display-command" type="button">Briefing</button>
             </div>
           </div>
         </header>
-        <section class="workroom-display-canvas">
-          <article class="workroom-tv-card workroom-task-stage">
-            <div class="workroom-tv-heading"><div><p class="workroom-stage-kicker">Now working</p><h2>Action queue</h2></div><span id="workroom-task-count" class="workroom-tv-count">0</span></div>
-            <div id="workroom-display-tasks" class="workroom-tv-list workroom-task-list"></div>
-            <div id="workroom-task-page" class="workroom-stage-footer" aria-live="polite"></div>
+        <section class="workroom-dayline" aria-label="Today's calendar">
+          <span class="workroom-stage-kicker">Dayline</span>
+          <div id="workroom-dayline-events" class="workroom-dayline-events"></div>
+        </section>
+        <section class="workroom-compass-canvas">
+          <article class="workroom-now-stage">
+            <div class="workroom-section-heading-row">
+              <div><p class="workroom-stage-kicker">Now</p><span id="workroom-now-reason" class="workroom-now-reason">Ready when you are</span></div>
+              <button id="workroom-clear-pin" class="workroom-text-button" type="button" hidden>Use recommendation</button>
+            </div>
+            <div id="workroom-now-content" class="workroom-now-content"></div>
+            <div id="workroom-focus-sprint" class="workroom-focus-sprint">
+              <div id="workroom-focus-ring" class="workroom-focus-ring" aria-hidden="true"><span id="workroom-focus-time">25:00</span></div>
+              <div class="workroom-focus-copy"><strong id="workroom-focus-label">Focus sprint</strong><small id="workroom-focus-status">Choose a quiet block for this task.</small></div>
+              <div class="workroom-focus-controls">
+                <button class="workroom-sprint-choice" data-sprint-minutes="25" type="button">25m</button>
+                <button class="workroom-sprint-choice" data-sprint-minutes="50" type="button">50m</button>
+                <button id="workroom-sprint-toggle" class="workroom-display-command" type="button" disabled>Start</button>
+                <button id="workroom-sprint-cancel" class="workroom-text-button" type="button" hidden>Cancel</button>
+              </div>
+            </div>
           </article>
-          <aside class="workroom-signal-rail">
-            <article id="workroom-signal-stage" class="workroom-tv-card workroom-signal-stage" aria-live="polite">
-              <div class="workroom-tv-heading"><div><p class="workroom-stage-kicker">Live signal</p><h2 id="workroom-signal-title">Follow-ups</h2></div><span id="workroom-signal-position" class="workroom-signal-position">1 / 1</span></div>
-              <div id="workroom-display-signal" class="workroom-tv-list workroom-signal-list"></div>
-            </article>
-            <section id="workroom-overview-signals" class="workroom-overview-signals" aria-label="Overview signals" hidden></section>
+          <section class="workroom-next-stage">
+            <div class="workroom-section-heading-row"><div><p class="workroom-stage-kicker">Up next</p><h2>Action queue</h2></div><button id="workroom-view-all" class="workroom-text-button" type="button">View all</button></div>
+            <div id="workroom-display-tasks" class="workroom-task-list"></div>
+          </section>
+          <aside class="workroom-awareness-rail">
+            <section class="workroom-radar-stage">
+              <div class="workroom-section-heading-row"><div><p class="workroom-stage-kicker">Radar</p><h2>Needs attention</h2></div></div>
+              <div id="workroom-radar-list" class="workroom-radar-list"></div>
+              <div id="workroom-radar-counts" class="workroom-radar-counts"></div>
+            </section>
+            <section class="workroom-briefing-lens">
+              <div class="workroom-section-heading-row"><div><p class="workroom-stage-kicker">Daily brief</p><h2 id="workroom-briefing-title">Do today</h2></div><button class="workroom-text-button" data-open-briefing type="button">Read all</button></div>
+              <div id="workroom-briefing-preview" class="workroom-briefing-preview">Generate a briefing from the control room.</div>
+              <small id="workroom-briefing-updated" class="workroom-briefing-updated">Waiting for the first briefing.</small>
+            </section>
           </aside>
-          <article id="workroom-briefing-stage" class="workroom-tv-card workroom-briefing-stage" hidden>
-            <div class="workroom-tv-heading"><div><p class="workroom-stage-kicker">Daily review</p><h2>Workroom briefing</h2></div><small id="workroom-briefing-stage-updated">Waiting for the first briefing.</small></div>
-            <p id="workroom-display-briefing-full" class="workroom-briefing-full">Generate a briefing from the control room.</p>
-          </article>
         </section>
-        <section class="workroom-briefing-band" aria-live="polite">
-          <div class="workroom-briefing-heading"><span class="workroom-quote-label">Workroom briefing</span><small id="workroom-briefing-updated">Waiting for the first briefing.</small></div>
-          <p id="workroom-display-briefing" class="workroom-briefing-text">Generate a briefing from the control room.</p>
-        </section>
-        <section class="workroom-quote-ticker" aria-label="Inspiration">
-          <span class="workroom-quote-label">Inspiration</span>
-          <div class="workroom-quote-viewport"><p id="workroom-quote-text" class="workroom-quote-text"></p></div>
-        </section>
+        <footer id="workroom-context-footer" class="workroom-context-footer"></footer>
         <div id="workroom-complete-toast" class="workroom-complete-toast" role="status" aria-live="polite">Nice work.</div>
       </div>
+      <div id="workroom-all-dialog" class="workroom-dialog" hidden>
+        <div class="workroom-dialog-backdrop" data-close-display-dialog></div>
+        <section class="workroom-dialog-panel workroom-display-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="workroom-all-title">
+          <div class="workroom-dialog-heading"><div><p class="workroom-stage-kicker">All work</p><h2 id="workroom-all-title">Open queue</h2></div><button class="workroom-dialog-close" data-close-display-dialog type="button" aria-label="Close all work">&times;</button></div>
+          <div id="workroom-all-groups" class="workroom-all-groups"></div>
+        </section>
+      </div>
+      <div id="workroom-briefing-dialog" class="workroom-dialog" hidden>
+        <div class="workroom-dialog-backdrop" data-close-display-dialog></div>
+        <section class="workroom-dialog-panel workroom-display-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="workroom-full-briefing-title">
+          <div class="workroom-dialog-heading"><div><p class="workroom-stage-kicker">Daily brief</p><h2 id="workroom-full-briefing-title">Workroom briefing</h2></div><button class="workroom-dialog-close" data-close-display-dialog type="button" aria-label="Close briefing">&times;</button></div>
+          <div id="workroom-full-briefing" class="workroom-full-briefing"></div>
+        </section>
+      </div>
     </main>
-    <script type="module" src="js/workroom-display.js"></script>
+    <script type="module" src="js/workroom-display.js?v=workroom-compass-20260729"></script>
   </body>
 </html>
