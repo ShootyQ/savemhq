@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monthly Bills | The Workroom</title>
+    <meta name="description" content="Private monthly bill checklist for The Workroom." />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="monthly-bills">
+    <main class="monthly-bills-shell">
+      <section id="monthly-bills-gate" class="workroom-gate">
+        <p class="workroom-eyebrow">Private office system</p>
+        <h1>Monthly bills</h1>
+        <p id="monthly-bills-gate-message">Checking your private access...</p>
+        <a id="monthly-bills-sign-in" class="workroom-button workroom-button-primary hidden" href="workroom-control.html">Sign in from the control room</a>
+      </section>
+
+      <div id="monthly-bills-app" class="hidden">
+        <header class="monthly-bills-header">
+          <div>
+            <p class="workroom-eyebrow">The Workroom</p>
+            <h1>Monthly bills</h1>
+            <p>Recurring vendors and their monthly checkpoints.</p>
+          </div>
+          <div class="workroom-inline-actions">
+            <a class="workroom-button workroom-button-quiet" href="workroom.html">Back to display</a>
+            <a class="workroom-button workroom-button-quiet" href="workroom-control.html">Control room</a>
+          </div>
+        </header>
+
+        <p id="monthly-bills-notice" class="workroom-notice" aria-live="polite"></p>
+        <section class="monthly-bills-summary">
+          <div id="monthly-bills-stats" class="workroom-stat-grid" aria-live="polite"></div>
+        </section>
+
+        <div class="monthly-bills-layout">
+          <section class="workroom-panel monthly-bills-panel">
+            <div class="workroom-panel-heading">
+              <div>
+                <p class="workroom-panel-kicker">Recurring checklist</p>
+                <h2>Vendor cycles</h2>
+              </div>
+              <span id="monthly-bills-month" class="workroom-inline-hint"></span>
+            </div>
+            <div id="monthly-bill-list" class="monthly-bills-list"></div>
+          </section>
+
+          <aside class="workroom-panel">
+            <div class="workroom-panel-heading">
+              <div>
+                <p class="workroom-panel-kicker">Setup</p>
+                <h2 id="monthly-bill-form-title">Add a vendor</h2>
+              </div>
+            </div>
+            <form id="monthly-bill-vendor-form" class="workroom-form">
+              <label>Vendor<input id="monthly-bill-vendor-name" maxlength="120" required placeholder="Internet, insurance, utilities" /></label>
+              <label>Bill date (day of month)<input id="monthly-bill-vendor-bill-day" type="number" min="1" max="31" step="1" required placeholder="5" /></label>
+              <label>Auto-pay date (day of month)<input id="monthly-bill-vendor-paid-day" type="number" min="1" max="31" step="1" required placeholder="12" /></label>
+              <div class="workroom-inline-actions monthly-bill-form-actions">
+                <button id="monthly-bill-vendor-submit" class="workroom-button workroom-button-primary" type="submit">Add vendor</button>
+                <button id="monthly-bill-vendor-cancel" class="workroom-button workroom-button-quiet" type="button" hidden>Cancel</button>
+              </div>
+            </form>
+          </aside>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="js/monthly-bills.js"></script>
+  </body>
+</html>

@@ -99,6 +99,33 @@ service cloud.firestore {
         && request.resource.data.recurring is bool;
     }
 
+    function workroomMonthlyBillVendorIsValid() {
+      return request.resource.data.keys().hasAll(["name", "billDay", "paidDay", "createdAt", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["name", "billDay", "paidDay", "createdAt", "updatedAt"])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.billDay is int
+        && request.resource.data.billDay >= 1
+        && request.resource.data.billDay <= 31
+        && request.resource.data.paidDay is int
+        && request.resource.data.paidDay >= 1
+        && request.resource.data.paidDay <= 31;
+    }
+
+    function workroomMonthlyBillCycleIsValid() {
+      return request.resource.data.keys().hasAll(["vendorId", "monthKey", "billEntered", "billPaid", "completedAt", "createdAt", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["vendorId", "monthKey", "billEntered", "billPaid", "completedAt", "createdAt", "updatedAt"])
+        && request.resource.data.vendorId is string
+        && request.resource.data.vendorId.size() > 0
+        && request.resource.data.vendorId.size() <= 150
+        && request.resource.data.monthKey is string
+        && request.resource.data.monthKey.size() == 7
+        && request.resource.data.billEntered is bool
+        && request.resource.data.billPaid is bool
+        && (request.resource.data.completedAt == null || request.resource.data.completedAt is timestamp);
+    }
+
     function isAutoApprovedUser() {
       return isAuthed() && (
         request.auth.token.email == "andrewpcarlson85@gmail.com"
@@ -983,6 +1010,18 @@ service cloud.firestore {
     match /workrooms/{ownerUid}/achEntries/{entryId} {
       allow read: if isWorkroomOwner(ownerUid);
       allow create, update: if isWorkroomOwner(ownerUid) && workroomAchEntryIsValid();
+      allow delete: if isWorkroomOwner(ownerUid);
+    }
+
+    match /workrooms/{ownerUid}/monthlyBillVendors/{vendorId} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow create, update: if isWorkroomOwner(ownerUid) && workroomMonthlyBillVendorIsValid();
+      allow delete: if isWorkroomOwner(ownerUid);
+    }
+
+    match /workrooms/{ownerUid}/monthlyBillCycles/{cycleId} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow create, update: if isWorkroomOwner(ownerUid) && workroomMonthlyBillCycleIsValid();
       allow delete: if isWorkroomOwner(ownerUid);
     }
 
