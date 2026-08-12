@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>The Workroom</title>
     <meta name="description" content="Private office command center display." />
-    <link rel="stylesheet" href="styles.css?v=workroom-compass-20260729b" />
+    <link rel="stylesheet" href="styles.css?v=workroom-actions-20260812" />
   </head>
   <body data-page="workroom-display">
     <main id="workroom-display" class="workroom-display-shell">
@@ -61,8 +61,8 @@
           </section>
           <aside class="workroom-awareness-rail">
             <section class="workroom-radar-stage">
-              <div class="workroom-section-heading-row"><div><p class="workroom-stage-kicker">Operations</p><h2 id="workroom-radar-title">Needs attention</h2></div><button id="workroom-open-operations" class="workroom-text-button" type="button">All items</button></div>
-              <nav id="workroom-radar-tabs" class="workroom-radar-tabs" aria-label="Operation categories"></nav>
+              <div class="workroom-section-heading-row"><div><p class="workroom-stage-kicker">Deferred</p><h2 id="workroom-radar-title">Review later</h2></div><button id="workroom-open-operations" class="workroom-text-button" type="button">All actions</button></div>
+              <nav id="workroom-radar-tabs" class="workroom-radar-tabs" aria-label="Review categories"></nav>
               <div id="workroom-radar-list" class="workroom-radar-list"></div>
               <div id="workroom-radar-counts" class="workroom-radar-counts"></div>
             </section>
@@ -93,12 +93,12 @@
       <div id="workroom-operations-dialog" class="workroom-dialog" hidden>
         <div class="workroom-dialog-backdrop" data-close-display-dialog></div>
         <section class="workroom-dialog-panel workroom-display-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="workroom-operations-title">
-          <div class="workroom-dialog-heading"><div><p class="workroom-stage-kicker">Operations</p><h2 id="workroom-operations-title">Everything in motion</h2></div><button class="workroom-dialog-close" data-close-display-dialog type="button" aria-label="Close operations">&times;</button></div>
-          <nav id="workroom-operations-tabs" class="workroom-operations-tabs" aria-label="Full operation categories"></nav>
+          <div class="workroom-dialog-heading"><div><p class="workroom-stage-kicker">Action system</p><h2 id="workroom-operations-title">All actions</h2></div><button class="workroom-dialog-close" data-close-display-dialog type="button" aria-label="Close all actions">&times;</button></div>
+          <nav id="workroom-operations-tabs" class="workroom-operations-tabs" aria-label="Action categories"></nav>
           <div id="workroom-operations-content" class="workroom-operations-content"></div>
         </section>
       </div>
     </main>
-    <script type="module" src="js/workroom-display.js?v=workroom-compass-20260729b"></script>
+    <script type="module" src="js/workroom-display.js?v=workroom-actions-20260812"></script>
   </body>
 </html>

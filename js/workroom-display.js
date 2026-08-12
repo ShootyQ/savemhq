@@ -1,7 +1,7 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { doc, onSnapshot, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth } from "./auth-shared.js";
-import { achEntriesRef, asDate, briefingRef, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, formatDay, formatDateTime, isOwner, monthlyBillCyclesRef, monthlyBillVendorsRef, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
+import { achEntriesRef, actionStatesRef, asDate, briefingRef, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, formatDay, formatDateTime, isOwner, monthlyBillCyclesRef, monthlyBillVendorsRef, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
 const elements = {
@@ -9,10 +9,10 @@ const elements = {
 };
 const PIN_KEY = "workroom-compass-pinned-task";
 const SPRINT_KEY = "workroom-compass-sprint";
-const QUEUE_LIMIT = 6;
+const QUEUE_LIMIT = 5;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const quotes = ["Well begun is half done. - Aristotle", "The obstacle is the path. - Zen proverb", "Start where you are. Use what you have. Do what you can. - Arthur Ashe", "The most effective way to do it, is to do it. - Amelia Earhart"];
-let state = { user: null, tasks: [], tasksLoaded: false, projects: [], finance: [], contacts: [], ach: [], billVendors: [], billCycles: [], summary: {}, briefing: {}, connections: [], unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25, radarCategory: "attention", operationsCategory: "all", activeDialog: null, dialogTrigger: null };
+let state = { user: null, tasks: [], tasksLoaded: false, projects: [], finance: [], contacts: [], ach: [], actionStates: [], billVendors: [], billCycles: [], summary: {}, briefing: {}, connections: [], unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25, radarCategory: "attention", operationsCategory: "all", activeDialog: null, dialogTrigger: null };
 let celebrationTimer = null;
 
 const loadStored = (key, fallback = null) => { try { return JSON.parse(window.localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
@@ -27,6 +27,8 @@ const dateKey = (value = new Date()) => { const date = asDate(value); return dat
 const monthKey = (value = new Date()) => { const date = asDate(value) || new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`; };
 const monthlyBillCycleId = (vendorId, cycleMonth) => `${vendorId}_${cycleMonth}`;
 const pendingMonthlyBillCount = () => { const currentMonth = monthKey(); return state.billVendors.filter((vendor) => { const cycle = state.billCycles.find((item) => item.id === monthlyBillCycleId(vendor.id, currentMonth)); return !cycle?.billEntered || !cycle?.billPaid; }).length; };
+const actionStateId = (type, id) => `${type}_${String(id).replaceAll("/", "~")}`;
+const actionStateFor = (type, id) => state.actionStates.find((item) => item.id === actionStateId(type, id));
 const dayOffset = (value, now = new Date()) => { const date = asDate(value); return date ? Math.round((startOfDay(date) - startOfDay(now)) / DAY_MS) : null; };
 const relativeDay = (value, now = new Date()) => { const offset = dayOffset(value, now); if (offset == null) return "No date"; if (offset < -1) return `${Math.abs(offset)} days overdue`; if (offset === -1) return "Yesterday"; if (offset === 0) return "Today"; if (offset === 1) return "Tomorrow"; return formatDay(value); };
 const dayPhase = (now) => { const minutes = now.getHours() * 60 + now.getMinutes(); if (minutes >= 480 && minutes < 600) return "morning"; if (minutes >= 600 && minutes < 930) return "execution"; if (minutes >= 930 && minutes < 1050) return "wrap"; return "after-hours"; };
@@ -40,14 +42,14 @@ const parseBriefing = (text) => {
   String(text || "").split(/\r?\n/).forEach((line) => { const heading = line.trim().replace(/^#+\s*/, "").replace(/:$/, "").toUpperCase(); if (sections[heading]) { active = heading; return; } if (active && line.trim() && !/^none noted\.?$/i.test(line.trim())) sections[active].push(line.trim().replace(/^[-*]\s*/, "")); });
   return sections;
 };
-const radarItem = (type, title, detail, time, score, id = "", canComplete = false) => ({ type, title, detail, time, score, id, canComplete });
+const radarItem = (type, title, detail, time, score, id = "", canComplete = false, actionType = type.toLowerCase()) => ({ type, title, detail, time, score, id, canComplete, actionType });
 const deriveRadar = (now) => {
   const items = [];
-  state.contacts.filter((item) => item.status !== "done").forEach((item) => { const offset = dayOffset(item.followUpDate, now); const score = offset < 0 ? 0 : offset === 0 ? 2 : offset === 1 ? 5 : 20 + (offset ?? 30); items.push(radarItem("Follow-up", item.name, item.reason, relativeDay(item.followUpDate, now), score, item.id, true)); });
-  state.finance.filter((item) => item.status !== "done").forEach((item) => { const offset = dayOffset(item.dueDate, now); const score = offset < 0 ? 0 : offset === 0 ? 2 : offset === 1 ? 5 : 20 + (offset ?? 30); items.push(radarItem("Finance", item.title, item.category || "Reminder", relativeDay(item.dueDate, now), score, item.id, true)); });
+  state.contacts.filter((item) => item.status !== "done").forEach((item) => { const offset = dayOffset(item.followUpDate, now); const score = offset < 0 ? 0 : offset === 0 ? 2 : offset === 1 ? 5 : 20 + (offset ?? 30); items.push(radarItem("Follow-up", item.name, item.reason, relativeDay(item.followUpDate, now), score, item.id, true, "contact")); });
+  state.finance.filter((item) => item.status !== "done").forEach((item) => { const offset = dayOffset(item.dueDate, now); const score = offset < 0 ? 0 : offset === 0 ? 2 : offset === 1 ? 5 : 20 + (offset ?? 30); items.push(radarItem("Finance", item.title, item.category || "Reminder", relativeDay(item.dueDate, now), score, item.id, true, "finance")); });
   (state.summary.upcomingEvents || []).forEach((event, index) => { const date = eventDate(event); if (!date) return; const minutes = (date - now) / 60000; if (minutes >= -30 && minutes <= 24 * 60) items.push(radarItem("Calendar", event.title, event.location || "Calendar", minutes <= 60 && minutes >= 0 ? `In ${Math.max(1, Math.round(minutes))} min` : eventWhen(event), minutes <= 60 ? 1 : 8 + minutes / 60, `event-${index}`)); });
-  state.ach.forEach((item) => { const offset = dayOffset(item.withdrawalDate, now); if (offset != null && offset >= 0 && offset <= 3) items.push(radarItem("ACH", `${item.name} - $${Number(item.amount || 0).toFixed(2)}`, item.reason, relativeDay(item.withdrawalDate, now), 6 + offset, item.id)); });
-  state.projects.filter((item) => item.status === "active").forEach((item) => { const offset = dayOffset(item.targetDate, now); if (offset != null && offset <= 7) items.push(radarItem("Project", item.title, "Target date approaching", relativeDay(item.targetDate, now), offset < 0 ? 3 : 12 + offset, item.id)); });
+  state.ach.forEach((item) => { const offset = dayOffset(item.withdrawalDate, now); if (offset != null && offset >= 0 && offset <= 3) items.push(radarItem("ACH", `${item.name} - $${Number(item.amount || 0).toFixed(2)}`, item.reason, relativeDay(item.withdrawalDate, now), 6 + offset, item.id, true, "ach")); });
+  state.projects.filter((item) => item.status === "active").forEach((item) => { const offset = dayOffset(item.targetDate, now); if (offset != null && offset <= 7) items.push(radarItem("Project", item.title, "Target date approaching", relativeDay(item.targetDate, now), offset < 0 ? 3 : 12 + offset, item.id, true, "project")); });
   const unread = Number(state.summary.unreadCount || 0); if (unread) items.push(radarItem("Mail", `${unread} unread message${unread === 1 ? "" : "s"}`, state.summary.recentMail?.[0]?.subject || "Inbox needs a look", "Inbox", 50));
   return items.sort((left, right) => left.score - right.score || left.title.localeCompare(right.title));
 };
@@ -60,16 +62,16 @@ const operationGroups = (now) => {
     if (leftPast !== rightPast) return leftPast ? 1 : -1;
     return leftPast ? rightTime - leftTime : leftTime - rightTime;
   };
-  const contacts = [...state.contacts].filter((item) => item.status !== "done").sort(byDate("followUpDate")).map((item) => radarItem("Contact", item.name, `${item.method || "Follow-up"}${item.reason ? ` - ${item.reason}` : ""}`, relativeDay(item.followUpDate, now), 0, item.id, true));
-  const finance = [...state.finance].filter((item) => item.status !== "done").sort(byDate("dueDate")).map((item) => radarItem("Finance", item.title, `${item.category || "Reminder"}${item.amount != null ? ` - $${Number(item.amount).toFixed(2)}` : ""}`, relativeDay(item.dueDate, now), 0, item.id, true));
-  const ach = [...state.ach].sort(byDate("withdrawalDate")).map((item) => radarItem("ACH", `${item.name} - $${Number(item.amount || 0).toFixed(2)}`, `${item.reason}${item.recurring ? " - recurring" : ""}`, relativeDay(item.withdrawalDate, now), 0, item.id));
-  const calendar = (state.summary.upcomingEvents || []).map((event, index) => radarItem("Calendar", event.title, event.location || "Google Calendar", `${dayOffset(eventDate(event), now) === 0 ? "Today - " : `${formatDay(eventDate(event))} - `}${eventWhen(event)}`, 0, `event-${index}`));
-  const mail = (state.summary.recentMail || []).map((message, index) => radarItem("Mail", message.subject, message.from || "Google Mail", "Unread", 0, `mail-${index}`));
-  const projects = [...state.projects].filter((item) => item.status === "active").sort(byDate("targetDate")).map((item) => { const projectTasks = state.tasks.filter((task) => task.projectId === item.id); const complete = projectTasks.filter((task) => task.status === "done").length; const percent = projectTasks.length ? Math.round(complete / projectTasks.length * 100) : 0; return radarItem("Project", item.title, `${percent}% complete`, item.targetDate ? `Target ${formatDay(item.targetDate)}` : "No target date", 0, item.id); });
+  const contacts = [...state.contacts].filter((item) => item.status !== "done").sort(byDate("followUpDate")).map((item) => radarItem("Contact", item.name, `${item.method || "Follow-up"}${item.reason ? ` - ${item.reason}` : ""}`, relativeDay(item.followUpDate, now), 0, item.id, true, "contact"));
+  const finance = [...state.finance].filter((item) => item.status !== "done").sort(byDate("dueDate")).map((item) => radarItem("Finance", item.title, `${item.category || "Reminder"}${item.amount != null ? ` - $${Number(item.amount).toFixed(2)}` : ""}`, relativeDay(item.dueDate, now), 0, item.id, true, "finance"));
+  const ach = [...state.ach].sort(byDate("withdrawalDate")).map((item) => radarItem("ACH", `${item.name} - $${Number(item.amount || 0).toFixed(2)}`, `${item.reason}${item.recurring ? " - recurring" : ""}`, relativeDay(item.withdrawalDate, now), 0, item.id, true, "ach"));
+  const calendar = (state.summary.upcomingEvents || []).map((event) => radarItem("Calendar", event.title, event.location || "Google Calendar", `${dayOffset(eventDate(event), now) === 0 ? "Today - " : `${formatDay(eventDate(event))} - `}${eventWhen(event)}`, 0, event.id, true, "calendar"));
+  const mail = (state.summary.recentMail || []).map((message) => radarItem("Mail", message.subject, message.from || "Google Mail", "Unread", 0, message.id, true, "mail"));
+  const projects = [...state.projects].filter((item) => item.status === "active").sort(byDate("targetDate")).map((item) => { const projectTasks = state.tasks.filter((task) => task.projectId === item.id); const complete = projectTasks.filter((task) => task.status === "done").length; const percent = projectTasks.length ? Math.round(complete / projectTasks.length * 100) : 0; return radarItem("Project", item.title, `${percent}% complete`, item.targetDate ? `Target ${formatDay(item.targetDate)}` : "No target date", 0, item.id, true, "project"); });
   return [{ id: "contacts", label: "Contacts", items: contacts }, { id: "finance", label: "Finance", items: finance }, { id: "ach", label: "ACH", items: ach }, { id: "calendar", label: "Calendar", items: calendar }, { id: "mail", label: "Mail", items: mail }, { id: "projects", label: "Projects", items: projects }];
 };
 const deriveDayModel = (now = new Date()) => {
-  const openTasks = rankTasks(state.tasks.filter((task) => task.status !== "done"), now);
+  const openTasks = rankTasks(state.tasks.filter((task) => task.status !== "done" && !actionStateFor("task", task.id)), now);
   const pinned = openTasks.find((task) => task.id === state.pinnedTaskId);
   if (state.tasksLoaded && state.pinnedTaskId && !pinned) { state.pinnedTaskId = ""; saveStored(PIN_KEY, null); }
   const current = pinned || openTasks[0] || null;
@@ -79,36 +81,68 @@ const deriveDayModel = (now = new Date()) => {
   return { now, phase: dayPhase(now), openTasks, current, queued, completedToday, overdueCount: openTasks.filter((task) => taskBucket(task, now).id === "overdue").length, events, radar: deriveRadar(now), briefingSections: parseBriefing(state.briefing.text), briefingStale: Boolean(state.briefing.text) && state.briefing.dateKey !== dateKey(now), tomorrowCount: openTasks.filter((task) => dayOffset(task.dueDate, now) === 1).length };
 };
 
+const mixedActionItems = (model) => {
+  const attentionScores = new Map(model.radar.map((item) => [`${item.actionType}:${item.id}`, item.score]));
+  const tasks = model.queued.map((task) => {
+    const bucket = taskBucket(task, model.now);
+    return { actionType: "task", id: task.id, type: "Task", title: task.title, detail: projectName(task), time: task.dueDate ? relativeDay(task.dueDate, model.now) : bucket.label, score: bucket.rank * 10 + priorityRank(task.priority), task };
+  });
+  const operations = operationGroups(model.now).flatMap((group, groupIndex) => group.items.map((item, itemIndex) => ({ ...item, score: attentionScores.get(`${item.actionType}:${item.id}`) ?? 35 + groupIndex * 8 + itemIndex })));
+  return [...tasks, ...operations]
+    .filter((item) => item.id && !actionStateFor(item.actionType, item.id))
+    .sort((left, right) => left.score - right.score || left.title.localeCompare(right.title));
+};
+const reviewLaterItems = () => state.actionStates.filter((item) => item.status === "later").sort((left, right) => (asDate(right.updatedAt)?.getTime() || 0) - (asDate(left.updatedAt)?.getTime() || 0));
+
 const projectName = (task) => state.projects.find((project) => project.id === task?.projectId)?.title || "";
 const completeButton = (type, item, label = item.title || item.name) => `<button class="workroom-display-check" data-complete-${type}="${escapeHtml(item.id)}" type="button" aria-label="Complete ${escapeHtml(label)}"></button>`;
-const operationRow = (item) => `<div class="workroom-radar-item ${item.score <= 3 ? "radar-urgent" : "radar-normal"}"><div><span>${escapeHtml(item.type)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}${item.detail ? ` - ${escapeHtml(item.detail)}` : ""}</small></div>${item.canComplete ? completeButton(item.type === "Finance" ? "finance" : "contact", item) : ""}</div>`;
+const actionButtons = (item) => `<div class="workroom-queue-actions"><button class="workroom-review-later" data-review-later-type="${escapeHtml(item.actionType)}" data-review-later-id="${escapeHtml(item.id)}" type="button" aria-label="Review ${escapeHtml(item.title)} later">Later</button>${completeButton(item.actionType, item)}</div>`;
+const operationRow = (item) => `<div class="workroom-radar-item ${item.score <= 3 ? "radar-urgent" : "radar-normal"}"><div><span>${escapeHtml(item.type)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}${item.detail ? ` - ${escapeHtml(item.detail)}` : ""}</small></div>${actionButtons(item)}</div>`;
+const mixedQueueRow = (item) => `<div class="workroom-mixed-action ${item.score <= 3 ? "is-urgent" : ""}"><div class="workroom-mixed-action-copy"><span>${escapeHtml(item.type)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}${item.detail ? ` - ${escapeHtml(item.detail)}` : ""}</small></div>${actionButtons(item)}</div>`;
+const reviewLaterRow = (item) => `<div class="workroom-radar-item"><div><span>${escapeHtml(item.itemType)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}${item.detail ? ` - ${escapeHtml(item.detail)}` : ""}</small></div><button class="workroom-restore-action" data-restore-action="${escapeHtml(item.id)}" type="button">Restore</button></div>`;
 const taskRow = (task, now) => { const bucket = taskBucket(task, now); const project = projectName(task); return `<div class="workroom-compass-task priority-${escapeHtml(task.priority)}"><button class="workroom-task-select" data-pin-task="${escapeHtml(task.id)}" type="button"><span class="workroom-task-title">${escapeHtml(task.title)}</span><small><span class="workroom-status-label status-${bucket.id}">${escapeHtml(bucket.label)}</span>${project ? ` <span>${escapeHtml(project)}</span>` : ""}${task.dueDate ? ` <span>${escapeHtml(formatDay(task.dueDate))}</span>` : ""}</small></button>${completeButton("task", task)}</div>`; };
 const renderDayline = (model) => { if (!model.events.length) { elements.dayline.innerHTML = `<span class="workroom-dayline-clear">Open runway - no calendar events today.</span>`; return; } const next = model.events.find((event) => !event.allDay && (event.startDate - model.now) / 60000 >= -30); elements.dayline.innerHTML = model.events.slice(0, 5).map((event) => { const minutes = (event.startDate - model.now) / 60000; const elapsed = !event.allDay && minutes < -30; const isNext = event === next; const countdown = isNext && minutes >= 0 && minutes <= 60 ? `In ${Math.max(1, Math.round(minutes))} min` : eventWhen(event); return `<div class="workroom-dayline-event ${elapsed ? "is-elapsed" : ""} ${isNext ? "is-next" : ""}"><time>${escapeHtml(countdown)}</time><strong>${escapeHtml(event.title)}</strong></div>`; }).join(""); };
 const renderNow = (model) => { const task = model.current; elements.clearPin.hidden = !state.pinnedTaskId; elements.nowReason.textContent = task ? (state.pinnedTaskId ? "Pinned focus" : taskBucket(task, model.now).label) : "Queue clear"; elements.nowContent.innerHTML = task ? `<div class="workroom-now-task"><div><span class="workroom-now-project">${escapeHtml(projectName(task) || "Independent task")}</span><h1>${escapeHtml(task.title)}</h1><p>${task.notes ? escapeHtml(task.notes) : task.dueDate ? `${escapeHtml(relativeDay(task.dueDate, model.now))} - ${escapeHtml(formatDay(task.dueDate))}` : "No due date - ready when you are."}</p></div>${completeButton("task", task)}</div>` : `<div class="workroom-now-empty"><h1>All clear.</h1><p>Nothing open is asking for your attention.</p></div>`; };
-const renderQueue = (model) => { elements.tasks.innerHTML = model.queued.length ? model.queued.slice(0, QUEUE_LIMIT).map((task) => taskRow(task, model.now)).join("") : blank(model.current ? "This is the only open task." : "The queue is clear."); const remaining = Math.max(0, model.queued.length - QUEUE_LIMIT); elements.viewAll.textContent = remaining ? `View all +${remaining}` : "View all"; elements.viewAll.hidden = !model.openTasks.length; };
+const renderQueue = (model) => { const items = mixedActionItems(model); elements.tasks.innerHTML = items.length ? items.slice(0, QUEUE_LIMIT).map(mixedQueueRow).join("") : blank("The action queue is clear."); const remaining = Math.max(0, items.length - QUEUE_LIMIT); elements.viewAll.textContent = remaining ? `View all +${remaining}` : "View all"; elements.viewAll.hidden = !items.length; };
 const renderRadar = (model) => {
-  const groups = operationGroups(model.now);
-  const categories = [{ id: "attention", label: "Attention", items: model.radar }, ...groups];
-  const selected = categories.find((category) => category.id === state.radarCategory) || categories[0];
-  elements.radarTitle.textContent = selected.id === "attention" ? "Needs attention" : selected.label;
-  elements.radarTabs.innerHTML = categories.map((category) => `<button class="workroom-radar-tab ${category.id === selected.id ? "is-active" : ""}" data-radar-category="${category.id}" type="button" aria-pressed="${category.id === selected.id}">${escapeHtml(category.label)}<span>${category.items.length}</span></button>`).join("");
-  elements.radar.innerHTML = selected.items.length ? selected.items.slice(0, 5).map(operationRow).join("") : blank(`No ${selected.label.toLowerCase()} items right now.`);
-  elements.radarCounts.innerHTML = groups.map((group) => `<button data-radar-category="${group.id}" type="button"><strong>${group.items.length}</strong>${escapeHtml(group.label)}</button>`).join("");
+  const items = reviewLaterItems();
+  elements.radarTitle.textContent = "Review later";
+  elements.radarTabs.innerHTML = "";
+  elements.radar.innerHTML = items.length ? items.slice(0, 7).map(reviewLaterRow).join("") : blank("Nothing is waiting for later.");
+  elements.radarCounts.innerHTML = items.length > 7 ? `<button id="workroom-review-later-count" type="button"><strong>${items.length - 7}</strong>more in all items</button>` : "";
 };
 const renderBriefing = (model) => { const today = model.briefingSections["DO TODAY"]; const waiting = model.briefingSections.WAITING; const failed = state.briefing.status === "error"; elements.briefingTitle.textContent = failed ? "Briefing unavailable" : model.briefingStale ? "Briefing needs refresh" : "Do today"; const lines = [...today.slice(0, 2), ...waiting.slice(0, 1).map((line) => `Waiting: ${line}`)]; elements.briefingPreview.innerHTML = failed ? blank(state.briefing.error || "The latest briefing could not be generated.") : lines.length ? lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("") : blank(state.briefing.text ? "No immediate items noted." : "Generate a briefing from the control room."); elements.briefingUpdated.textContent = failed ? "Run a new review from the control room." : state.briefing.generatedAt ? `${model.briefingStale ? "Stale - " : ""}Updated ${formatDateTime(state.briefing.generatedAt)}` : "Waiting for the first briefing."; elements.fullBriefing.innerHTML = (failed ? `<p class="workroom-briefing-error">${escapeHtml(state.briefing.error || "The latest briefing could not be generated.")}</p>` : "") + Object.entries(model.briefingSections).map(([heading, items]) => `<section><h3>${escapeHtml(heading)}</h3>${items.length ? items.map((item) => `<p>${escapeHtml(item)}</p>`).join("") : `<p class="workroom-tv-empty">None noted.</p>`}</section>`).join("") + (state.briefing.sourceCounts ? `<p class="workroom-briefing-receipt">Reviewed ${Number(state.briefing.sourceCounts.tasks || 0)} tasks, ${Number(state.briefing.sourceCounts.calendarEvents || 0)} events, ${Number(state.briefing.sourceCounts.recentMail || 0)} mail messages, and ${Number(state.briefing.sourceCounts.slackMessages || 0)} Slack messages.</p>` : ""); };
 const renderAllWork = (model) => { const groups = [{ id: "overdue", title: "Overdue" }, { id: "today", title: "Today" }, { id: "week", title: "This week" }, { id: "high-unscheduled", title: "High priority" }, { id: "later", title: "Later" }, { id: "unscheduled", title: "Unscheduled" }]; elements.allGroups.innerHTML = groups.map((group) => { const tasks = model.openTasks.filter((task) => taskBucket(task, model.now).id === group.id); return tasks.length ? `<section><h3>${group.title} <span>${tasks.length}</span></h3>${tasks.map((task) => taskRow(task, model.now)).join("")}</section>` : ""; }).join("") + (model.completedToday.length ? `<section><h3>Finished today <span>${model.completedToday.length}</span></h3>${model.completedToday.map((task) => `<div class="workroom-finished-task">${escapeHtml(task.title)}</div>`).join("")}</section>` : ""); };
 const renderOperations = (model) => {
-  const groups = operationGroups(model.now);
-  const selectedGroups = state.operationsCategory === "all" ? groups : groups.filter((group) => group.id === state.operationsCategory);
-  elements.operationsTabs.innerHTML = [{ id: "all", label: "All", items: groups.flatMap((group) => group.items) }, ...groups].map((group) => `<button class="workroom-operations-tab ${group.id === state.operationsCategory ? "is-active" : ""}" data-operations-category="${group.id}" type="button">${escapeHtml(group.label)}<span>${group.items.length}</span></button>`).join("");
-  elements.operationsContent.innerHTML = selectedGroups.map((group) => `<section><div class="workroom-operations-heading"><h3>${escapeHtml(group.label)}</h3><span>${group.items.length}</span></div>${group.items.length ? group.items.map(operationRow).join("") : blank(`No ${group.label.toLowerCase()} items.`)}</section>`).join("");
+  const active = mixedActionItems(model);
+  const later = reviewLaterItems();
+  elements.operationsTabs.innerHTML = "";
+  elements.operationsContent.innerHTML = `<section><div class="workroom-operations-heading"><h3>Active queue</h3><span>${active.length}</span></div>${active.length ? active.map(mixedQueueRow).join("") : blank("The action queue is clear.")}</section><section><div class="workroom-operations-heading"><h3>Review later</h3><span>${later.length}</span></div>${later.length ? later.map(reviewLaterRow).join("") : blank("Nothing is waiting for later.")}</section>`;
 };
 const renderFooter = (model) => { if (!model.openTasks.length) elements.footer.textContent = `${model.completedToday.length} finished today. The room is clear.`; else if (model.phase === "wrap") elements.footer.textContent = `${model.completedToday.length} finished today - ${model.tomorrowCount} due tomorrow.`; else if (model.overdueCount) elements.footer.textContent = `${model.overdueCount} overdue item${model.overdueCount === 1 ? "" : "s"}. Clear the oldest promise first.`; else elements.footer.textContent = quotes[new Date().getDate() % quotes.length]; };
 const renderSprint = (now = Date.now()) => { const task = state.tasks.find((item) => item.id === state.sprint?.taskId && item.status !== "done"); if (state.tasksLoaded && state.sprint && !task) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } const sprint = state.sprint; let remaining = state.sprintMinutes * 60 * 1000; let progress = 0; if (sprint) { remaining = sprint.running ? Math.max(0, sprint.endAt - now) : sprint.remainingMs; progress = 1 - remaining / sprint.durationMs; if (remaining <= 0 && sprint.running) { sprint.running = false; sprint.remainingMs = 0; document.title = "Focus complete - The Workroom"; saveStored(SPRINT_KEY, sprint); } } const minutes = Math.floor(remaining / 60000); const seconds = Math.floor((remaining % 60000) / 1000); elements.focusTime.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`; elements.focusRing.style.setProperty("--focus-progress", `${Math.max(0, Math.min(1, progress)) * 360}deg`); elements.focusLabel.textContent = sprint ? task?.title || "Focus sprint" : "Focus sprint"; elements.focusStatus.textContent = !sprint ? "Choose a quiet block for this task." : remaining <= 0 ? "Sprint complete. Take a breath." : sprint.running ? "In progress" : "Paused"; elements.sprintToggle.disabled = !deriveDayModel().current; elements.sprintToggle.textContent = !sprint ? "Start" : sprint.running ? "Pause" : remaining <= 0 ? "Restart" : "Resume"; elements.sprintCancel.hidden = !sprint; elements.sprintChoices.forEach((button) => button.classList.toggle("is-active", Number(button.dataset.sprintMinutes) === state.sprintMinutes)); };
 const render = () => { const model = deriveDayModel(); document.body.dataset.dayPhase = model.phase; elements.completedCount.textContent = String(model.completedToday.length); elements.overdueCount.textContent = String(model.overdueCount); elements.overdueStat.classList.toggle("is-urgent", model.overdueCount > 0); elements.allCount.textContent = String(model.openTasks.length); elements.billsCount.textContent = String(pendingMonthlyBillCount()); renderDayline(model); renderNow(model); renderQueue(model); renderRadar(model); renderBriefing(model); renderAllWork(model); renderOperations(model); renderFooter(model); renderSprint(); };
 
 const celebrate = (message) => { elements.completeToast.textContent = message; elements.completeToast.classList.add("is-visible"); window.clearTimeout(celebrationTimer); celebrationTimer = window.setTimeout(() => elements.completeToast.classList.remove("is-visible"), 2400); };
-const writeCompletion = async (type, id) => { const collection = type === "task" ? tasksRef : type === "finance" ? financeRef : contactFollowUpsRef; const item = (type === "task" ? state.tasks : type === "finance" ? state.finance : state.contacts).find((entry) => entry.id === id); if (!item || !state.user) return; await updateDoc(doc(collection(state.user.uid), id), { status: "done", completedAt: serverTimestamp(), updatedAt: serverTimestamp() }); if (type === "task" && state.pinnedTaskId === id) { state.pinnedTaskId = ""; saveStored(PIN_KEY, null); } if (type === "task" && state.sprint?.taskId === id) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } };
+const writeActionState = async (item, status) => {
+  const reference = doc(actionStatesRef(state.user.uid), actionStateId(item.actionType, item.id));
+  const existing = actionStateFor(item.actionType, item.id);
+  await setDoc(reference, { itemType: item.actionType, itemId: item.id, status, title: item.title, detail: item.detail || "", time: item.time || "", createdAt: existing?.createdAt || serverTimestamp(), updatedAt: serverTimestamp() });
+};
+const writeCompletion = async (type, id, item) => {
+  if (!state.user) return;
+  if (type === "task" || type === "finance" || type === "contact") {
+    const collection = type === "task" ? tasksRef : type === "finance" ? financeRef : contactFollowUpsRef;
+    await updateDoc(doc(collection(state.user.uid), id), { status: "done", completedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  } else if (type === "project") {
+    await updateDoc(doc(projectsRef(state.user.uid), id), { status: "complete", updatedAt: serverTimestamp() });
+  } else {
+    await writeActionState(item, "done");
+  }
+  if (type !== "ach" && type !== "calendar" && type !== "mail" && actionStateFor(type, id)) await deleteDoc(doc(actionStatesRef(state.user.uid), actionStateId(type, id)));
+  if (type === "task" && state.pinnedTaskId === id) { state.pinnedTaskId = ""; saveStored(PIN_KEY, null); }
+  if (type === "task" && state.sprint?.taskId === id) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; }
+};
 const openDialog = (dialog, trigger) => { state.activeDialog = dialog; state.dialogTrigger = trigger; dialog.hidden = false; document.body.classList.add("workroom-dialog-open"); dialog.querySelector(".workroom-dialog-close")?.focus(); };
 const closeDialog = () => { if (!state.activeDialog) return; state.activeDialog.hidden = true; document.body.classList.remove("workroom-dialog-open"); state.dialogTrigger?.focus(); state.activeDialog = null; state.dialogTrigger = null; };
 const toggleSprint = () => { const current = deriveDayModel().current; if (!current) return; if (!state.sprint || state.sprint.remainingMs <= 0 || state.sprint.taskId !== current.id) { const durationMs = state.sprintMinutes * 60 * 1000; state.sprint = { taskId: current.id, durationMs, remainingMs: durationMs, endAt: Date.now() + durationMs, running: true }; state.pinnedTaskId = current.id; saveStored(PIN_KEY, current.id); } else if (state.sprint.running) { state.sprint.remainingMs = Math.max(0, state.sprint.endAt - Date.now()); state.sprint.running = false; } else { state.sprint.endAt = Date.now() + state.sprint.remainingMs; state.sprint.running = true; } saveStored(SPRINT_KEY, state.sprint); render(); };
@@ -116,7 +150,8 @@ const toggleSprint = () => { const current = deriveDayModel().current; if (!curr
 document.addEventListener("click", async (event) => {
   const pin = event.target.closest("[data-pin-task]"); if (pin) { if (state.sprint?.taskId && state.sprint.taskId !== pin.dataset.pinTask) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } state.pinnedTaskId = pin.dataset.pinTask; saveStored(PIN_KEY, state.pinnedTaskId); closeDialog(); render(); return; }
   if (event.target.closest("#workroom-clear-pin")) { if (state.sprint?.taskId === state.pinnedTaskId) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } state.pinnedTaskId = ""; saveStored(PIN_KEY, null); render(); return; }
-  if (event.target.closest("#workroom-open-all, #workroom-view-all")) { openDialog(elements.allDialog, event.target.closest("button")); return; }
+  if (event.target.closest("#workroom-open-all")) { openDialog(elements.allDialog, event.target.closest("button")); return; }
+  if (event.target.closest("#workroom-view-all")) { openDialog(elements.operationsDialog, event.target.closest("button")); return; }
   if (event.target.closest("#workroom-open-briefing, [data-open-briefing]")) { openDialog(elements.briefingDialog, event.target.closest("button")); return; }
   if (event.target.closest("#workroom-open-operations")) { openDialog(elements.operationsDialog, event.target.closest("button")); return; }
   if (event.target.closest("[data-close-display-dialog]")) { closeDialog(); return; }
@@ -125,9 +160,15 @@ document.addEventListener("click", async (event) => {
   const sprintChoice = event.target.closest("[data-sprint-minutes]"); if (sprintChoice) { state.sprintMinutes = Number(sprintChoice.dataset.sprintMinutes); if (!state.sprint) renderSprint(); return; }
   if (event.target.closest("#workroom-sprint-toggle")) { toggleSprint(); return; }
   if (event.target.closest("#workroom-sprint-cancel")) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; render(); return; }
-  const complete = event.target.closest("[data-complete-task], [data-complete-contact], [data-complete-finance]"); if (!complete) return;
-  const type = complete.dataset.completeTask ? "task" : complete.dataset.completeFinance ? "finance" : "contact"; const id = complete.dataset.completeTask || complete.dataset.completeFinance || complete.dataset.completeContact;
-  complete.disabled = true; try { await writeCompletion(type, id); celebrate("Done - nice work."); } catch { celebrate("Could not update that item."); complete.disabled = false; }
+  const restore = event.target.closest("[data-restore-action]");
+  if (restore) { restore.disabled = true; try { await deleteDoc(doc(actionStatesRef(state.user.uid), restore.dataset.restoreAction)); celebrate("Restored to the action queue."); } catch { celebrate("Could not restore that item."); restore.disabled = false; } return; }
+  const later = event.target.closest("[data-review-later-type]");
+  if (later) { const item = mixedActionItems(deriveDayModel()).find((entry) => entry.actionType === later.dataset.reviewLaterType && entry.id === later.dataset.reviewLaterId); if (!item) return; later.disabled = true; try { await writeActionState(item, "later"); celebrate("Saved for review later."); } catch { celebrate("Could not save that for later."); later.disabled = false; } return; }
+  const complete = event.target.closest(".workroom-display-check"); if (!complete) return;
+  const completion = Object.entries(complete.dataset).find(([key]) => key.startsWith("complete")); if (!completion) return;
+  const type = completion[0].slice("complete".length).toLowerCase(); const id = completion[1];
+  const item = mixedActionItems(deriveDayModel()).find((entry) => entry.actionType === type && entry.id === id) || { actionType: type, id, title: "Completed item", detail: "", time: "" };
+  complete.disabled = true; try { await writeCompletion(type, id, item); celebrate("Done - nice work."); } catch { celebrate("Could not update that item."); complete.disabled = false; }
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") { closeDialog(); return; }
@@ -151,6 +192,7 @@ onAuthStateChanged(auth, (user) => {
     onSnapshot(financeRef(user.uid), (snapshot) => { state.finance = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(contactFollowUpsRef(user.uid), (snapshot) => { state.contacts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(achEntriesRef(user.uid), (snapshot) => { state.ach = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
+    onSnapshot(actionStatesRef(user.uid), (snapshot) => { state.actionStates = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(monthlyBillVendorsRef(user.uid), (snapshot) => { state.billVendors = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(monthlyBillCyclesRef(user.uid), (snapshot) => { state.billCycles = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(summaryRef(user.uid), (snapshot) => { state.summary = snapshot.data() || {}; render(); }),

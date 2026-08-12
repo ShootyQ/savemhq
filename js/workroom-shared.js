@@ -12,6 +12,7 @@ export const contactFollowUpsRef = (uid) => collection(workroomRef(uid), "contac
 export const achEntriesRef = (uid) => collection(workroomRef(uid), "achEntries");
 export const monthlyBillVendorsRef = (uid) => collection(workroomRef(uid), "monthlyBillVendors");
 export const monthlyBillCyclesRef = (uid) => collection(workroomRef(uid), "monthlyBillCycles");
+export const actionStatesRef = (uid) => collection(workroomRef(uid), "actionStates");
 export const focusRef = (uid) => doc(workroomRef(uid), "settings", "focus");
 export const summaryRef = (uid) => doc(db, "workroomSummaries", uid);
 export const briefingRef = (uid) => doc(db, "workroomAi", uid);

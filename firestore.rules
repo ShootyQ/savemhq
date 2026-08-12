@@ -126,6 +126,23 @@ service cloud.firestore {
         && (request.resource.data.completedAt == null || request.resource.data.completedAt is timestamp);
     }
 
+    function workroomActionStateIsValid() {
+      return request.resource.data.keys().hasAll(["itemType", "itemId", "status", "title", "detail", "time", "createdAt", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["itemType", "itemId", "status", "title", "detail", "time", "createdAt", "updatedAt"])
+        && ["task", "contact", "finance", "ach", "project", "calendar", "mail"].hasAny([request.resource.data.itemType])
+        && request.resource.data.itemId is string
+        && request.resource.data.itemId.size() > 0
+        && request.resource.data.itemId.size() <= 300
+        && ["later", "done"].hasAny([request.resource.data.status])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 300
+        && request.resource.data.detail is string
+        && request.resource.data.detail.size() <= 500
+        && request.resource.data.time is string
+        && request.resource.data.time.size() <= 100;
+    }
+
     function isAutoApprovedUser() {
       return isAuthed() && (
         request.auth.token.email == "andrewpcarlson85@gmail.com"
@@ -1022,6 +1039,12 @@ service cloud.firestore {
     match /workrooms/{ownerUid}/monthlyBillCycles/{cycleId} {
       allow read: if isWorkroomOwner(ownerUid);
       allow create, update: if isWorkroomOwner(ownerUid) && workroomMonthlyBillCycleIsValid();
+      allow delete: if isWorkroomOwner(ownerUid);
+    }
+
+    match /workrooms/{ownerUid}/actionStates/{stateId} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow create, update: if isWorkroomOwner(ownerUid) && workroomActionStateIsValid();
       allow delete: if isWorkroomOwner(ownerUid);
     }
 
