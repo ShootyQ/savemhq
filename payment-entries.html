@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payment Entries | The Workroom</title>
+    <meta name="description" content="Private recurring payment-entry tracker for The Workroom." />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="payment-entries">
+    <main class="monthly-bills-shell payment-entries-shell">
+      <section id="payment-entries-gate" class="workroom-gate">
+        <p class="workroom-eyebrow">Private office system</p>
+        <h1>Payment entries</h1>
+        <p id="payment-entries-gate-message">Checking your private access...</p>
+        <a id="payment-entries-sign-in" class="workroom-button workroom-button-primary hidden" href="workroom-control.html">Sign in from the control room</a>
+      </section>
+
+      <div id="payment-entries-app" class="hidden">
+        <header class="monthly-bills-header">
+          <div>
+            <p class="workroom-eyebrow">The Workroom</p>
+            <h1>Payment entries</h1>
+            <p>Keep each payment source on its own cadence.</p>
+          </div>
+          <div class="workroom-inline-actions">
+            <a class="workroom-button workroom-button-quiet" href="workroom.html">Back to display</a>
+            <a class="workroom-button workroom-button-quiet" href="workroom-control.html">Control room</a>
+          </div>
+        </header>
+
+        <p id="payment-entries-notice" class="workroom-notice" aria-live="polite"></p>
+        <section class="monthly-bills-summary">
+          <div id="payment-entries-stats" class="workroom-stat-grid" aria-live="polite"></div>
+        </section>
+
+        <div class="monthly-bills-layout">
+          <section class="workroom-panel monthly-bills-panel">
+            <div class="workroom-panel-heading">
+              <div>
+                <p class="workroom-panel-kicker">Recurring sources</p>
+                <h2>Entry schedule</h2>
+              </div>
+            </div>
+            <div id="payment-entry-list" class="monthly-bills-list"></div>
+          </section>
+
+          <aside class="workroom-panel">
+            <div class="workroom-panel-heading">
+              <div>
+                <p class="workroom-panel-kicker">Setup</p>
+                <h2 id="payment-entry-form-title">Add a source</h2>
+              </div>
+            </div>
+            <form id="payment-entry-source-form" class="workroom-form">
+              <label>Payment source<input id="payment-entry-source-name" maxlength="120" required placeholder="ACH, Venmo, Cash App" /></label>
+              <label>Repeat every (days)<input id="payment-entry-source-interval" type="number" min="1" max="365" step="1" required placeholder="7" /></label>
+              <label>Last completed<input id="payment-entry-source-last-completed" type="date" /></label>
+              <div class="workroom-inline-actions monthly-bill-form-actions">
+                <button id="payment-entry-source-submit" class="workroom-button workroom-button-primary" type="submit">Add source</button>
+                <button id="payment-entry-source-cancel" class="workroom-button workroom-button-quiet" type="button" hidden>Cancel</button>
+              </div>
+            </form>
+          </aside>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="js/payment-entries.js"></script>
+  </body>
+</html>

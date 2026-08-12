@@ -46,7 +46,8 @@ body[data-page="home"] .site-header {
 }
 
 body[data-page^="workroom"],
-body[data-page="monthly-bills"] {
+body[data-page="monthly-bills"],
+body[data-page="payment-entries"] {
   min-width: 0;
   color: #edf1e8;
   background:
@@ -232,6 +233,10 @@ body[data-page="workroom-display"] .workroom-section-heading-row { display: flex
 .monthly-bills-summary .workroom-stat-grid { margin: 0; }
 .monthly-bill-form-actions { align-items: center; }
 .monthly-bill-form-actions .workroom-button { flex: 1; }
+.payment-entry-status { display: grid; justify-items: start; gap: 0.45rem; }
+.payment-entry-status .monthly-bill-status { min-width: 0; text-align: left; }
+.payment-entry-status .monthly-bill-status.is-overdue { color: #ffc0aa; }
+.payment-entry-complete { min-height: 2rem; padding: 0.32rem 0.55rem; font-size: 0.68rem; }
 
 @media (max-width: 900px) { .monthly-bills-layout { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .monthly-bills-shell { width: min(100% - 1rem, 1180px); padding-top: 0.7rem; }.monthly-bills-header { align-items: stretch; flex-direction: column; }.monthly-bills-header .workroom-inline-actions { width: 100%; }.monthly-bills-header .workroom-button { flex: 1; text-align: center; }.monthly-bill-row { grid-template-columns: minmax(0, 1fr) auto; }.monthly-bill-checks { grid-column: 1 / -1; }.monthly-bill-status { text-align: left; }.monthly-bill-actions { justify-content: end; } }

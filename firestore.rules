@@ -126,10 +126,22 @@ service cloud.firestore {
         && (request.resource.data.completedAt == null || request.resource.data.completedAt is timestamp);
     }
 
+    function workroomPaymentEntrySourceIsValid() {
+      return request.resource.data.keys().hasAll(["name", "intervalDays", "lastCompletedAt", "createdAt", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["name", "intervalDays", "lastCompletedAt", "createdAt", "updatedAt"])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.intervalDays is int
+        && request.resource.data.intervalDays >= 1
+        && request.resource.data.intervalDays <= 365
+        && (request.resource.data.lastCompletedAt == null || request.resource.data.lastCompletedAt is timestamp);
+    }
+
     function workroomActionStateIsValid() {
       return request.resource.data.keys().hasAll(["itemType", "itemId", "status", "title", "detail", "time", "createdAt", "updatedAt"])
         && request.resource.data.keys().hasOnly(["itemType", "itemId", "status", "title", "detail", "time", "createdAt", "updatedAt"])
-        && ["task", "contact", "finance", "ach", "project", "calendar", "mail"].hasAny([request.resource.data.itemType])
+        && ["task", "contact", "finance", "ach", "project", "calendar", "mail", "payment-entry"].hasAny([request.resource.data.itemType])
         && request.resource.data.itemId is string
         && request.resource.data.itemId.size() > 0
         && request.resource.data.itemId.size() <= 300
@@ -1039,6 +1051,12 @@ service cloud.firestore {
     match /workrooms/{ownerUid}/monthlyBillCycles/{cycleId} {
       allow read: if isWorkroomOwner(ownerUid);
       allow create, update: if isWorkroomOwner(ownerUid) && workroomMonthlyBillCycleIsValid();
+      allow delete: if isWorkroomOwner(ownerUid);
+    }
+
+    match /workrooms/{ownerUid}/paymentEntrySources/{sourceId} {
+      allow read: if isWorkroomOwner(ownerUid);
+      allow create, update: if isWorkroomOwner(ownerUid) && workroomPaymentEntrySourceIsValid();
       allow delete: if isWorkroomOwner(ownerUid);
     }
 
