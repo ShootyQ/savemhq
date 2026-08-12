@@ -45,7 +45,8 @@ body[data-page="home"] .site-header {
   border-bottom: 1px solid #cededb;
 }
 
-body[data-page^="workroom"] {
+body[data-page^="workroom"],
+body[data-page="monthly-bills"] {
   min-width: 0;
   color: #edf1e8;
   background:
