@@ -30,6 +30,7 @@ import {
   tasksRef,
   workroomRef,
   briefingRef,
+  focusRef,
 } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
@@ -43,7 +44,7 @@ const elements = {
   taskForm: $("workroom-task-form"), taskTitle: $("workroom-task-title"), taskProject: $("workroom-task-project"), taskPriority: $("workroom-task-priority"), taskDate: $("workroom-task-date"), taskNotes: $("workroom-task-notes"), tasks: $("workroom-tasks"),
   financeForm: $("workroom-finance-form"), financeTitle: $("workroom-finance-title"), financeCategory: $("workroom-finance-category"), financeUrgency: $("workroom-finance-urgency"), financeDate: $("workroom-finance-date"), financeAmount: $("workroom-finance-amount"), financeReference: $("workroom-finance-reference"), finance: $("workroom-finance"),
   achForm: $("workroom-ach-form"), achName: $("workroom-ach-name"), achAmount: $("workroom-ach-amount"), achDate: $("workroom-ach-date"), achReason: $("workroom-ach-reason"), achRecurring: $("workroom-ach-recurring"), ach: $("workroom-ach"),
-  googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"), briefingCount: $("workroom-briefing-count"), briefingStatus: $("workroom-briefing-status"), briefingResult: $("workroom-briefing-result"), automationSummary: $("workroom-automation-summary"), todayStats: $("workroom-today-stats"), todayActions: $("workroom-today-actions"), quickAdd: $("workroom-quick-add"), quickAddDialog: $("workroom-quick-add-dialog"),
+  googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"), briefingCount: $("workroom-briefing-count"), briefingStatus: $("workroom-briefing-status"), briefingResult: $("workroom-briefing-result"), automationSummary: $("workroom-automation-summary"), todayStats: $("workroom-today-stats"), todayActions: $("workroom-today-actions"), quickAdd: $("workroom-quick-add"), quickAddDialog: $("workroom-quick-add-dialog"), guestDisplayForm: $("workroom-guest-display-form"), guestName: $("workroom-guest-name"), guestDisplayClear: $("workroom-guest-display-clear"), guestDisplayStatus: $("workroom-guest-display-status"),
 };
 const functions = getFunctions();
 const googleConnect = httpsCallable(functions, "createWorkroomGoogleAuthSession");
@@ -59,7 +60,7 @@ const getSourceAutomationStatus = httpsCallable(functions, "getWorkroomSourceAut
 const listSourceCandidates = httpsCallable(functions, "listWorkroomAutomationCandidates");
 const approveSourceCandidate = httpsCallable(functions, "approveWorkroomAutomationCandidate");
 const rejectSourceCandidate = httpsCallable(functions, "rejectWorkroomAutomationCandidate");
-let state = { user: null, projects: [], tasks: [], finance: [], contacts: [], ach: [], briefing: {}, connections: [], currentView: "today", quickAddType: "task", unsubscribers: [] };
+let state = { user: null, projects: [], tasks: [], finance: [], contacts: [], ach: [], briefing: {}, focus: {}, connections: [], currentView: "today", quickAddType: "task", unsubscribers: [] };
 let speechRecognition = null;
 let speechActive = false;
 let automationStatusInterval = null;
@@ -95,6 +96,14 @@ const renderBriefingCount = () => {
     const failureNote = state.briefing.status === "error" ? `<p class="workroom-briefing-warning">Latest run failed: ${escapeHtml(state.briefing.error || "Unknown error")}</p>` : "";
     elements.briefingResult.innerHTML = `<p class="workroom-briefing-sources"><strong>Review receipt</strong> · ${escapeHtml(sources)}</p>${failureNote}${syncNote}<pre>${escapeHtml(text)}</pre>`;
   }
+};
+
+const renderGuestDisplay = () => {
+  const guestWelcome = state.focus.guestWelcome || {};
+  const name = clean(guestWelcome.name);
+  const active = Boolean(guestWelcome.active && name);
+  elements.guestDisplayStatus.textContent = active ? `${name} is on the TV welcome screen.` : "The TV is showing the dashboard.";
+  elements.guestDisplayClear.disabled = !active;
 };
 
 const dateMillis = (value) => value?.toMillis?.() || 0;
@@ -336,6 +345,7 @@ const subscribe = (user) => {
     onSnapshot(contactFollowUpsRef(user.uid), (snapshot) => { state.contacts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderContacts(); }),
     onSnapshot(achEntriesRef(user.uid), (snapshot) => { state.ach = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderAch(); }),
     onSnapshot(briefingRef(user.uid), (snapshot) => { state.briefing = snapshot.data() || {}; renderBriefingCount(); }),
+    onSnapshot(focusRef(user.uid), (snapshot) => { state.focus = snapshot.data() || {}; renderGuestDisplay(); }),
     onSnapshot(connectionsRef(user.uid), (snapshot) => { state.connections = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderConnections(); }),
   );
 };
@@ -383,6 +393,8 @@ elements.achForm.addEventListener("submit", (event) => { event.preventDefault();
 elements.googleConnect.addEventListener("click", () => run(async () => { const result = await googleConnect(); window.location.assign(result.data.authorizeUrl); }));
 elements.googleSync.addEventListener("click", () => run(() => googleSync(), "Google data refreshed."));
 elements.briefingGenerate?.addEventListener("click", async () => { elements.briefingGenerate.disabled = true; await run(() => generateBriefing(), "Review complete. The receipt below shows what GPT checked and found."); elements.briefingGenerate.disabled = false; });
+elements.guestDisplayForm?.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { const name = clean(elements.guestName.value); if (!name) throw new Error("Add a guest name first."); await setDoc(focusRef(state.user.uid), { guestWelcome: { active: true, name, updatedAt: serverTimestamp() } }, { merge: true }); }, "Welcome screen is live on the TV."); });
+elements.guestDisplayClear?.addEventListener("click", () => run(() => setDoc(focusRef(state.user.uid), { guestWelcome: { active: false, name: "", updatedAt: serverTimestamp() } }, { merge: true }), "TV dashboard restored."));
 elements.quickAdd?.addEventListener("click", () => openQuickAdd());
 document.querySelectorAll("[data-workroom-view]").forEach((button) => button.addEventListener("click", () => setActiveView(button.dataset.workroomView)));
 document.querySelectorAll("[data-open-quick-add]").forEach((button) => button.addEventListener("click", () => openQuickAdd(button.dataset.openQuickAdd)));

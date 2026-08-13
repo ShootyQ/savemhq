@@ -1,18 +1,18 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth } from "./auth-shared.js";
-import { achEntriesRef, actionStatesRef, asDate, briefingRef, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, formatDay, formatDateTime, isOwner, monthlyBillCyclesRef, monthlyBillVendorsRef, paymentEntrySourcesRef, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
+import { achEntriesRef, actionStatesRef, asDate, briefingRef, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, focusRef, formatDay, formatDateTime, isOwner, monthlyBillCyclesRef, monthlyBillVendorsRef, paymentEntrySourcesRef, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
 const elements = {
-  gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), clock: $("workroom-clock"), date: $("workroom-date"), completedCount: $("workroom-completed-count"), overdueCount: $("workroom-overdue-count"), overdueStat: $("workroom-overdue-stat"), allCount: $("workroom-all-count"), billsCount: $("workroom-bills-count"), paymentEntriesCount: $("workroom-payment-entries-count"), dayline: $("workroom-dayline-events"), nowReason: $("workroom-now-reason"), nowContent: $("workroom-now-content"), clearPin: $("workroom-clear-pin"), tasks: $("workroom-display-tasks"), radarTitle: $("workroom-radar-title"), radarTabs: $("workroom-radar-tabs"), radar: $("workroom-radar-list"), radarCounts: $("workroom-radar-counts"), briefingTitle: $("workroom-briefing-title"), briefingPreview: $("workroom-briefing-preview"), briefingUpdated: $("workroom-briefing-updated"), footer: $("workroom-context-footer"), completeToast: $("workroom-complete-toast"), allDialog: $("workroom-all-dialog"), allGroups: $("workroom-all-groups"), briefingDialog: $("workroom-briefing-dialog"), fullBriefing: $("workroom-full-briefing"), operationsDialog: $("workroom-operations-dialog"), operationsTabs: $("workroom-operations-tabs"), operationsContent: $("workroom-operations-content"), openOperations: $("workroom-open-operations"), openAll: $("workroom-open-all"), viewAll: $("workroom-view-all"), openBriefing: $("workroom-open-briefing"), focusRing: $("workroom-focus-ring"), focusTime: $("workroom-focus-time"), focusLabel: $("workroom-focus-label"), focusStatus: $("workroom-focus-status"), sprintToggle: $("workroom-sprint-toggle"), sprintCancel: $("workroom-sprint-cancel"), sprintChoices: [...document.querySelectorAll("[data-sprint-minutes]")],
+  gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), guestWelcome: $("workroom-guest-welcome"), guestWelcomeName: $("workroom-guest-welcome-name"), clock: $("workroom-clock"), date: $("workroom-date"), completedCount: $("workroom-completed-count"), overdueCount: $("workroom-overdue-count"), overdueStat: $("workroom-overdue-stat"), allCount: $("workroom-all-count"), billsCount: $("workroom-bills-count"), paymentEntriesCount: $("workroom-payment-entries-count"), dayline: $("workroom-dayline-events"), nowReason: $("workroom-now-reason"), nowContent: $("workroom-now-content"), clearPin: $("workroom-clear-pin"), tasks: $("workroom-display-tasks"), radarTitle: $("workroom-radar-title"), radarTabs: $("workroom-radar-tabs"), radar: $("workroom-radar-list"), radarCounts: $("workroom-radar-counts"), briefingTitle: $("workroom-briefing-title"), briefingPreview: $("workroom-briefing-preview"), briefingUpdated: $("workroom-briefing-updated"), footer: $("workroom-context-footer"), completeToast: $("workroom-complete-toast"), allDialog: $("workroom-all-dialog"), allGroups: $("workroom-all-groups"), briefingDialog: $("workroom-briefing-dialog"), fullBriefing: $("workroom-full-briefing"), operationsDialog: $("workroom-operations-dialog"), operationsTabs: $("workroom-operations-tabs"), operationsContent: $("workroom-operations-content"), openOperations: $("workroom-open-operations"), openAll: $("workroom-open-all"), viewAll: $("workroom-view-all"), openBriefing: $("workroom-open-briefing"), focusRing: $("workroom-focus-ring"), focusTime: $("workroom-focus-time"), focusLabel: $("workroom-focus-label"), focusStatus: $("workroom-focus-status"), sprintToggle: $("workroom-sprint-toggle"), sprintCancel: $("workroom-sprint-cancel"), sprintChoices: [...document.querySelectorAll("[data-sprint-minutes]")],
 };
 const PIN_KEY = "workroom-compass-pinned-task";
 const SPRINT_KEY = "workroom-compass-sprint";
 const QUEUE_LIMIT = 5;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const quotes = ["Well begun is half done. - Aristotle", "The obstacle is the path. - Zen proverb", "Start where you are. Use what you have. Do what you can. - Arthur Ashe", "The most effective way to do it, is to do it. - Amelia Earhart"];
-let state = { user: null, tasks: [], tasksLoaded: false, projects: [], finance: [], contacts: [], ach: [], paymentEntrySources: [], actionStates: [], billVendors: [], billCycles: [], summary: {}, briefing: {}, connections: [], unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25, radarCategory: "attention", operationsCategory: "all", activeDialog: null, dialogTrigger: null };
+let state = { user: null, tasks: [], tasksLoaded: false, projects: [], finance: [], contacts: [], ach: [], paymentEntrySources: [], actionStates: [], billVendors: [], billCycles: [], summary: {}, briefing: {}, focus: {}, connections: [], unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25, radarCategory: "attention", operationsCategory: "all", activeDialog: null, dialogTrigger: null };
 let celebrationTimer = null;
 
 const loadStored = (key, fallback = null) => { try { return JSON.parse(window.localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
@@ -131,6 +131,22 @@ const renderFooter = (model) => { if (!model.openTasks.length) elements.footer.t
 const renderSprint = (now = Date.now()) => { const task = state.tasks.find((item) => item.id === state.sprint?.taskId && item.status !== "done"); if (state.tasksLoaded && state.sprint && !task) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } const sprint = state.sprint; let remaining = state.sprintMinutes * 60 * 1000; let progress = 0; if (sprint) { remaining = sprint.running ? Math.max(0, sprint.endAt - now) : sprint.remainingMs; progress = 1 - remaining / sprint.durationMs; if (remaining <= 0 && sprint.running) { sprint.running = false; sprint.remainingMs = 0; document.title = "Focus complete - The Workroom"; saveStored(SPRINT_KEY, sprint); } } const minutes = Math.floor(remaining / 60000); const seconds = Math.floor((remaining % 60000) / 1000); elements.focusTime.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`; elements.focusRing.style.setProperty("--focus-progress", `${Math.max(0, Math.min(1, progress)) * 360}deg`); elements.focusLabel.textContent = sprint ? task?.title || "Focus sprint" : "Focus sprint"; elements.focusStatus.textContent = !sprint ? "Choose a quiet block for this task." : remaining <= 0 ? "Sprint complete. Take a breath." : sprint.running ? "In progress" : "Paused"; elements.sprintToggle.disabled = !deriveDayModel().current; elements.sprintToggle.textContent = !sprint ? "Start" : sprint.running ? "Pause" : remaining <= 0 ? "Restart" : "Resume"; elements.sprintCancel.hidden = !sprint; elements.sprintChoices.forEach((button) => button.classList.toggle("is-active", Number(button.dataset.sprintMinutes) === state.sprintMinutes)); };
 const render = () => { const model = deriveDayModel(); document.body.dataset.dayPhase = model.phase; elements.completedCount.textContent = String(model.completedToday.length); elements.overdueCount.textContent = String(model.overdueCount); elements.overdueStat.classList.toggle("is-urgent", model.overdueCount > 0); elements.allCount.textContent = String(model.openTasks.length); elements.billsCount.textContent = String(pendingMonthlyBillCount()); elements.paymentEntriesCount.textContent = String(pendingPaymentEntryCount()); renderDayline(model); renderNow(model); renderQueue(model); renderRadar(model); renderBriefing(model); renderAllWork(model); renderOperations(model); renderFooter(model); renderSprint(); };
 
+const renderGuestWelcome = () => {
+  const guestWelcome = state.focus.guestWelcome || {};
+  const name = String(guestWelcome.name || "").trim();
+  const active = Boolean(guestWelcome.active && name);
+  elements.guestWelcome.hidden = !active;
+  elements.guestWelcome.setAttribute("aria-hidden", String(!active));
+  if (!active) return;
+  elements.guestWelcomeName.replaceChildren(...[...name].map((letter, index) => {
+    const span = document.createElement("span");
+    span.className = "workroom-guest-letter";
+    span.style.setProperty("--guest-letter-index", index);
+    span.textContent = letter === " " ? "\u00a0" : letter;
+    return span;
+  }));
+};
+
 const celebrate = (message) => { elements.completeToast.textContent = message; elements.completeToast.classList.add("is-visible"); window.clearTimeout(celebrationTimer); celebrationTimer = window.setTimeout(() => elements.completeToast.classList.remove("is-visible"), 2400); };
 const writeActionState = async (item, status) => {
   const reference = doc(actionStatesRef(state.user.uid), actionStateId(item.actionType, item.id));
@@ -208,6 +224,7 @@ onAuthStateChanged(auth, (user) => {
     onSnapshot(monthlyBillCyclesRef(user.uid), (snapshot) => { state.billCycles = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(summaryRef(user.uid), (snapshot) => { state.summary = snapshot.data() || {}; render(); }),
     onSnapshot(briefingRef(user.uid), (snapshot) => { state.briefing = snapshot.data() || {}; render(); }),
+    onSnapshot(focusRef(user.uid), (snapshot) => { state.focus = snapshot.data() || {}; renderGuestWelcome(); }),
     onSnapshot(connectionsRef(user.uid), (snapshot) => { state.connections = snapshot.docs.map((item) => item.data()); render(); }),
   );
 });

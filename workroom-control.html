@@ -53,6 +53,15 @@
                 <div id="workroom-briefing-result" class="workroom-briefing-result" aria-live="polite"></div>
               </article>
               <article class="workroom-panel workroom-system-status-panel"><p class="workroom-panel-kicker">Systems</p><h2>Automation health</h2><p id="workroom-automation-summary" class="workroom-inline-hint">Checking connections...</p><button class="workroom-button workroom-button-quiet" data-workroom-view="automations" type="button">Open automations</button></article>
+              <article class="workroom-panel workroom-guest-display-panel">
+                <p class="workroom-panel-kicker">TV privacy</p>
+                <h2>Guest display</h2>
+                <form id="workroom-guest-display-form" class="workroom-form">
+                  <label>Guest name<input id="workroom-guest-name" maxlength="60" required placeholder="Whatevertheir name is" /></label>
+                  <div class="workroom-inline-actions"><button class="workroom-button workroom-button-primary" type="submit">Welcome on TV</button><button id="workroom-guest-display-clear" class="workroom-button workroom-button-quiet" type="button">Return to dashboard</button></div>
+                </form>
+                <p id="workroom-guest-display-status" class="workroom-inline-hint">The TV is showing the dashboard.</p>
+              </article>
             </aside>
           </div>
         </section>
