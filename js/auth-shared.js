@@ -31,6 +31,11 @@ export const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
 export const SAVANNAH_EMAIL = "savannahbcarlson@gmail.com";
 export const ACCESS_SECTIONS = [
   {
+    id: "desk",
+    label: "The Desk",
+    description: "Use a private, customizable Desk for tasks, ideas, and connected tools.",
+  },
+  {
     id: "plates",
     label: "Plate Entry",
     description: "Use the private plate entry page and competition editing tools.",

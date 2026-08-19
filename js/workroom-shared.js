@@ -1,12 +1,15 @@
 import {
   collection,
   doc,
+  getDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-import { auth, db, isWorkroomOwner } from "./auth-shared.js";
+import { ADMIN_EMAIL, auth, db, ensureApprovalRecord } from "./auth-shared.js";
+import { deskProfileForUser } from "./workroom-modules.js";
 
 export const workroomRef = (uid) => doc(db, "workrooms", uid);
 export const projectsRef = (uid) => collection(workroomRef(uid), "projects");
 export const tasksRef = (uid) => collection(workroomRef(uid), "tasks");
+export const ideasRef = (uid) => collection(workroomRef(uid), "ideas");
 export const financeRef = (uid) => collection(workroomRef(uid), "financeReminders");
 export const contactFollowUpsRef = (uid) => collection(workroomRef(uid), "contactFollowUps");
 export const achEntriesRef = (uid) => collection(workroomRef(uid), "achEntries");
@@ -19,7 +22,27 @@ export const summaryRef = (uid) => doc(db, "workroomSummaries", uid);
 export const briefingRef = (uid) => doc(db, "workroomAi", uid);
 export const connectionsRef = (uid) => collection(db, "workroomConnections", uid, "connections");
 
-export const isOwner = (user = auth.currentUser) => isWorkroomOwner(user);
+export const isLegacyOwner = (user = auth.currentUser) => String(user?.email || "").trim().toLowerCase() === ADMIN_EMAIL;
+
+export const resolveDeskSession = async (user = auth.currentUser) => {
+  if (!user) return { user: null, isAdmin: false, hasDeskAccess: false, approvalStatus: "signed-out", profile: null, modules: [] };
+
+  const isAdmin = isLegacyOwner(user);
+  const approval = await ensureApprovalRecord(user);
+  const hasDeskAccess = isAdmin || (
+    approval.status === "approved"
+    && Array.isArray(approval.accessSections)
+    && approval.accessSections.includes("desk")
+  );
+
+  if (!hasDeskAccess) {
+    return { user, isAdmin, hasDeskAccess: false, approvalStatus: approval.status, profile: null, modules: [] };
+  }
+
+  const snapshot = await getDoc(workroomRef(user.uid));
+  const profile = deskProfileForUser(user, snapshot.exists() ? snapshot.data() : null, { isAdmin });
+  return { user, isAdmin, hasDeskAccess: true, approvalStatus: approval.status, profile, modules: profile.enabledModules };
+};
 
 export const escapeHtml = (value) => String(value ?? "")
   .replace(/&/g, "&amp;")

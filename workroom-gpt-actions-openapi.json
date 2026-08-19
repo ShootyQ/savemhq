@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "SavemHQ Workroom Actions",
-    "description": "Direct action execution for The Workroom via ChatGPT Actions.",
+    "description": "Direct action execution for The Desk via ChatGPT Actions.",
     "version": "1.2.0"
   },
   "servers": [
@@ -228,7 +228,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128,
-            "description": "Firebase uid for the Workroom owner: RHkEW2ABlqYmwBqeEE0JX40zNND3."
+            "description": "Firebase uid for the Desk owner: RHkEW2ABlqYmwBqeEE0JX40zNND3."
           },
           "requestId": {
             "type": "string",
@@ -265,7 +265,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128,
-            "description": "Firebase uid for the Workroom owner: RHkEW2ABlqYmwBqeEE0JX40zNND3."
+            "description": "Firebase uid for the Desk owner: RHkEW2ABlqYmwBqeEE0JX40zNND3."
           },
           "source": {
             "type": "string",
@@ -289,7 +289,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128,
-            "description": "Firebase uid for the Workroom owner."
+            "description": "Firebase uid for the Desk owner."
           },
           "requestId": {
             "type": "string",

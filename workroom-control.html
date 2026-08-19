@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>The Workroom | Control Room</title>
-    <meta name="description" content="Private control room for The Workroom office dashboard." />
+    <title>The Desk | Control Room</title>
+    <meta name="description" content="Your private, customizable Desk." />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="workroom-control">
     <main class="workroom-control-shell">
       <section id="workroom-gate" class="workroom-gate">
-        <p class="workroom-eyebrow">Private office system</p>
-        <h1>The Workroom</h1>
+        <p class="workroom-eyebrow">Private workspace</p>
+        <h1>The Desk</h1>
         <p id="workroom-gate-message">Checking your private access…</p>
         <button id="workroom-sign-in" class="workroom-button workroom-button-primary hidden" type="button">Sign in with Google</button>
       </section>
@@ -19,8 +19,8 @@
       <div id="workroom-control" class="hidden">
         <header class="workroom-control-header">
           <div>
-            <h1>The Workroom</h1>
-            <p class="workroom-header-subtitle">Daily command desk</p>
+            <h1>The Desk</h1>
+            <p id="workroom-header-subtitle" class="workroom-header-subtitle">Daily command desk</p>
           </div>
           <div class="workroom-header-actions">
             <button id="workroom-quick-add" class="workroom-button workroom-button-primary" type="button">Quick add</button>
@@ -31,11 +31,13 @@
 
         <p id="workroom-notice" class="workroom-notice" aria-live="polite"></p>
 
-        <nav class="workroom-view-nav" aria-label="Workroom sections">
+        <nav class="workroom-view-nav" aria-label="Desk sections">
           <button class="workroom-view-tab is-active" data-workroom-view="today" type="button">Today</button>
           <button class="workroom-view-tab" data-workroom-view="work" type="button">Work</button>
-          <button class="workroom-view-tab" data-workroom-view="money" type="button">Money</button>
-          <button class="workroom-view-tab" data-workroom-view="automations" type="button">Automations</button>
+          <button class="workroom-view-tab" data-workroom-view="ideas" data-module="ideas" type="button">Ideas</button>
+          <button class="workroom-view-tab" data-workroom-view="money" data-module-any="finance ach monthly-bills payment-entries" type="button">Money</button>
+          <button class="workroom-view-tab" data-workroom-view="automations" data-module="google" data-owner-fallback type="button">Connections</button>
+          <button class="workroom-view-tab" data-workroom-view="settings" type="button">Settings</button>
         </nav>
 
         <section class="workroom-view is-active" data-workroom-view-panel="today">
@@ -46,14 +48,14 @@
               <div id="workroom-today-actions" class="workroom-record-list"></div>
             </article>
             <aside class="workroom-today-rail">
-              <article class="workroom-panel workroom-briefing-status-panel">
+              <article class="workroom-panel workroom-briefing-status-panel" data-owner-only>
                 <p class="workroom-panel-kicker">Review</p><h2>Daily briefing</h2>
                 <p id="workroom-briefing-status" class="workroom-inline-hint">Waiting for the first review.</p>
                 <div class="workroom-inline-actions"><button id="workroom-briefing-generate" class="workroom-button workroom-button-primary" type="button">Run review</button><span id="workroom-briefing-count" class="workroom-inline-hint">Today: 0 runs</span></div>
                 <div id="workroom-briefing-result" class="workroom-briefing-result" aria-live="polite"></div>
               </article>
-              <article class="workroom-panel workroom-system-status-panel"><p class="workroom-panel-kicker">Systems</p><h2>Automation health</h2><p id="workroom-automation-summary" class="workroom-inline-hint">Checking connections...</p><button class="workroom-button workroom-button-quiet" data-workroom-view="automations" type="button">Open automations</button></article>
-              <article class="workroom-panel workroom-guest-display-panel">
+              <article class="workroom-panel workroom-system-status-panel" data-owner-only><p class="workroom-panel-kicker">Systems</p><h2>Automation health</h2><p id="workroom-automation-summary" class="workroom-inline-hint">Checking connections...</p><button class="workroom-button workroom-button-quiet" data-workroom-view="automations" type="button">Open automations</button></article>
+              <article class="workroom-panel workroom-guest-display-panel" data-module="guest-display">
                 <p class="workroom-panel-kicker">TV privacy</p>
                 <h2>Guest display</h2>
                 <form id="workroom-guest-display-form" class="workroom-form">
@@ -70,33 +72,60 @@
           <div class="workroom-section-heading"><div><p class="workroom-panel-kicker">Execution</p><h2>Work</h2></div><div class="workroom-inline-actions"><button class="workroom-button workroom-button-quiet" data-open-quick-add="project" type="button">Add project</button><button class="workroom-button workroom-button-primary" data-open-quick-add="task" type="button">Add task</button></div></div>
           <div class="workroom-work-grid">
             <article class="workroom-panel"><div class="workroom-panel-heading"><h2>Tasks</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="task" type="button">Add</button></div><div id="workroom-tasks" class="workroom-record-list"></div></article>
-            <article class="workroom-panel"><div class="workroom-panel-heading"><h2>Follow-ups</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="contact" type="button">Add</button></div><div id="workroom-contacts" class="workroom-record-list"></div></article>
-            <article class="workroom-panel"><div class="workroom-panel-heading"><h2>Projects</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="project" type="button">Add</button></div><div id="workroom-projects" class="workroom-record-list"></div></article>
+            <article class="workroom-panel" data-module="follow-ups"><div class="workroom-panel-heading"><h2>Follow-ups</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="contact" type="button">Add</button></div><div id="workroom-contacts" class="workroom-record-list"></div></article>
+            <article class="workroom-panel" data-module="projects"><div class="workroom-panel-heading"><h2>Projects</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="project" type="button">Add</button></div><div id="workroom-projects" class="workroom-record-list"></div></article>
           </div>
         </section>
 
+        <section class="workroom-view" data-workroom-view-panel="ideas" data-module="ideas" hidden>
+          <div class="workroom-section-heading"><div><p class="workroom-panel-kicker">Thinking space</p><h2>Ideas & Notes</h2></div><button class="workroom-button workroom-button-primary" data-open-quick-add="idea" type="button">Add idea</button></div>
+          <div id="workroom-ideas" class="workroom-ideas-grid"></div>
+        </section>
+
         <section class="workroom-view" data-workroom-view-panel="money" hidden>
-          <div class="workroom-section-heading"><div><p class="workroom-panel-kicker">Commitments</p><h2>Money</h2></div><div class="workroom-inline-actions"><a class="workroom-button workroom-button-quiet" href="monthly-bills.html">Monthly bills</a><a class="workroom-button workroom-button-quiet" href="payment-entries.html">Payment entries</a><button class="workroom-button workroom-button-quiet" data-open-quick-add="ach" type="button">Add ACH</button><button class="workroom-button workroom-button-primary" data-open-quick-add="finance" type="button">Add reminder</button></div></div>
-          <div class="workroom-money-grid"><article class="workroom-panel"><div class="workroom-panel-heading"><h2>Finance reminders</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="finance" type="button">Add</button></div><div id="workroom-finance" class="workroom-record-list"></div></article><article class="workroom-panel"><div class="workroom-panel-heading"><h2>ACH entries</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="ach" type="button">Add</button></div><div id="workroom-ach" class="workroom-record-list"></div></article></div>
+          <div class="workroom-section-heading"><div><p class="workroom-panel-kicker">Commitments</p><h2>Money</h2></div><div class="workroom-inline-actions"><a class="workroom-button workroom-button-quiet" href="monthly-bills.html" data-module="monthly-bills">Monthly bills</a><a class="workroom-button workroom-button-quiet" href="payment-entries.html" data-module="payment-entries">Payment entries</a><button class="workroom-button workroom-button-quiet" data-open-quick-add="ach" data-module="ach" type="button">Add ACH</button><button class="workroom-button workroom-button-primary" data-open-quick-add="finance" data-module="finance" type="button">Add reminder</button></div></div>
+          <div class="workroom-money-grid"><article class="workroom-panel" data-module="finance"><div class="workroom-panel-heading"><h2>Finance reminders</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="finance" type="button">Add</button></div><div id="workroom-finance" class="workroom-record-list"></div></article><article class="workroom-panel" data-module="ach"><div class="workroom-panel-heading"><h2>ACH entries</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="ach" type="button">Add</button></div><div id="workroom-ach" class="workroom-record-list"></div></article></div>
         </section>
 
         <section class="workroom-view" data-workroom-view-panel="automations" hidden>
           <div class="workroom-section-heading"><div><p class="workroom-panel-kicker">Connected tools</p><h2>Automations</h2></div></div>
           <div class="workroom-automation-grid">
-            <article class="workroom-panel workroom-google-panel"><h2>Calendar & email</h2><div class="workroom-inline-actions"><button id="workroom-google-connect" class="workroom-button workroom-button-primary" type="button">Connect Google account</button><button id="workroom-google-sync" class="workroom-button workroom-button-quiet" type="button">Sync now</button></div><div id="workroom-connections" class="workroom-connection-list" aria-live="polite"></div></article>
-            <article class="workroom-panel workroom-source-copilot-panel"><div class="workroom-panel-heading"><div><p class="workroom-panel-kicker">Review only</p><h2>Source Copilot</h2></div><button id="workroom-source-scan" class="workroom-button workroom-button-primary" type="button">Scan now</button></div><p id="workroom-source-status" class="workroom-inline-hint">Checking Gmail and Slack...</p><div id="workroom-source-health" class="workroom-source-health"></div><div class="workroom-panel-heading workroom-source-queue-heading"><h3>Needs review</h3><button id="workroom-source-refresh" class="workroom-button workroom-button-quiet" type="button">Refresh</button></div><div id="workroom-source-candidates" class="workroom-record-list" aria-live="polite"></div></article>
-            <article class="workroom-panel"><h2>Automation inbox</h2><form id="workroom-automation-form" class="workroom-form workroom-compact-form"><label>Source<select id="workroom-automation-source"><option value="voice">Voice note</option><option value="slack">Slack summary</option><option value="gmail">Gmail summary</option><option value="gpt">GPT assistant</option><option value="manual" selected>Manual notes</option></select></label><label>Inbox text<textarea id="workroom-automation-text" maxlength="12000" required placeholder="Paste a summary or dictate your notes."></textarea></label><div class="workroom-inline-actions"><button id="workroom-automation-voice" class="workroom-button workroom-button-quiet" type="button">Start voice capture</button><button class="workroom-button workroom-button-primary" type="submit">Create tasks</button></div></form></article>
-            <article class="workroom-panel"><div class="workroom-panel-heading"><h2>GPT Action status</h2><button id="workroom-automation-refresh" class="workroom-button workroom-button-quiet" type="button">Refresh</button></div><p id="workroom-automation-usage" class="workroom-inline-hint">Usage data will appear after sign-in.</p><div id="workroom-automation-audit" class="workroom-record-list"></div></article>
+            <article class="workroom-panel workroom-google-panel" data-module="google"><h2>Calendar & email</h2><div class="workroom-inline-actions"><button id="workroom-google-connect" class="workroom-button workroom-button-primary" type="button">Connect Google account</button><button id="workroom-google-sync" class="workroom-button workroom-button-quiet" type="button">Sync now</button></div><div id="workroom-connections" class="workroom-connection-list" aria-live="polite"></div></article>
+            <article class="workroom-panel workroom-source-copilot-panel" data-owner-only><div class="workroom-panel-heading"><div><p class="workroom-panel-kicker">Review only</p><h2>Source Copilot</h2></div><button id="workroom-source-scan" class="workroom-button workroom-button-primary" type="button">Scan now</button></div><p id="workroom-source-status" class="workroom-inline-hint">Checking Gmail and Slack...</p><div id="workroom-source-health" class="workroom-source-health"></div><div class="workroom-panel-heading workroom-source-queue-heading"><h3>Needs review</h3><button id="workroom-source-refresh" class="workroom-button workroom-button-quiet" type="button">Refresh</button></div><div id="workroom-source-candidates" class="workroom-record-list" aria-live="polite"></div></article>
+            <article class="workroom-panel" data-owner-only><h2>Automation inbox</h2><form id="workroom-automation-form" class="workroom-form workroom-compact-form"><label>Source<select id="workroom-automation-source"><option value="voice">Voice note</option><option value="slack">Slack summary</option><option value="gmail">Gmail summary</option><option value="gpt">GPT assistant</option><option value="manual" selected>Manual notes</option></select></label><label>Inbox text<textarea id="workroom-automation-text" maxlength="12000" required placeholder="Paste a summary or dictate your notes."></textarea></label><div class="workroom-inline-actions"><button id="workroom-automation-voice" class="workroom-button workroom-button-quiet" type="button">Start voice capture</button><button class="workroom-button workroom-button-primary" type="submit">Create tasks</button></div></form></article>
+            <article class="workroom-panel" data-owner-only><div class="workroom-panel-heading"><h2>GPT Action status</h2><button id="workroom-automation-refresh" class="workroom-button workroom-button-quiet" type="button">Refresh</button></div><p id="workroom-automation-usage" class="workroom-inline-hint">Usage data will appear after sign-in.</p><div id="workroom-automation-audit" class="workroom-record-list"></div></article>
           </div>
         </section>
+
+        <section class="workroom-view" data-workroom-view-panel="settings" hidden>
+          <div class="workroom-section-heading"><div><p class="workroom-panel-kicker">Your space</p><h2>Desk settings</h2></div></div>
+          <form id="workroom-settings-form" class="workroom-panel workroom-settings-form">
+            <label>Workspace name<input id="workroom-settings-name" maxlength="120" required /></label>
+            <label>Starting preset<select id="workroom-settings-preset"></select></label>
+            <fieldset><legend>Modules</legend><div id="workroom-settings-modules" class="workroom-module-grid"></div></fieldset>
+            <button class="workroom-button workroom-button-primary" type="submit">Save settings</button>
+          </form>
+        </section>
       </div>
+
+      <section id="workroom-onboarding" class="workroom-gate hidden">
+        <p class="workroom-eyebrow">Welcome to The Desk</p>
+        <h1>Make it yours.</h1>
+        <p>Choose a useful starting point. You can change every optional module later.</p>
+        <form id="workroom-onboarding-form" class="workroom-form workroom-onboarding-form">
+          <label>Workspace name<input id="workroom-onboarding-name" maxlength="120" required placeholder="Pastor's Desk" /></label>
+          <div id="workroom-onboarding-presets" class="workroom-preset-grid"></div>
+          <button class="workroom-button workroom-button-primary" type="submit">Open my Desk</button>
+        </form>
+      </section>
 
       <div id="workroom-quick-add-dialog" class="workroom-dialog" hidden>
         <div class="workroom-dialog-backdrop" data-close-quick-add></div>
         <section class="workroom-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="workroom-quick-add-title">
           <div class="workroom-panel-heading"><div><p class="workroom-panel-kicker">Capture</p><h2 id="workroom-quick-add-title">Quick add</h2></div><button class="workroom-icon-button" data-close-quick-add aria-label="Close quick add" type="button">×</button></div>
-          <div class="workroom-quick-add-types" role="group" aria-label="Item type"><button data-quick-add-type="task" type="button">Task</button><button data-quick-add-type="contact" type="button">Follow-up</button><button data-quick-add-type="finance" type="button">Finance</button><button data-quick-add-type="project" type="button">Project</button><button data-quick-add-type="ach" type="button">ACH</button></div>
+          <div class="workroom-quick-add-types" role="group" aria-label="Item type"><button data-quick-add-type="task" type="button">Task</button><button data-quick-add-type="idea" data-module="ideas" type="button">Idea</button><button data-quick-add-type="contact" data-module="follow-ups" type="button">Follow-up</button><button data-quick-add-type="finance" data-module="finance" type="button">Finance</button><button data-quick-add-type="project" data-module="projects" type="button">Project</button><button data-quick-add-type="ach" data-module="ach" type="button">ACH</button></div>
           <form id="workroom-task-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="task"><label>Task<input id="workroom-task-title" maxlength="180" required placeholder="The next useful thing" /></label><label>Project<select id="workroom-task-project"><option value="">No project</option></select></label><label>Priority<select id="workroom-task-priority"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></label><label>Due date<input id="workroom-task-date" type="date" /></label><label>Notes<textarea id="workroom-task-notes" maxlength="1000" placeholder="Optional context"></textarea></label><button class="workroom-button workroom-button-primary" type="submit">Add task</button></form>
+          <form id="workroom-idea-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="idea" hidden><label>Title<input id="workroom-idea-title" maxlength="180" required placeholder="A thought worth keeping" /></label><label>Notes<textarea id="workroom-idea-body" maxlength="12000" placeholder="Develop the thought..."></textarea></label><label>Tags<input id="workroom-idea-tags" maxlength="240" placeholder="sermon, grace, series" /></label><label>Status<select id="workroom-idea-status"><option value="inbox">Inbox</option><option value="developing">Developing</option><option value="archived">Archived</option></select></label><button class="workroom-button workroom-button-primary" type="submit">Save idea</button></form>
           <form id="workroom-contact-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="contact" hidden><label>Contact<input id="workroom-contact-name" maxlength="120" required placeholder="Name or organization" /></label><label>Follow up on<input id="workroom-contact-date" type="date" required /></label><label>Reason<textarea id="workroom-contact-reason" maxlength="500" required placeholder="What needs attention?"></textarea></label><label>How<select id="workroom-contact-method"><option value="phone">Phone</option><option value="email">Email</option></select></label><label>Phone or email<input id="workroom-contact-detail" maxlength="160" required placeholder="Number or address" /></label><button class="workroom-button workroom-button-primary" type="submit">Add follow-up</button></form>
           <form id="workroom-finance-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="finance" hidden><label>Reminder<input id="workroom-finance-title" maxlength="160" required placeholder="Invoice follow-up" /></label><label>Category<input id="workroom-finance-category" maxlength="50" placeholder="Invoice, approval, filing" /></label><label>Urgency<select id="workroom-finance-urgency"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></label><label>Due date<input id="workroom-finance-date" type="date" /></label><label>Amount (optional)<input id="workroom-finance-amount" type="number" step="0.01" min="0" /></label><label>Reference<input id="workroom-finance-reference" maxlength="160" placeholder="Vendor or note" /></label><button class="workroom-button workroom-button-primary" type="submit">Add reminder</button></form>
           <form id="workroom-project-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="project" hidden><label>Project<input id="workroom-project-title" maxlength="120" required placeholder="Summer site refresh" /></label><label>Target date<input id="workroom-project-date" type="date" /></label><label>Color<select id="workroom-project-color"><option value="fern">Fern</option><option value="sky">Sky</option><option value="sun">Sun</option><option value="clay">Clay</option></select></label><button class="workroom-button workroom-button-primary" type="submit">Add project</button></form>

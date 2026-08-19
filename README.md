@@ -63,19 +63,34 @@ firebase deploy --only firestore:rules,storage,functions
 
 After deploy, sign in as the triathlon manager on the tracker page, click `Connect Strava`, approve the app, then click `Sync Now` to pull activities into `triathlonSeasons/2026-andrew-august-22/stravaActivities`.
 
-## The Workroom Setup
+## The Desk Setup
 
-The Workroom is a private, owner-only office system with two pages:
+The Desk is a private, multi-user workspace with two primary pages:
 
-- `workroom.html` — the read-only TV display.
-- `workroom-control.html` — projects, tasks, focus, treasurer reminders, and Google connection management.
+- `workroom.html` - the TV display.
+- `workroom-control.html` - onboarding, tasks, projects, ideas, settings, and connected tools.
 
-Both pages require Firebase Authentication with `andrewpcarlson85@gmail.com`. They use real-time Firestore data under the signed-in owner's Workroom documents. Google Calendar and Gmail data are fetched only by Cloud Functions; browser clients cannot read OAuth state or token documents.
+Internal `workroom*` filenames, Functions, CSS hooks, and Firestore paths remain unchanged for compatibility. Each user's data stays below `workrooms/{uid}` and Firestore rules deny cross-user access.
+
+### Access and onboarding
+
+1. A user opens the control room and signs in with Google. Their existing `loginApprovals/{uid}` record is created with pending status.
+2. The admin opens `admin.html`, checks **The Desk**, and chooses **Approve + Save**.
+3. The user returns to the control room, names their workspace, and chooses a preset.
+4. Optional modules can be changed later in **Settings**. Disabling a module hides it without deleting its data.
+
+Available presets:
+
+- **Full Desk** - all general modules; this is the automatic legacy fallback for `andrewpcarlson85@gmail.com`.
+- **Pastor** - tasks, projects, Ideas & Notes, follow-ups, Google, and Guest Display.
+- **Simple Desk** - tasks and Ideas & Notes.
+
+GPT briefings, Slack, Source Copilot, the automation inbox, and external ChatGPT Actions remain restricted to the legacy admin account. Other approved users can connect their own Google Calendar and Gmail when the Google module is enabled.
 
 ### Google Calendar and Gmail OAuth
 
 1. In Google Cloud Console, enable the **Google Calendar API** and **Gmail API** for the Firebase project.
-2. Configure the OAuth consent screen and add the owner as a test user while the app is in testing.
+2. Configure the OAuth consent screen and add each pilot user as a test user while the app is in testing.
 3. Create a **Web application** OAuth client. Add the deployed `handleWorkroomGoogleCallback` Function URL as an authorized redirect URI.
 4. Set these Firebase Functions string parameters during deployment:
 	- `GOOGLE_CLIENT_ID`
@@ -89,13 +104,34 @@ firebase functions:secrets:set GOOGLE_CLIENT_SECRET
 
 The integration requests Calendar read-only and Gmail read-only access. It intentionally stores only selected calendar events and Gmail sender/subject metadata in the browser-readable summary; email bodies, snippets, access tokens, and refresh tokens stay out of client-readable data.
 
-Deploy the Workroom backend before opening the pages:
+Deploy rules and the backend before hosting the updated Desk pages:
 
 ```bash
 firebase deploy --only firestore:rules,functions
 ```
 
-After deployment, open `workroom-control.html`, sign in with the owner account, connect each Google account, choose the calendars to display, and use **Sync now** to verify the TV display. The scheduled Function refreshes connected accounts every ten minutes.
+After deployment, each approved user can open `workroom-control.html`, connect their own Google account, choose calendars, and use **Sync now**. Tokens remain server-only and are partitioned by Firebase UID. The scheduled Function refreshes connected accounts every ten minutes and skips users whose Desk or Google access has been revoked.
+
+### Verification and rollout
+
+Install Function dependencies, check Function syntax, and run the Firestore Emulator suite:
+
+```bash
+npm --prefix functions install
+npm --prefix functions run lint
+npm --prefix functions run test:rules
+```
+
+Deploy in this order:
+
+```bash
+firebase deploy --only firestore:rules,functions
+firebase deploy --only hosting
+```
+
+Before approving additional users, verify the existing admin still sees all legacy data and owner-only tools. Then onboard one Pastor preset account, create a `sermon`-tagged idea, connect a separate Google account, and verify both accounts are denied access to the other UID's documents.
+
+To revoke access without deleting data, remove **The Desk** from the user's approval or change the approval status. To roll back the client, redeploy the previous Hosting release; the retained `workroom*` paths and untouched module data remain compatible.
 
 ### Source Copilot (Gmail and Slack to Task Review)
 
@@ -139,7 +175,7 @@ Use several manual scans to review suggestions before changing the review-only s
 
 ### ChatGPT Actions (Direct Auto-Execution)
 
-The Workroom now includes a server-side action endpoint so a ChatGPT custom GPT can execute create operations immediately without calling the OpenAI API from your backend.
+The Desk includes an owner-only server-side action endpoint so a ChatGPT custom GPT can execute create operations immediately without calling the OpenAI API from your backend.
 
 Function endpoint:
 

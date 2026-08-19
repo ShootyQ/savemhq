@@ -24,24 +24,29 @@ import {
   financeRef,
   formatDay,
   formatDateTime,
-  isOwner,
+  ideasRef,
   priorityRank,
   projectsRef,
+  resolveDeskSession,
   tasksRef,
   workroomRef,
   briefingRef,
   focusRef,
 } from "./workroom-shared.js";
+import { DESK_MODULES, DESK_PRESETS, modulesForPreset, normalizeDeskModules } from "./workroom-modules.js";
 
 const $ = (id) => document.getElementById(id);
 const elements = {
-  gate: $("workroom-gate"), gateMessage: $("workroom-gate-message"), signIn: $("workroom-sign-in"), signOut: $("workroom-sign-out"), app: $("workroom-control"), notice: $("workroom-notice"),
+  gate: $("workroom-gate"), gateMessage: $("workroom-gate-message"), signIn: $("workroom-sign-in"), signOut: $("workroom-sign-out"), app: $("workroom-control"), notice: $("workroom-notice"), headerSubtitle: $("workroom-header-subtitle"),
+  onboarding: $("workroom-onboarding"), onboardingForm: $("workroom-onboarding-form"), onboardingName: $("workroom-onboarding-name"), onboardingPresets: $("workroom-onboarding-presets"),
+  settingsForm: $("workroom-settings-form"), settingsName: $("workroom-settings-name"), settingsPreset: $("workroom-settings-preset"), settingsModules: $("workroom-settings-modules"),
   automationForm: $("workroom-automation-form"), automationSource: $("workroom-automation-source"), automationText: $("workroom-automation-text"), automationVoice: $("workroom-automation-voice"),
   automationRefresh: $("workroom-automation-refresh"), automationUsage: $("workroom-automation-usage"), automationAudit: $("workroom-automation-audit"),
   sourceScan: $("workroom-source-scan"), sourceRefresh: $("workroom-source-refresh"), sourceStatus: $("workroom-source-status"), sourceHealth: $("workroom-source-health"), sourceCandidates: $("workroom-source-candidates"),
   contactForm: $("workroom-contact-form"), contactName: $("workroom-contact-name"), contactDate: $("workroom-contact-date"), contactReason: $("workroom-contact-reason"), contactMethod: $("workroom-contact-method"), contactDetail: $("workroom-contact-detail"), contacts: $("workroom-contacts"),
   projectForm: $("workroom-project-form"), projectTitle: $("workroom-project-title"), projectDate: $("workroom-project-date"), projectColor: $("workroom-project-color"), projects: $("workroom-projects"),
   taskForm: $("workroom-task-form"), taskTitle: $("workroom-task-title"), taskProject: $("workroom-task-project"), taskPriority: $("workroom-task-priority"), taskDate: $("workroom-task-date"), taskNotes: $("workroom-task-notes"), tasks: $("workroom-tasks"),
+  ideaForm: $("workroom-idea-form"), ideaTitle: $("workroom-idea-title"), ideaBody: $("workroom-idea-body"), ideaTags: $("workroom-idea-tags"), ideaStatus: $("workroom-idea-status"), ideas: $("workroom-ideas"),
   financeForm: $("workroom-finance-form"), financeTitle: $("workroom-finance-title"), financeCategory: $("workroom-finance-category"), financeUrgency: $("workroom-finance-urgency"), financeDate: $("workroom-finance-date"), financeAmount: $("workroom-finance-amount"), financeReference: $("workroom-finance-reference"), finance: $("workroom-finance"),
   achForm: $("workroom-ach-form"), achName: $("workroom-ach-name"), achAmount: $("workroom-ach-amount"), achDate: $("workroom-ach-date"), achReason: $("workroom-ach-reason"), achRecurring: $("workroom-ach-recurring"), ach: $("workroom-ach"),
   googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"), briefingCount: $("workroom-briefing-count"), briefingStatus: $("workroom-briefing-status"), briefingResult: $("workroom-briefing-result"), automationSummary: $("workroom-automation-summary"), todayStats: $("workroom-today-stats"), todayActions: $("workroom-today-actions"), quickAdd: $("workroom-quick-add"), quickAddDialog: $("workroom-quick-add-dialog"), guestDisplayForm: $("workroom-guest-display-form"), guestName: $("workroom-guest-name"), guestDisplayClear: $("workroom-guest-display-clear"), guestDisplayStatus: $("workroom-guest-display-status"),
@@ -60,7 +65,7 @@ const getSourceAutomationStatus = httpsCallable(functions, "getWorkroomSourceAut
 const listSourceCandidates = httpsCallable(functions, "listWorkroomAutomationCandidates");
 const approveSourceCandidate = httpsCallable(functions, "approveWorkroomAutomationCandidate");
 const rejectSourceCandidate = httpsCallable(functions, "rejectWorkroomAutomationCandidate");
-let state = { user: null, projects: [], tasks: [], finance: [], contacts: [], ach: [], briefing: {}, focus: {}, connections: [], currentView: "today", quickAddType: "task", unsubscribers: [] };
+let state = { user: null, session: null, profile: null, modules: [], projects: [], tasks: [], ideas: [], finance: [], contacts: [], ach: [], briefing: {}, focus: {}, connections: [], currentView: "today", quickAddType: "task", onboardingPreset: "pastor", unsubscribers: [] };
 let speechRecognition = null;
 let speechActive = false;
 let automationStatusInterval = null;
@@ -72,6 +77,7 @@ const notice = (message = "", error = false) => {
 const clean = (value) => String(value || "").trim();
 const timestampForDate = (value) => value ? new Date(`${value}T12:00:00`) : null;
 const cleanUp = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; };
+const hasModule = (moduleId) => state.modules.includes(moduleId);
 const renderBriefingCount = () => {
   const count = Number(state.briefing.dailyRunCount || 0);
   if (elements.briefingCount) elements.briefingCount.textContent = `Today: ${count} run${count === 1 ? "" : "s"}`;
@@ -111,11 +117,15 @@ const isOpen = (item) => item.status !== "done";
 const isDueNow = (value) => value && dateMillis(value) <= Date.now() + 24 * 60 * 60 * 1000;
 const renderToday = () => {
   const openTasks = state.tasks.filter(isOpen);
-  const openContacts = state.contacts.filter(isOpen);
-  const openFinance = state.finance.filter(isOpen);
+  const openContacts = hasModule("follow-ups") ? state.contacts.filter(isOpen) : [];
+  const openFinance = hasModule("finance") ? state.finance.filter(isOpen) : [];
   const dueCount = [...openTasks.map((item) => item.dueDate), ...openContacts.map((item) => item.followUpDate), ...openFinance.map((item) => item.dueDate)].filter(isDueNow).length;
   if (elements.todayStats) elements.todayStats.innerHTML = [
-    ["Open tasks", openTasks.length], ["Due now", dueCount], ["Follow-ups", openContacts.length], ["Finance", openFinance.length],
+    ["Open tasks", openTasks.length],
+    ["Due now", dueCount],
+    ...(hasModule("ideas") ? [["Active ideas", state.ideas.filter((idea) => idea.status !== "archived").length]] : []),
+    ...(hasModule("follow-ups") ? [["Follow-ups", openContacts.length]] : []),
+    ...(hasModule("finance") ? [["Finance", openFinance.length]] : []),
   ].map(([label, value]) => `<div class="workroom-stat"><strong>${value}</strong><span>${label}</span></div>`).join("");
   if (!elements.todayActions) return;
   const items = [
@@ -131,6 +141,8 @@ const renderToday = () => {
 };
 
 const setActiveView = (view) => {
+  const target = document.querySelector(`[data-workroom-view-panel="${view}"]`);
+  if (!target || target.dataset.moduleHidden === "true") return;
   state.currentView = view;
   document.querySelectorAll("[data-workroom-view-panel]").forEach((panel) => { panel.hidden = panel.dataset.workroomViewPanel !== view; panel.classList.toggle("is-active", panel.dataset.workroomViewPanel === view); });
   document.querySelectorAll(".workroom-view-tab").forEach((button) => { const active = button.dataset.workroomView === view; button.classList.toggle("is-active", active); button.setAttribute("aria-current", active ? "page" : "false"); });
@@ -138,6 +150,54 @@ const setActiveView = (view) => {
     refreshAutomationStatus(true);
     refreshSourceAutomation(true);
   }
+};
+
+const applyModuleVisibility = () => {
+  document.querySelectorAll("[data-module]").forEach((element) => {
+    const visible = hasModule(element.dataset.module);
+    element.hidden = !visible;
+    element.dataset.moduleHidden = String(!visible);
+  });
+  document.querySelectorAll("[data-module-any]").forEach((element) => {
+    const visible = String(element.dataset.moduleAny || "").split(/\s+/).some(hasModule);
+    element.hidden = !visible;
+    element.dataset.moduleHidden = String(!visible);
+  });
+  document.querySelectorAll("[data-owner-only]").forEach((element) => { element.hidden = !state.session?.isAdmin; });
+  document.querySelectorAll("[data-owner-fallback]").forEach((element) => {
+    if (state.session?.isAdmin) { element.hidden = false; element.dataset.moduleHidden = "false"; }
+  });
+};
+
+const renderProfileControls = () => {
+  elements.headerSubtitle.textContent = state.profile.workspaceName;
+  elements.settingsName.value = state.profile.workspaceName;
+  elements.settingsPreset.innerHTML = Object.values(DESK_PRESETS).map((preset) => `<option value="${preset.id}" ${preset.id === state.profile.presetId ? "selected" : ""}>${escapeHtml(preset.label)}</option>`).join("");
+  elements.settingsModules.innerHTML = DESK_MODULES.map((module) => `<label class="workroom-module-option"><input type="checkbox" value="${module.id}" ${state.modules.includes(module.id) ? "checked" : ""} ${module.required ? "disabled" : ""} /><span><strong>${escapeHtml(module.label)}</strong><small>${escapeHtml(module.description)}</small></span></label>`).join("");
+};
+
+const profilePayload = ({ workspaceName, presetId, enabledModules }) => ({
+  ownerUid: state.user.uid,
+  email: state.user.email || "",
+  displayName: state.user.displayName || state.user.email || "Desk user",
+  workspaceName: clean(workspaceName),
+  presetId,
+  enabledModules: normalizeDeskModules(enabledModules, presetId),
+  onboardingComplete: true,
+  schemaVersion: 1,
+  createdAt: state.profile?.createdAt || serverTimestamp(),
+  updatedAt: serverTimestamp(),
+});
+
+const saveProfile = async (values) => {
+  const payload = profilePayload(values);
+  await setDoc(workroomRef(state.user.uid), payload);
+  state.session = await resolveDeskSession(state.user);
+  state.profile = state.session.profile;
+  state.modules = state.session.modules;
+  applyModuleVisibility();
+  renderProfileControls();
+  subscribe(state.user);
 };
 
 const setQuickAddType = (type) => {
@@ -191,7 +251,7 @@ const renderAutomationStatus = (status = null) => {
 };
 
 const refreshAutomationStatus = async (quiet = false) => {
-  if (!state.user || !isOwner(state.user)) {
+  if (!state.user || !state.session?.isAdmin) {
     renderAutomationStatus(null);
     return;
   }
@@ -228,7 +288,7 @@ const renderSourceAutomation = ({ status, candidates } = {}) => {
 };
 
 const refreshSourceAutomation = async (quiet = false) => {
-  if (!state.user || !isOwner(state.user)) {
+  if (!state.user || !state.session?.isAdmin) {
     renderSourceAutomation(null);
     return;
   }
@@ -331,6 +391,13 @@ const renderAch = () => {
   elements.ach.innerHTML = sorted.length ? sorted.map((item) => `<div class="workroom-record"><div><strong>${escapeHtml(item.name)} · $${Number(item.amount || 0).toFixed(2)}</strong><small>${item.withdrawalDate ? formatDay(item.withdrawalDate) : "No date"} · ${escapeHtml(item.reason)}${item.recurring ? " · recurring" : ""}</small></div><button data-delete-ach="${item.id}" class="workroom-icon-button" aria-label="Delete ACH entry for ${escapeHtml(item.name)}">×</button></div>`).join("") : `<p class="workroom-empty">No ACH entries waiting.</p>`;
 };
 
+const renderIdeas = () => {
+  const statusRank = { developing: 0, inbox: 1, archived: 2 };
+  const sorted = [...state.ideas].sort((left, right) => (statusRank[left.status] ?? 3) - (statusRank[right.status] ?? 3) || String(left.title).localeCompare(String(right.title)));
+  elements.ideas.innerHTML = sorted.length ? sorted.map((idea) => `<article class="workroom-panel workroom-idea ${idea.status === "archived" ? "is-archived" : ""}"><div class="workroom-panel-heading"><div><p class="workroom-panel-kicker">${escapeHtml(idea.status)}</p><h2>${escapeHtml(idea.title)}</h2></div><button class="workroom-icon-button" data-delete-idea="${idea.id}" type="button" aria-label="Delete ${escapeHtml(idea.title)}">×</button></div><p>${escapeHtml(idea.body || "No notes yet.")}</p><div class="workroom-idea-footer"><div>${(idea.tags || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div><select data-idea-status="${idea.id}" aria-label="Status for ${escapeHtml(idea.title)}"><option value="inbox" ${idea.status === "inbox" ? "selected" : ""}>Inbox</option><option value="developing" ${idea.status === "developing" ? "selected" : ""}>Developing</option><option value="archived" ${idea.status === "archived" ? "selected" : ""}>Archived</option></select></div></article>`).join("") : `<p class="workroom-empty">Keep the first thought worth returning to.</p>`;
+  renderToday();
+};
+
 const renderConnections = () => {
   elements.connections.innerHTML = state.connections.length ? state.connections.map((connection) => `<div class="workroom-connection"><div><strong>Google account</strong><small>${escapeHtml(connection.status)}${connection.lastSyncAt ? ` · synced ${formatDateTime(connection.lastSyncAt)}` : " · waiting for first sync"}${connection.error ? ` · ${escapeHtml(connection.error)}` : ""}</small></div><div class="workroom-connection-actions"><button class="workroom-button workroom-button-quiet" data-manage-connection="${connection.id}" type="button">Calendars</button><button class="workroom-button workroom-button-quiet" data-disconnect-connection="${connection.id}" type="button">Disconnect</button></div></div>`).join("") : `<p class="workroom-empty">No Google accounts connected yet.</p>`;
   if (elements.automationSummary) elements.automationSummary.textContent = state.connections.length ? `${state.connections.length} Google connection${state.connections.length === 1 ? "" : "s"} active.` : "Google is not connected yet.";
@@ -338,16 +405,17 @@ const renderConnections = () => {
 
 const subscribe = (user) => {
   cleanUp();
-  state.unsubscribers.push(
-    onSnapshot(projectsRef(user.uid), (snapshot) => { state.projects = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderProjects(); renderTasks(); }),
-    onSnapshot(tasksRef(user.uid), (snapshot) => { state.tasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderTasks(); }),
-    onSnapshot(financeRef(user.uid), (snapshot) => { state.finance = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderFinance(); }),
-    onSnapshot(contactFollowUpsRef(user.uid), (snapshot) => { state.contacts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderContacts(); }),
-    onSnapshot(achEntriesRef(user.uid), (snapshot) => { state.ach = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderAch(); }),
-    onSnapshot(briefingRef(user.uid), (snapshot) => { state.briefing = snapshot.data() || {}; renderBriefingCount(); }),
-    onSnapshot(focusRef(user.uid), (snapshot) => { state.focus = snapshot.data() || {}; renderGuestDisplay(); }),
-    onSnapshot(connectionsRef(user.uid), (snapshot) => { state.connections = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderConnections(); }),
-  );
+  state.projects = []; state.ideas = []; state.finance = []; state.contacts = []; state.ach = []; state.connections = [];
+  state.unsubscribers.push(onSnapshot(tasksRef(user.uid), (snapshot) => { state.tasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderTasks(); }));
+  if (hasModule("projects")) state.unsubscribers.push(onSnapshot(projectsRef(user.uid), (snapshot) => { state.projects = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderProjects(); renderTasks(); }));
+  if (hasModule("ideas")) state.unsubscribers.push(onSnapshot(ideasRef(user.uid), (snapshot) => { state.ideas = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderIdeas(); }));
+  if (hasModule("finance")) state.unsubscribers.push(onSnapshot(financeRef(user.uid), (snapshot) => { state.finance = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderFinance(); }));
+  if (hasModule("follow-ups")) state.unsubscribers.push(onSnapshot(contactFollowUpsRef(user.uid), (snapshot) => { state.contacts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderContacts(); }));
+  if (hasModule("ach")) state.unsubscribers.push(onSnapshot(achEntriesRef(user.uid), (snapshot) => { state.ach = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderAch(); }));
+  if (state.session?.isAdmin) state.unsubscribers.push(onSnapshot(briefingRef(user.uid), (snapshot) => { state.briefing = snapshot.data() || {}; renderBriefingCount(); }));
+  if (hasModule("guest-display")) state.unsubscribers.push(onSnapshot(focusRef(user.uid), (snapshot) => { state.focus = snapshot.data() || {}; renderGuestDisplay(); }));
+  if (hasModule("google")) state.unsubscribers.push(onSnapshot(connectionsRef(user.uid), (snapshot) => { state.connections = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderConnections(); }));
+  renderToday();
 };
 
 const run = async (action, success) => { try { await action(); if (success) notice(success); } catch (error) { notice(String(error.message || "That did not work. Try again."), true); } };
@@ -388,6 +456,7 @@ elements.automationForm?.addEventListener("submit", (event) => {
 elements.contactForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(contactFollowUpsRef(state.user.uid), { name: clean(elements.contactName.value), followUpDate: timestampForDate(elements.contactDate.value), reason: clean(elements.contactReason.value), method: elements.contactMethod.value, contactDetail: clean(elements.contactDetail.value), status: "open", completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.contactForm.reset(); closeQuickAdd(); }, "Follow-up added."); });
 elements.projectForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(projectsRef(state.user.uid), { title: clean(elements.projectTitle.value), status: "active", color: elements.projectColor.value, outcome: "", targetDate: timestampForDate(elements.projectDate.value), createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.projectForm.reset(); closeQuickAdd(); }, "Project added."); });
 elements.taskForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(tasksRef(state.user.uid), { title: clean(elements.taskTitle.value), projectId: elements.taskProject.value, status: "next", priority: elements.taskPriority.value, dueDate: timestampForDate(elements.taskDate.value), notes: clean(elements.taskNotes.value), completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.taskForm.reset(); closeQuickAdd(); }, "Task added."); });
+elements.ideaForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { const tags = [...new Set(elements.ideaTags.value.split(",").map((tag) => clean(tag).toLowerCase()).filter(Boolean))].slice(0, 12); await addDoc(ideasRef(state.user.uid), { title: clean(elements.ideaTitle.value), body: clean(elements.ideaBody.value), tags, status: elements.ideaStatus.value, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.ideaForm.reset(); closeQuickAdd(); }, "Idea saved."); });
 elements.financeForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { const amount = clean(elements.financeAmount.value); await addDoc(financeRef(state.user.uid), { title: clean(elements.financeTitle.value), category: clean(elements.financeCategory.value), urgency: elements.financeUrgency.value, dueDate: timestampForDate(elements.financeDate.value), reference: clean(elements.financeReference.value), amount: amount ? Number(amount) : null, status: "open", completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.financeForm.reset(); closeQuickAdd(); }, "Reminder added."); });
 elements.achForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(achEntriesRef(state.user.uid), { name: clean(elements.achName.value), amount: Number(elements.achAmount.value), withdrawalDate: timestampForDate(elements.achDate.value), reason: clean(elements.achReason.value), recurring: elements.achRecurring.checked, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.achForm.reset(); closeQuickAdd(); }, "ACH entry added."); });
 elements.googleConnect.addEventListener("click", () => run(async () => { const result = await googleConnect(); window.location.assign(result.data.authorizeUrl); }));
@@ -395,6 +464,9 @@ elements.googleSync.addEventListener("click", () => run(() => googleSync(), "Goo
 elements.briefingGenerate?.addEventListener("click", async () => { elements.briefingGenerate.disabled = true; await run(() => generateBriefing(), "Review complete. The receipt below shows what GPT checked and found."); elements.briefingGenerate.disabled = false; });
 elements.guestDisplayForm?.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { const name = clean(elements.guestName.value); if (!name) throw new Error("Add a guest name first."); await setDoc(focusRef(state.user.uid), { guestWelcome: { active: true, name, updatedAt: serverTimestamp() } }, { merge: true }); }, "Welcome screen is live on the TV."); });
 elements.guestDisplayClear?.addEventListener("click", () => run(() => setDoc(focusRef(state.user.uid), { guestWelcome: { active: false, name: "", updatedAt: serverTimestamp() } }, { merge: true }), "TV dashboard restored."));
+elements.settingsPreset.addEventListener("change", () => { const modules = modulesForPreset(elements.settingsPreset.value); elements.settingsModules.querySelectorAll("input").forEach((input) => { input.checked = modules.includes(input.value); }); });
+elements.settingsForm.addEventListener("submit", (event) => { event.preventDefault(); run(() => saveProfile({ workspaceName: elements.settingsName.value, presetId: elements.settingsPreset.value, enabledModules: [...elements.settingsModules.querySelectorAll("input:checked")].map((input) => input.value) }), "Desk settings saved."); });
+elements.onboardingForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await saveProfile({ workspaceName: elements.onboardingName.value, presetId: state.onboardingPreset, enabledModules: modulesForPreset(state.onboardingPreset) }); elements.onboarding.classList.add("hidden"); elements.app.classList.remove("hidden"); }, "Your Desk is ready."); });
 elements.quickAdd?.addEventListener("click", () => openQuickAdd());
 document.querySelectorAll("[data-workroom-view]").forEach((button) => button.addEventListener("click", () => setActiveView(button.dataset.workroomView)));
 document.querySelectorAll("[data-open-quick-add]").forEach((button) => button.addEventListener("click", () => openQuickAdd(button.dataset.openQuickAdd)));
@@ -412,6 +484,7 @@ document.addEventListener("click", (event) => {
   if (button.dataset.deleteFinance) run(() => deleteDoc(doc(financeRef(state.user.uid), button.dataset.deleteFinance)));
   if (button.dataset.deleteContact) run(() => deleteDoc(doc(contactFollowUpsRef(state.user.uid), button.dataset.deleteContact)));
   if (button.dataset.deleteAch) run(() => deleteDoc(doc(achEntriesRef(state.user.uid), button.dataset.deleteAch)));
+  if (button.dataset.deleteIdea) run(() => deleteDoc(doc(ideasRef(state.user.uid), button.dataset.deleteIdea)), "Idea deleted.");
   if (taskId) { const task = state.tasks.find((item) => item.id === taskId); run(() => updateDoc(doc(tasksRef(state.user.uid), taskId), { status: task.status === "done" ? "next" : "done", completedAt: task.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
   if (financeId) { const item = state.finance.find((record) => record.id === financeId); run(() => updateDoc(doc(financeRef(state.user.uid), financeId), { status: item.status === "done" ? "open" : "done", completedAt: item.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
   if (button.dataset.completeContact) { const item = state.contacts.find((record) => record.id === button.dataset.completeContact); run(() => updateDoc(doc(contactFollowUpsRef(state.user.uid), item.id), { status: item.status === "done" ? "open" : "done", completedAt: item.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
@@ -422,20 +495,29 @@ document.addEventListener("click", (event) => {
   if (button.dataset.saveCalendars) run(() => saveGoogleCalendars({ connectionId: button.dataset.saveCalendars, calendarIds: [...document.querySelectorAll(".workroom-calendar-picker input:checked")].map((input) => input.value) }), "Calendars saved and synced.");
 });
 
+document.addEventListener("change", (event) => {
+  const status = event.target.closest("[data-idea-status]");
+  if (status) run(() => updateDoc(doc(ideasRef(state.user.uid), status.dataset.ideaStatus), { status: status.value, updatedAt: serverTimestamp() }), "Idea updated.");
+});
+
 onAuthStateChanged(auth, async (user) => {
   cleanUp();
   clearAutomationStatusTimer();
   state.user = user;
-  if (!user) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.remove("hidden"); elements.gateMessage.textContent = "Sign in with the Workroom owner account to continue."; renderAutomationStatus(null); return; }
-  if (!isOwner(user)) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = "This private space is reserved for its owner."; renderAutomationStatus(null); return; }
+  state.session = null; state.profile = null; state.modules = [];
+  if (!user) { elements.app.classList.add("hidden"); elements.onboarding.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.remove("hidden"); elements.gateMessage.textContent = "Sign in to open your Desk."; renderAutomationStatus(null); return; }
+  try { state.session = await resolveDeskSession(user); } catch (error) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = `Desk access could not be checked: ${error.message || "unknown error"}`; return; }
+  if (!state.session.hasDeskAccess) { elements.app.classList.add("hidden"); elements.onboarding.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = state.session.approvalStatus === "pending" ? "Your Desk request is waiting for approval." : "This account has not been granted Desk access."; renderAutomationStatus(null); return; }
+  state.profile = state.session.profile; state.modules = state.session.modules;
   elements.gate.classList.add("hidden"); elements.app.classList.remove("hidden");
-  await setDoc(workroomRef(user.uid), { title: "The Workroom", updatedAt: serverTimestamp() }, { merge: true });
+  elements.onboardingPresets.innerHTML = Object.values(DESK_PRESETS).filter((preset) => preset.id !== "full" || state.session.isAdmin).map((preset) => `<label class="workroom-preset-option"><input type="radio" name="desk-preset" value="${preset.id}" ${preset.id === state.onboardingPreset ? "checked" : ""} /><span><strong>${escapeHtml(preset.label)}</strong><small>${escapeHtml(preset.description)}</small></span></label>`).join("");
+  elements.onboardingPresets.querySelectorAll("input").forEach((input) => input.addEventListener("change", () => { state.onboardingPreset = input.value; }));
+  applyModuleVisibility(); renderProfileControls();
+  if (!state.profile.onboardingComplete) { elements.app.classList.add("hidden"); elements.onboarding.classList.remove("hidden"); elements.onboardingName.value = state.profile.workspaceName; return; }
   subscribe(user);
-  await refreshAutomationStatus(true);
-  await refreshSourceAutomation(true);
-  automationStatusInterval = window.setInterval(() => { refreshAutomationStatus(true); }, 60_000);
+  if (state.session.isAdmin) { await refreshAutomationStatus(true); await refreshSourceAutomation(true); automationStatusInterval = window.setInterval(() => { refreshAutomationStatus(true); }, 60_000); }
   const googleState = new URLSearchParams(window.location.search).get("google");
   const googleReason = new URLSearchParams(window.location.search).get("reason");
   if (googleState) { notice(googleState === "connected" ? "Google account connected." : `Google connection was not completed${googleReason ? ` (${googleReason}).` : "."}`, googleState !== "connected"); window.history.replaceState({}, "", "workroom-control.html"); }
-  setVoiceButton();
+  if (state.session.isAdmin) setVoiceButton();
 });

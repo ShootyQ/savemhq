@@ -1,7 +1,7 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth } from "./auth-shared.js";
-import { achEntriesRef, actionStatesRef, asDate, briefingRef, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, focusRef, formatDay, formatDateTime, isOwner, monthlyBillCyclesRef, monthlyBillVendorsRef, paymentEntrySourcesRef, priorityRank, projectsRef, summaryRef, tasksRef } from "./workroom-shared.js";
+import { achEntriesRef, actionStatesRef, asDate, briefingRef, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, focusRef, formatDay, formatDateTime, ideasRef, monthlyBillCyclesRef, monthlyBillVendorsRef, paymentEntrySourcesRef, priorityRank, projectsRef, resolveDeskSession, summaryRef, tasksRef } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
 const elements = {
@@ -12,13 +12,13 @@ const SPRINT_KEY = "workroom-compass-sprint";
 const QUEUE_LIMIT = 5;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const quotes = ["Well begun is half done. - Aristotle", "The obstacle is the path. - Zen proverb", "Start where you are. Use what you have. Do what you can. - Arthur Ashe", "The most effective way to do it, is to do it. - Amelia Earhart"];
-let state = { user: null, tasks: [], tasksLoaded: false, projects: [], finance: [], contacts: [], ach: [], paymentEntrySources: [], actionStates: [], billVendors: [], billCycles: [], summary: {}, briefing: {}, focus: {}, connections: [], unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25, radarCategory: "attention", operationsCategory: "all", activeDialog: null, dialogTrigger: null };
+let state = { user: null, session: null, modules: [], tasks: [], tasksLoaded: false, projects: [], ideas: [], finance: [], contacts: [], ach: [], paymentEntrySources: [], actionStates: [], billVendors: [], billCycles: [], summary: {}, briefing: {}, focus: {}, connections: [], unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25, radarCategory: "attention", operationsCategory: "all", activeDialog: null, dialogTrigger: null };
 let celebrationTimer = null;
 
-const loadStored = (key, fallback = null) => { try { return JSON.parse(window.localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
-const saveStored = (key, value) => { try { if (value == null || value === "") window.localStorage.removeItem(key); else window.localStorage.setItem(key, JSON.stringify(value)); } catch { } };
-state.pinnedTaskId = loadStored(PIN_KEY, "");
-state.sprint = loadStored(SPRINT_KEY, null);
+const storageKey = (key) => `${key}:${state.user?.uid || "signed-out"}`;
+const loadStored = (key, fallback = null) => { try { return JSON.parse(window.localStorage.getItem(storageKey(key))) ?? fallback; } catch { return fallback; } };
+const saveStored = (key, value) => { try { const scopedKey = storageKey(key); if (value == null || value === "") window.localStorage.removeItem(scopedKey); else window.localStorage.setItem(scopedKey, JSON.stringify(value)); } catch { } };
+const hasModule = (moduleId) => state.modules.includes(moduleId);
 
 const removeSubscriptions = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; };
 const blank = (copy) => `<p class="workroom-tv-empty">${escapeHtml(copy)}</p>`;
@@ -73,7 +73,16 @@ const operationGroups = (now) => {
   const calendar = (state.summary.upcomingEvents || []).map((event) => radarItem("Calendar", event.title, event.location || "Google Calendar", `${dayOffset(eventDate(event), now) === 0 ? "Today - " : `${formatDay(eventDate(event))} - `}${eventWhen(event)}`, 0, event.id, true, "calendar"));
   const mail = (state.summary.recentMail || []).map((message) => radarItem("Mail", message.subject, message.from || "Google Mail", "Unread", 0, message.id, true, "mail"));
   const projects = [...state.projects].filter((item) => item.status === "active").sort(byDate("targetDate")).map((item) => { const projectTasks = state.tasks.filter((task) => task.projectId === item.id); const complete = projectTasks.filter((task) => task.status === "done").length; const percent = projectTasks.length ? Math.round(complete / projectTasks.length * 100) : 0; return radarItem("Project", item.title, `${percent}% complete`, item.targetDate ? `Target ${formatDay(item.targetDate)}` : "No target date", 0, item.id, true, "project"); });
-  return [{ id: "contacts", label: "Contacts", items: contacts }, { id: "finance", label: "Finance", items: finance }, { id: "ach", label: "ACH", items: ach }, { id: "payment-entries", label: "Payments", items: paymentEntries }, { id: "calendar", label: "Calendar", items: calendar }, { id: "mail", label: "Mail", items: mail }, { id: "projects", label: "Projects", items: projects }];
+  const ideas = state.ideas.filter((idea) => idea.status !== "archived").map((idea) => radarItem("Idea", idea.title, (idea.tags || []).join(", ") || "Idea & note", idea.status === "developing" ? "Developing" : "Inbox", 0));
+  return [
+    ...(hasModule("follow-ups") ? [{ id: "contacts", label: "Contacts", items: contacts }] : []),
+    ...(hasModule("ideas") ? [{ id: "ideas", label: "Ideas", items: ideas }] : []),
+    ...(hasModule("finance") ? [{ id: "finance", label: "Finance", items: finance }] : []),
+    ...(hasModule("ach") ? [{ id: "ach", label: "ACH", items: ach }] : []),
+    ...(hasModule("payment-entries") ? [{ id: "payment-entries", label: "Payments", items: paymentEntries }] : []),
+    ...(hasModule("google") ? [{ id: "calendar", label: "Calendar", items: calendar }, { id: "mail", label: "Mail", items: mail }] : []),
+    ...(hasModule("projects") ? [{ id: "projects", label: "Projects", items: projects }] : []),
+  ];
 };
 const deriveDayModel = (now = new Date()) => {
   const openTasks = rankTasks(state.tasks.filter((task) => task.status !== "done" && !actionStateFor("task", task.id)), now);
@@ -128,7 +137,7 @@ const renderOperations = (model) => {
   elements.operationsContent.innerHTML = `<section><div class="workroom-operations-heading"><h3>Active queue</h3><span>${active.length}</span></div>${active.length ? active.map(mixedQueueRow).join("") : blank("The action queue is clear.")}</section><section><div class="workroom-operations-heading"><h3>Review later</h3><span>${later.length}</span></div>${later.length ? later.map(reviewLaterRow).join("") : blank("Nothing is waiting for later.")}</section>`;
 };
 const renderFooter = (model) => { if (!model.openTasks.length) elements.footer.textContent = `${model.completedToday.length} finished today. The room is clear.`; else if (model.phase === "wrap") elements.footer.textContent = `${model.completedToday.length} finished today - ${model.tomorrowCount} due tomorrow.`; else if (model.overdueCount) elements.footer.textContent = `${model.overdueCount} overdue item${model.overdueCount === 1 ? "" : "s"}. Clear the oldest promise first.`; else elements.footer.textContent = quotes[new Date().getDate() % quotes.length]; };
-const renderSprint = (now = Date.now()) => { const task = state.tasks.find((item) => item.id === state.sprint?.taskId && item.status !== "done"); if (state.tasksLoaded && state.sprint && !task) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } const sprint = state.sprint; let remaining = state.sprintMinutes * 60 * 1000; let progress = 0; if (sprint) { remaining = sprint.running ? Math.max(0, sprint.endAt - now) : sprint.remainingMs; progress = 1 - remaining / sprint.durationMs; if (remaining <= 0 && sprint.running) { sprint.running = false; sprint.remainingMs = 0; document.title = "Focus complete - The Workroom"; saveStored(SPRINT_KEY, sprint); } } const minutes = Math.floor(remaining / 60000); const seconds = Math.floor((remaining % 60000) / 1000); elements.focusTime.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`; elements.focusRing.style.setProperty("--focus-progress", `${Math.max(0, Math.min(1, progress)) * 360}deg`); elements.focusLabel.textContent = sprint ? task?.title || "Focus sprint" : "Focus sprint"; elements.focusStatus.textContent = !sprint ? "Choose a quiet block for this task." : remaining <= 0 ? "Sprint complete. Take a breath." : sprint.running ? "In progress" : "Paused"; elements.sprintToggle.disabled = !deriveDayModel().current; elements.sprintToggle.textContent = !sprint ? "Start" : sprint.running ? "Pause" : remaining <= 0 ? "Restart" : "Resume"; elements.sprintCancel.hidden = !sprint; elements.sprintChoices.forEach((button) => button.classList.toggle("is-active", Number(button.dataset.sprintMinutes) === state.sprintMinutes)); };
+const renderSprint = (now = Date.now()) => { const task = state.tasks.find((item) => item.id === state.sprint?.taskId && item.status !== "done"); if (state.tasksLoaded && state.sprint && !task) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Desk"; } const sprint = state.sprint; let remaining = state.sprintMinutes * 60 * 1000; let progress = 0; if (sprint) { remaining = sprint.running ? Math.max(0, sprint.endAt - now) : sprint.remainingMs; progress = 1 - remaining / sprint.durationMs; if (remaining <= 0 && sprint.running) { sprint.running = false; sprint.remainingMs = 0; document.title = "Focus complete - The Desk"; saveStored(SPRINT_KEY, sprint); } } const minutes = Math.floor(remaining / 60000); const seconds = Math.floor((remaining % 60000) / 1000); elements.focusTime.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`; elements.focusRing.style.setProperty("--focus-progress", `${Math.max(0, Math.min(1, progress)) * 360}deg`); elements.focusLabel.textContent = sprint ? task?.title || "Focus sprint" : "Focus sprint"; elements.focusStatus.textContent = !sprint ? "Choose a quiet block for this task." : remaining <= 0 ? "Sprint complete. Take a breath." : sprint.running ? "In progress" : "Paused"; elements.sprintToggle.disabled = !deriveDayModel().current; elements.sprintToggle.textContent = !sprint ? "Start" : sprint.running ? "Pause" : remaining <= 0 ? "Restart" : "Resume"; elements.sprintCancel.hidden = !sprint; elements.sprintChoices.forEach((button) => button.classList.toggle("is-active", Number(button.dataset.sprintMinutes) === state.sprintMinutes)); };
 const render = () => { const model = deriveDayModel(); document.body.dataset.dayPhase = model.phase; elements.completedCount.textContent = String(model.completedToday.length); elements.overdueCount.textContent = String(model.overdueCount); elements.overdueStat.classList.toggle("is-urgent", model.overdueCount > 0); elements.allCount.textContent = String(model.openTasks.length); elements.billsCount.textContent = String(pendingMonthlyBillCount()); elements.paymentEntriesCount.textContent = String(pendingPaymentEntryCount()); renderDayline(model); renderNow(model); renderQueue(model); renderRadar(model); renderBriefing(model); renderAllWork(model); renderOperations(model); renderFooter(model); renderSprint(); };
 
 const renderGuestWelcome = () => {
@@ -167,15 +176,15 @@ const writeCompletion = async (type, id, item) => {
   }
   if (type !== "ach" && type !== "calendar" && type !== "mail" && actionStateFor(type, id)) await deleteDoc(doc(actionStatesRef(state.user.uid), actionStateId(type, id)));
   if (type === "task" && state.pinnedTaskId === id) { state.pinnedTaskId = ""; saveStored(PIN_KEY, null); }
-  if (type === "task" && state.sprint?.taskId === id) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; }
+  if (type === "task" && state.sprint?.taskId === id) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Desk"; }
 };
 const openDialog = (dialog, trigger) => { state.activeDialog = dialog; state.dialogTrigger = trigger; dialog.hidden = false; document.body.classList.add("workroom-dialog-open"); dialog.querySelector(".workroom-dialog-close")?.focus(); };
 const closeDialog = () => { if (!state.activeDialog) return; state.activeDialog.hidden = true; document.body.classList.remove("workroom-dialog-open"); state.dialogTrigger?.focus(); state.activeDialog = null; state.dialogTrigger = null; };
 const toggleSprint = () => { const current = deriveDayModel().current; if (!current) return; if (!state.sprint || state.sprint.remainingMs <= 0 || state.sprint.taskId !== current.id) { const durationMs = state.sprintMinutes * 60 * 1000; state.sprint = { taskId: current.id, durationMs, remainingMs: durationMs, endAt: Date.now() + durationMs, running: true }; state.pinnedTaskId = current.id; saveStored(PIN_KEY, current.id); } else if (state.sprint.running) { state.sprint.remainingMs = Math.max(0, state.sprint.endAt - Date.now()); state.sprint.running = false; } else { state.sprint.endAt = Date.now() + state.sprint.remainingMs; state.sprint.running = true; } saveStored(SPRINT_KEY, state.sprint); render(); };
 
 document.addEventListener("click", async (event) => {
-  const pin = event.target.closest("[data-pin-task]"); if (pin) { if (state.sprint?.taskId && state.sprint.taskId !== pin.dataset.pinTask) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } state.pinnedTaskId = pin.dataset.pinTask; saveStored(PIN_KEY, state.pinnedTaskId); closeDialog(); render(); return; }
-  if (event.target.closest("#workroom-clear-pin")) { if (state.sprint?.taskId === state.pinnedTaskId) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; } state.pinnedTaskId = ""; saveStored(PIN_KEY, null); render(); return; }
+  const pin = event.target.closest("[data-pin-task]"); if (pin) { if (state.sprint?.taskId && state.sprint.taskId !== pin.dataset.pinTask) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Desk"; } state.pinnedTaskId = pin.dataset.pinTask; saveStored(PIN_KEY, state.pinnedTaskId); closeDialog(); render(); return; }
+  if (event.target.closest("#workroom-clear-pin")) { if (state.sprint?.taskId === state.pinnedTaskId) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Desk"; } state.pinnedTaskId = ""; saveStored(PIN_KEY, null); render(); return; }
   if (event.target.closest("#workroom-open-all")) { openDialog(elements.allDialog, event.target.closest("button")); return; }
   if (event.target.closest("#workroom-view-all")) { openDialog(elements.operationsDialog, event.target.closest("button")); return; }
   if (event.target.closest("#workroom-open-briefing, [data-open-briefing]")) { openDialog(elements.briefingDialog, event.target.closest("button")); return; }
@@ -185,7 +194,7 @@ document.addEventListener("click", async (event) => {
   const operationsCategory = event.target.closest("[data-operations-category]"); if (operationsCategory) { state.operationsCategory = operationsCategory.dataset.operationsCategory; renderOperations(deriveDayModel()); return; }
   const sprintChoice = event.target.closest("[data-sprint-minutes]"); if (sprintChoice) { state.sprintMinutes = Number(sprintChoice.dataset.sprintMinutes); if (!state.sprint) renderSprint(); return; }
   if (event.target.closest("#workroom-sprint-toggle")) { toggleSprint(); return; }
-  if (event.target.closest("#workroom-sprint-cancel")) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Workroom"; render(); return; }
+  if (event.target.closest("#workroom-sprint-cancel")) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Desk"; render(); return; }
   const restore = event.target.closest("[data-restore-action]");
   if (restore) { restore.disabled = true; try { await deleteDoc(doc(actionStatesRef(state.user.uid), restore.dataset.restoreAction)); celebrate("Restored to the action queue."); } catch { celebrate("Could not restore that item."); restore.disabled = false; } return; }
   const later = event.target.closest("[data-review-later-type]");
@@ -208,23 +217,29 @@ document.addEventListener("keydown", (event) => {
 const tick = () => { const now = new Date(); elements.clock.textContent = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(now); elements.date.textContent = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(now); renderSprint(now.getTime()); };
 tick(); window.setInterval(tick, 1000); window.setInterval(() => { if (state.user) render(); }, 60_000);
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   removeSubscriptions(); state.user = user;
-  if (!user || !isOwner(user)) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.toggle("hidden", Boolean(user)); elements.gateMessage.textContent = user ? "This private display is reserved for its owner." : "Sign in with the Workroom owner account to view the dashboard."; return; }
+  state.session = null; state.modules = [];
+  if (!user) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.remove("hidden"); elements.gateMessage.textContent = "Sign in to open your Desk display."; return; }
+  try { state.session = await resolveDeskSession(user); } catch (error) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = `Desk access could not be checked: ${error.message || "unknown error"}`; return; }
+  if (!state.session.hasDeskAccess || !state.session.profile.onboardingComplete) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = state.session.hasDeskAccess ? "Finish setup in the control room first." : "This account has not been granted Desk access."; return; }
+  state.modules = state.session.modules;
+  state.pinnedTaskId = loadStored(PIN_KEY, ""); state.sprint = loadStored(SPRINT_KEY, null);
+  document.querySelectorAll("[data-module]").forEach((element) => { element.hidden = !hasModule(element.dataset.module); });
+  document.querySelectorAll("[data-owner-only]").forEach((element) => { element.hidden = !state.session.isAdmin; });
   elements.gate.classList.add("hidden"); elements.app.classList.remove("hidden");
   state.unsubscribers.push(
     onSnapshot(tasksRef(user.uid), (snapshot) => { state.tasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); state.tasksLoaded = true; render(); }),
-    onSnapshot(projectsRef(user.uid), (snapshot) => { state.projects = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
-    onSnapshot(financeRef(user.uid), (snapshot) => { state.finance = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
-    onSnapshot(contactFollowUpsRef(user.uid), (snapshot) => { state.contacts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
-    onSnapshot(achEntriesRef(user.uid), (snapshot) => { state.ach = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
-    onSnapshot(paymentEntrySourcesRef(user.uid), (snapshot) => { state.paymentEntrySources = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(actionStatesRef(user.uid), (snapshot) => { state.actionStates = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
-    onSnapshot(monthlyBillVendorsRef(user.uid), (snapshot) => { state.billVendors = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
-    onSnapshot(monthlyBillCyclesRef(user.uid), (snapshot) => { state.billCycles = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
-    onSnapshot(summaryRef(user.uid), (snapshot) => { state.summary = snapshot.data() || {}; render(); }),
-    onSnapshot(briefingRef(user.uid), (snapshot) => { state.briefing = snapshot.data() || {}; render(); }),
-    onSnapshot(focusRef(user.uid), (snapshot) => { state.focus = snapshot.data() || {}; renderGuestWelcome(); }),
-    onSnapshot(connectionsRef(user.uid), (snapshot) => { state.connections = snapshot.docs.map((item) => item.data()); render(); }),
   );
+  if (hasModule("projects")) state.unsubscribers.push(onSnapshot(projectsRef(user.uid), (snapshot) => { state.projects = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));
+  if (hasModule("ideas")) state.unsubscribers.push(onSnapshot(ideasRef(user.uid), (snapshot) => { state.ideas = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));
+  if (hasModule("finance")) state.unsubscribers.push(onSnapshot(financeRef(user.uid), (snapshot) => { state.finance = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));
+  if (hasModule("follow-ups")) state.unsubscribers.push(onSnapshot(contactFollowUpsRef(user.uid), (snapshot) => { state.contacts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));
+  if (hasModule("ach")) state.unsubscribers.push(onSnapshot(achEntriesRef(user.uid), (snapshot) => { state.ach = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));
+  if (hasModule("payment-entries")) state.unsubscribers.push(onSnapshot(paymentEntrySourcesRef(user.uid), (snapshot) => { state.paymentEntrySources = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));
+  if (hasModule("monthly-bills")) state.unsubscribers.push(onSnapshot(monthlyBillVendorsRef(user.uid), (snapshot) => { state.billVendors = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }), onSnapshot(monthlyBillCyclesRef(user.uid), (snapshot) => { state.billCycles = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));
+  if (hasModule("google")) state.unsubscribers.push(onSnapshot(summaryRef(user.uid), (snapshot) => { state.summary = snapshot.data() || {}; render(); }), onSnapshot(connectionsRef(user.uid), (snapshot) => { state.connections = snapshot.docs.map((item) => item.data()); render(); }));
+  if (state.session.isAdmin) state.unsubscribers.push(onSnapshot(briefingRef(user.uid), (snapshot) => { state.briefing = snapshot.data() || {}; render(); }));
+  if (hasModule("guest-display")) state.unsubscribers.push(onSnapshot(focusRef(user.uid), (snapshot) => { state.focus = snapshot.data() || {}; renderGuestWelcome(); }));
 });

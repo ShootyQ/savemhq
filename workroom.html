@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>The Workroom</title>
-    <meta name="description" content="Private office command center display." />
+    <title>The Desk</title>
+    <meta name="description" content="Private Desk display." />
     <link rel="stylesheet" href="styles.css?v=workroom-guest-welcome-20260813" />
   </head>
   <body data-page="workroom-display">
     <main id="workroom-display" class="workroom-display-shell">
       <section id="workroom-display-gate" class="workroom-gate">
-        <p class="workroom-eyebrow">Private office system</p>
-        <h1>The Workroom</h1>
+        <p class="workroom-eyebrow">Private workspace</p>
+        <h1>The Desk</h1>
         <p id="workroom-display-gate-message">Checking your private access…</p>
         <a id="workroom-display-sign-in" class="workroom-button workroom-button-primary hidden" href="workroom-control.html">Sign in from the control room</a>
       </section>
@@ -28,9 +28,9 @@
             </div>
             <div class="workroom-display-controls">
               <button id="workroom-open-all" class="workroom-display-command" type="button">All work <span id="workroom-all-count">0</span></button>
-              <a id="workroom-open-bills" class="workroom-display-command" href="monthly-bills.html">Monthly bills <span id="workroom-bills-count">0</span></a>
-              <a id="workroom-open-payment-entries" class="workroom-display-command" href="payment-entries.html">Payment entries <span id="workroom-payment-entries-count">0</span></a>
-              <button id="workroom-open-briefing" class="workroom-display-command" type="button">Briefing</button>
+              <a id="workroom-open-bills" class="workroom-display-command" data-module="monthly-bills" href="monthly-bills.html">Monthly bills <span id="workroom-bills-count">0</span></a>
+              <a id="workroom-open-payment-entries" class="workroom-display-command" data-module="payment-entries" href="payment-entries.html">Payment entries <span id="workroom-payment-entries-count">0</span></a>
+              <button id="workroom-open-briefing" class="workroom-display-command" data-owner-only type="button">Briefing</button>
             </div>
           </div>
         </header>
@@ -67,7 +67,7 @@
               <div id="workroom-radar-list" class="workroom-radar-list"></div>
               <div id="workroom-radar-counts" class="workroom-radar-counts"></div>
             </section>
-            <section class="workroom-briefing-lens">
+            <section class="workroom-briefing-lens" data-owner-only>
               <div class="workroom-section-heading-row"><div><p class="workroom-stage-kicker">Daily brief</p><h2 id="workroom-briefing-title">Do today</h2></div><button class="workroom-text-button" data-open-briefing type="button">Read all</button></div>
               <div id="workroom-briefing-preview" class="workroom-briefing-preview">Generate a briefing from the control room.</div>
               <small id="workroom-briefing-updated" class="workroom-briefing-updated">Waiting for the first briefing.</small>
@@ -94,7 +94,7 @@
       <div id="workroom-briefing-dialog" class="workroom-dialog" hidden>
         <div class="workroom-dialog-backdrop" data-close-display-dialog></div>
         <section class="workroom-dialog-panel workroom-display-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="workroom-full-briefing-title">
-          <div class="workroom-dialog-heading"><div><p class="workroom-stage-kicker">Daily brief</p><h2 id="workroom-full-briefing-title">Workroom briefing</h2></div><button class="workroom-dialog-close" data-close-display-dialog type="button" aria-label="Close briefing">&times;</button></div>
+          <div class="workroom-dialog-heading"><div><p class="workroom-stage-kicker">Daily brief</p><h2 id="workroom-full-briefing-title">Desk briefing</h2></div><button class="workroom-dialog-close" data-close-display-dialog type="button" aria-label="Close briefing">&times;</button></div>
           <div id="workroom-full-briefing" class="workroom-full-briefing"></div>
         </section>
       </div>

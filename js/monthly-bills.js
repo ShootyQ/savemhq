@@ -1,7 +1,7 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { addDoc, deleteDoc, doc, onSnapshot, runTransaction, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth, db } from "./auth-shared.js";
-import { escapeHtml, isOwner, monthlyBillCyclesRef, monthlyBillVendorsRef } from "./workroom-shared.js";
+import { escapeHtml, monthlyBillCyclesRef, monthlyBillVendorsRef, resolveDeskSession } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
 const elements = {
@@ -144,15 +144,17 @@ document.addEventListener("click", (event) => {
   }
 });
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   state.user = user;
   state.unsubscribers.forEach((unsubscribe) => unsubscribe());
   state.unsubscribers = [];
-  if (!user || !isOwner(user)) {
+  let session = null;
+  if (user) { try { session = await resolveDeskSession(user); } catch { session = null; } }
+  if (!user || !session?.hasDeskAccess || !session.modules.includes("monthly-bills")) {
     elements.app.classList.add("hidden");
     elements.gate.classList.remove("hidden");
     elements.signIn.classList.toggle("hidden", Boolean(user));
-    elements.gateMessage.textContent = user ? "This private page is reserved for its owner." : "Sign in with the Workroom owner account to view monthly bills.";
+    elements.gateMessage.textContent = user ? "Monthly Bills is not enabled for this Desk." : "Sign in to open Monthly Bills in your Desk.";
     return;
   }
   elements.gate.classList.add("hidden");

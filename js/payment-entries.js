@@ -1,7 +1,7 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth } from "./auth-shared.js";
-import { asDate, dateInputValue, escapeHtml, isOwner, paymentEntrySourcesRef } from "./workroom-shared.js";
+import { asDate, dateInputValue, escapeHtml, paymentEntrySourcesRef, resolveDeskSession } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
 const elements = {
@@ -56,8 +56,10 @@ document.addEventListener("click", (event) => {
   if (remove) { const source = state.sources.find((item) => item.id === remove.dataset.deletePaymentEntry); if (source && window.confirm(`Delete ${source.name} from payment entries?`)) run(() => deleteDoc(doc(paymentEntrySourcesRef(state.user.uid), source.id)), "Source deleted."); }
 });
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   state.user = user; state.unsubscribe?.(); state.unsubscribe = null;
-  if (!user || !isOwner(user)) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.toggle("hidden", Boolean(user)); elements.gateMessage.textContent = user ? "This private page is reserved for its owner." : "Sign in with the Workroom owner account to track payment entries."; return; }
+  let session = null;
+  if (user) { try { session = await resolveDeskSession(user); } catch { session = null; } }
+  if (!user || !session?.hasDeskAccess || !session.modules.includes("payment-entries")) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.toggle("hidden", Boolean(user)); elements.gateMessage.textContent = user ? "Payment Entries is not enabled for this Desk." : "Sign in to open Payment Entries in your Desk."; return; }
   elements.gate.classList.add("hidden"); elements.app.classList.remove("hidden"); subscribe(user);
 });

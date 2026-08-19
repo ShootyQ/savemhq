@@ -266,7 +266,29 @@ const requireTriathlonManager = (auth) => {
 const requireWorkroomOwner = (auth) => {
   const email = String(auth.token.email || "").toLowerCase();
   if (email !== ADMIN_EMAIL) {
-    throw new HttpsError("permission-denied", "Only the Workroom owner can manage Google connections.");
+    throw new HttpsError("permission-denied", "Only the Desk owner can use this owner-only feature.");
+  }
+};
+
+const deskGoogleAccessForUid = async (uid, email = "") => {
+  if (String(email).toLowerCase() === ADMIN_EMAIL) return true;
+  const [approvalSnapshot, profileSnapshot] = await Promise.all([
+    db.collection("loginApprovals").doc(uid).get(),
+    db.collection("workrooms").doc(uid).get(),
+  ]);
+  const approval = approvalSnapshot.data() || {};
+  const profile = profileSnapshot.data() || {};
+  return approval.status === "approved"
+    && Array.isArray(approval.accessSections)
+    && approval.accessSections.includes("desk")
+    && profile.onboardingComplete === true
+    && Array.isArray(profile.enabledModules)
+    && profile.enabledModules.includes("google");
+};
+
+const requireDeskGoogleUser = async (auth) => {
+  if (!await deskGoogleAccessForUid(auth.uid, auth.token.email)) {
+    throw new HttpsError("permission-denied", "Google is not enabled for this Desk.");
   }
 };
 
@@ -1293,7 +1315,7 @@ const syncWorkroomGoogle = async (uid) => {
 
 exports.createWorkroomGoogleAuthSession = onCall(async (request) => {
   const auth = requireAuth(request);
-  requireWorkroomOwner(auth);
+  await requireDeskGoogleUser(auth);
   const state = crypto.randomBytes(24).toString("hex");
   const connectionId = crypto.randomBytes(12).toString("hex");
   await db.collection("workroomOAuthStates").doc(state).set({
@@ -1339,6 +1361,10 @@ exports.handleWorkroomGoogleCallback = onRequest({ secrets: [GOOGLE_CLIENT_SECRE
       response.status(403).send("Invalid or expired Google connection state.");
       return;
     }
+    if (!await deskGoogleAccessForUid(stateData.uid, stateData.email)) {
+      response.status(403).send("Google is no longer enabled for this Desk.");
+      return;
+    }
     const payload = await exchangeGoogleCode(code);
     const tokenData = googleTokenFromExchange(payload, stateData.uid, stateData.connectionId);
     await workroomSecretRef(stateData.uid, stateData.connectionId).set(tokenData, { merge: true });
@@ -1373,7 +1399,7 @@ exports.handleWorkroomGoogleCallback = onRequest({ secrets: [GOOGLE_CLIENT_SECRE
 
 exports.listWorkroomGoogleCalendars = onCall({ secrets: [GOOGLE_CLIENT_SECRET] }, async (request) => {
   const auth = requireAuth(request);
-  requireWorkroomOwner(auth);
+  await requireDeskGoogleUser(auth);
   const connectionId = String(request.data?.connectionId || "").trim();
   if (!connectionId) throw new HttpsError("invalid-argument", "Choose a Google connection.");
   const tokenData = await getFreshGoogleToken(auth.uid, connectionId);
@@ -1383,7 +1409,7 @@ exports.listWorkroomGoogleCalendars = onCall({ secrets: [GOOGLE_CLIENT_SECRET] }
 
 exports.setWorkroomGoogleCalendars = onCall(async (request) => {
   const auth = requireAuth(request);
-  requireWorkroomOwner(auth);
+  await requireDeskGoogleUser(auth);
   const connectionId = String(request.data?.connectionId || "").trim();
   const calendarIds = [...new Set((Array.isArray(request.data?.calendarIds) ? request.data.calendarIds : []).map(String).map((id) => id.trim()).filter(Boolean))].slice(0, 12);
   if (!connectionId || !calendarIds.length) throw new HttpsError("invalid-argument", "Select at least one calendar.");
@@ -1393,13 +1419,13 @@ exports.setWorkroomGoogleCalendars = onCall(async (request) => {
 
 exports.syncWorkroomGoogle = onCall({ secrets: [GOOGLE_CLIENT_SECRET] }, async (request) => {
   const auth = requireAuth(request);
-  requireWorkroomOwner(auth);
+  await requireDeskGoogleUser(auth);
   return syncWorkroomGoogle(auth.uid);
 });
 
 exports.disconnectWorkroomGoogle = onCall(async (request) => {
   const auth = requireAuth(request);
-  requireWorkroomOwner(auth);
+  await requireDeskGoogleUser(auth);
   const connectionId = String(request.data?.connectionId || "").trim();
   if (!connectionId) throw new HttpsError("invalid-argument", "Choose a Google connection.");
   await workroomSecretRef(auth.uid, connectionId).delete();
@@ -1410,7 +1436,11 @@ exports.disconnectWorkroomGoogle = onCall(async (request) => {
 exports.scheduledWorkroomGoogleSync = onSchedule({ schedule: "every 10 minutes", secrets: [GOOGLE_CLIENT_SECRET] }, async () => {
   const connections = await db.collectionGroup("connections").where("status", "==", "connected").get();
   const ownerUids = [...new Set(connections.docs.map((connection) => connection.ref.parent.parent?.id).filter(Boolean))];
-  await Promise.all(ownerUids.map((uid) => syncWorkroomGoogle(uid)));
+  await Promise.all(ownerUids.map(async (uid) => {
+    const user = await admin.auth().getUser(uid).catch(() => null);
+    if (user && await deskGoogleAccessForUid(uid, user.email)) return syncWorkroomGoogle(uid);
+    return null;
+  }));
 });
 
 exports.runWorkroomSourceScan = onCall({ secrets: [GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, SLACK_BOT_TOKEN] }, async (request) => {
