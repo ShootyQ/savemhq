@@ -23,6 +23,10 @@ const elements = {
   eventTime: $("workroom-display-event-time"), eventAllDay: $("workroom-display-event-allday"),
   eventCategory: $("workroom-display-event-category"), eventLocation: $("workroom-display-event-location"),
   eventNotes: $("workroom-display-event-notes"),
+  eventDetailDialog: $("workroom-event-detail-dialog"),
+  eventDetailTitle: $("workroom-event-detail-title"),
+  eventDetailKicker: $("workroom-event-detail-kicker"),
+  eventDetailBody: $("workroom-event-detail-body"),
 };
 const PIN_KEY = "workroom-compass-pinned-task";
 const SPRINT_KEY = "workroom-compass-sprint";
@@ -246,7 +250,20 @@ const mixedQueueRow = (item) => {
 };
 const reviewLaterRow = (item) => `<div class="workroom-radar-item"><div><span>${escapeHtml(item.itemType)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}${item.detail ? ` - ${escapeHtml(item.detail)}` : ""}</small></div><button class="workroom-restore-action" data-restore-action="${escapeHtml(item.id)}" type="button">Restore</button></div>`;
 const taskRow = (task, now) => { const bucket = taskBucket(task, now); const project = projectName(task); return `<div class="workroom-compass-task priority-${escapeHtml(task.priority)}"><button class="workroom-task-select" data-pin-task="${escapeHtml(task.id)}" type="button"><span class="workroom-task-title">${escapeHtml(task.title)}</span><small><span class="workroom-status-label status-${bucket.id}">${escapeHtml(bucket.label)}</span>${project ? ` <span>${escapeHtml(project)}</span>` : ""}${task.dueDate ? ` <span>${escapeHtml(formatDay(task.dueDate))}</span>` : ""}</small></button>${completeButton("task", task)}</div>`; };
-const renderDayline = (model) => { if (!model.events.length) { elements.dayline.innerHTML = `<span class="workroom-dayline-clear">Open runway - no calendar events today.</span>`; return; } const next = model.events.find((event) => !event.allDay && (event.startDate - model.now) / 60000 >= -30); elements.dayline.innerHTML = model.events.slice(0, 5).map((event) => { const minutes = (event.startDate - model.now) / 60000; const elapsed = !event.allDay && minutes < -30; const isNext = event === next; const countdown = isNext && minutes >= 0 && minutes <= 60 ? `In ${Math.max(1, Math.round(minutes))} min` : eventWhen(event); return `<div class="workroom-dayline-event ${elapsed ? "is-elapsed" : ""} ${isNext ? "is-next" : ""}"><time>${escapeHtml(countdown)}</time><strong>${escapeHtml(event.title)}</strong></div>`; }).join(""); };
+const renderDayline = (model) => {
+  if (!model.events.length) {
+    elements.dayline.innerHTML = `<span class="workroom-dayline-clear">Open runway - no calendar events today.</span>`;
+    return;
+  }
+  const next = model.events.find((event) => !event.allDay && (event.startDate - model.now) / 60000 >= -30);
+  elements.dayline.innerHTML = model.events.slice(0, 5).map((event) => {
+    const minutes = (event.startDate - model.now) / 60000;
+    const elapsed = !event.allDay && minutes < -30;
+    const isNext = event === next;
+    const countdown = isNext && minutes >= 0 && minutes <= 60 ? `In ${Math.max(1, Math.round(minutes))} min` : eventWhen(event);
+    return `<div class="workroom-dayline-event ${elapsed ? "is-elapsed" : ""} ${isNext ? "is-next" : ""}" data-event-id="${escapeHtml(event.id || "")}" role="button" tabindex="0"><time>${escapeHtml(countdown)}</time><strong>${escapeHtml(event.title)}</strong></div>`;
+  }).join("");
+};
 const renderQueue = (model) => {
   const items = mixedActionItems(model);
   elements.tasks.innerHTML = items.length ? items.slice(0, QUEUE_LIMIT).map(mixedQueueRow).join("") : blank("The action queue is clear.");
@@ -325,7 +342,7 @@ const renderCalendar = () => {
       const dayEvents = allEvents.filter((evt) => dateKey(evt.startDate || evt.date) === dKey);
 
       const eventsHtml = dayEvents.length ? dayEvents.map((evt) => `
-        <div class="workroom-cal-chip ${evt.category ? `cat-${escapeHtml(evt.category.toLowerCase().replace(/[^a-z0-9]/g, '-'))}` : ""}" title="${escapeHtml(evt.title)}">
+        <div class="workroom-cal-chip ${evt.category ? `cat-${escapeHtml(evt.category.toLowerCase().replace(/[^a-z0-9]/g, '-'))}` : ""}" data-event-id="${escapeHtml(evt.id)}" role="button" tabindex="0" title="${escapeHtml(evt.title)}">
           <span class="workroom-cal-chip-time">${escapeHtml(eventWhen(evt))}</span>
           <span class="workroom-cal-chip-title">${escapeHtml(evt.title)}</span>
           ${evt.isCustom ? `<button class="workroom-cal-chip-del" data-delete-event="${escapeHtml(evt.id)}" type="button" aria-label="Delete ${escapeHtml(evt.title)}">&times;</button>` : ""}
@@ -400,7 +417,7 @@ const renderCalendar = () => {
     const selDayLabel = `${new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(selDateObj)}${selDay === todayKey ? " (Today)" : ""}`;
 
     const selEventsHtml = selEvents.length ? selEvents.map((evt) => `
-      <div class="workroom-cal-chip ${evt.category ? `cat-${escapeHtml(evt.category.toLowerCase().replace(/[^a-z0-9]/g, '-'))}` : ""}">
+      <div class="workroom-cal-chip ${evt.category ? `cat-${escapeHtml(evt.category.toLowerCase().replace(/[^a-z0-9]/g, '-'))}` : ""}" data-event-id="${escapeHtml(evt.id)}" role="button" tabindex="0">
         <span class="workroom-cal-chip-time">${escapeHtml(eventWhen(evt))}</span>
         <span class="workroom-cal-chip-title">${escapeHtml(evt.title)}</span>
         ${evt.location ? `<small class="workroom-cal-chip-loc">${escapeHtml(evt.location)}</small>` : ""}
@@ -424,6 +441,74 @@ const renderCalendar = () => {
       </div>
     `;
   }
+};
+
+const showEventDetail = (eventId, trigger) => {
+  const allEvents = getAllCalendarEvents();
+  const evt = allEvents.find((e) => String(e.id) === String(eventId));
+  if (!evt || !elements.eventDetailDialog) return;
+
+  if (elements.eventDetailKicker) {
+    elements.eventDetailKicker.textContent = evt.category || (evt.isCustom ? "Custom Schedule" : "Google Calendar");
+  }
+  if (elements.eventDetailTitle) {
+    elements.eventDetailTitle.textContent = evt.title;
+  }
+
+  const when = eventWhen(evt);
+  const formattedDay = evt.startDate
+    ? new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(evt.startDate)
+    : evt.date;
+
+  if (elements.eventDetailBody) {
+    elements.eventDetailBody.innerHTML = `
+      <div class="workroom-event-detail-meta-grid">
+        <div class="workroom-event-detail-row">
+          <span class="workroom-event-detail-label">When</span>
+          <div class="workroom-event-detail-val">
+            <strong>${escapeHtml(formattedDay)}</strong>
+            <span>${escapeHtml(when)}</span>
+          </div>
+        </div>
+        ${evt.category ? `
+          <div class="workroom-event-detail-row">
+            <span class="workroom-event-detail-label">Category</span>
+            <div class="workroom-event-detail-val">
+              <span class="workroom-item-badge ${`cat-${escapeHtml(evt.category.toLowerCase().replace(/[^a-z0-9]/g, '-'))}`}">${escapeHtml(evt.category)}</span>
+            </div>
+          </div>
+        ` : ""}
+        ${evt.location ? `
+          <div class="workroom-event-detail-row">
+            <span class="workroom-event-detail-label">Location</span>
+            <div class="workroom-event-detail-val">
+              <span>📍 ${escapeHtml(evt.location)}</span>
+            </div>
+          </div>
+        ` : ""}
+        ${evt.notes ? `
+          <div class="workroom-event-detail-row">
+            <span class="workroom-event-detail-label">Notes</span>
+            <div class="workroom-event-detail-val">
+              <p class="workroom-event-detail-notes">${escapeHtml(evt.notes)}</p>
+            </div>
+          </div>
+        ` : ""}
+        <div class="workroom-event-detail-row">
+          <span class="workroom-event-detail-label">Source</span>
+          <div class="workroom-event-detail-val">
+            <span class="workroom-event-source-tag">${evt.isCustom ? "Desk Custom Calendar" : "Google Calendar"}</span>
+          </div>
+        </div>
+      </div>
+      <div class="workroom-event-detail-actions">
+        ${evt.isCustom ? `<button class="workroom-button-danger" data-delete-event="${escapeHtml(evt.id)}" type="button">Delete event</button>` : ""}
+        <button class="workroom-text-button" data-close-event-detail-dialog type="button">Close</button>
+      </div>
+    `;
+  }
+
+  openDialog(elements.eventDetailDialog, trigger);
 };
 const renderAllWork = (model) => { const groups = [{ id: "overdue", title: "Overdue" }, { id: "today", title: "Today" }, { id: "week", title: "This week" }, { id: "high-unscheduled", title: "High priority" }, { id: "later", title: "Later" }, { id: "unscheduled", title: "Unscheduled" }]; elements.allGroups.innerHTML = groups.map((group) => { const tasks = model.openTasks.filter((task) => taskBucket(task, model.now).id === group.id); return tasks.length ? `<section><h3>${group.title} <span>${tasks.length}</span></h3>${tasks.map((task) => taskRow(task, model.now)).join("")}</section>` : ""; }).join("") + (model.completedToday.length ? `<section><h3>Finished today <span>${model.completedToday.length}</span></h3>${model.completedToday.map((task) => `<div class="workroom-finished-task">${escapeHtml(task.title)}</div>`).join("")}</section>` : ""); };
 const renderOperations = (model) => {
@@ -707,10 +792,22 @@ document.addEventListener("click", async (event) => {
     try {
       await deleteDoc(doc(calendarEventsRef(state.user.uid), eventId));
       celebrate("Event removed.");
+      if (state.activeDialog === elements.eventDetailDialog) {
+        closeDialog();
+      }
     } catch {
       celebrate("Could not delete event.");
       delEvent.disabled = false;
     }
+    return;
+  }
+  if (event.target.closest("[data-close-event-detail-dialog]")) {
+    closeDialog();
+    return;
+  }
+  const eventTarget = event.target.closest("[data-event-id]");
+  if (eventTarget) {
+    showEventDetail(eventTarget.dataset.eventId, eventTarget);
     return;
   }
 
@@ -778,6 +875,11 @@ document.addEventListener("keydown", (event) => {
       return;
     }
     closeDialog();
+    return;
+  }
+  if ((event.key === "Enter" || event.key === " ") && event.target?.dataset?.eventId) {
+    event.preventDefault();
+    showEventDetail(event.target.dataset.eventId, event.target);
     return;
   }
   if (event.key !== "Tab" || !state.activeDialog) return;

@@ -188,11 +188,12 @@ body[data-day-phase="after-hours"] .workroom-display-shell { --phase-accent: #9d
 .workroom-action-stage, .workroom-radar-stage, .workroom-briefing-lens { min-width: 0; min-height: 0; }
 .workroom-action-stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: clamp(0.8rem, 1.1vw, 1.2rem); border: 1px solid rgba(224, 236, 212, 0.13); border-top: 3px solid var(--phase-accent); background: linear-gradient(145deg, rgba(25, 50, 42, 0.82), rgba(11, 29, 24, 0.8)); box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.2); border-radius: 0.5rem; overflow: hidden; }
 .workroom-action-stage-actions { display: flex; align-items: center; gap: 0.5rem; }
-.workroom-sprint-launcher { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.05rem; padding: 0.36rem 0.72rem; border-radius: 0.42rem; border: 1px solid rgba(226, 238, 215, 0.22); background: rgba(186, 219, 158, 0.12); color: #eff5ea; font-size: 0.72rem; font-weight: 850; cursor: pointer; transition: all 160ms ease; }
-.workroom-sprint-launcher:hover { background: rgba(186, 219, 158, 0.24); border-color: var(--phase-accent); color: #fff; }
-.workroom-sprint-launcher.is-sprint-running { background: var(--phase-accent); color: #0d2119; border-color: var(--phase-accent); box-shadow: 0 0 14px rgba(186, 219, 158, 0.45); animation: sprint-btn-pulse 2s infinite ease-in-out; }
+.workroom-sprint-launcher { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.15rem; padding: 0.32rem 0.95rem; border-radius: 999px; border: 1px solid rgba(186, 219, 158, 0.42); background: rgba(186, 219, 158, 0.12); color: #eff6eb; font: inherit; font-size: 0.72rem; font-weight: 850; letter-spacing: 0.02em; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22); transition: all 160ms ease; }
+.workroom-sprint-launcher span { display: inline; width: auto; height: auto; min-width: 0; margin: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; }
+.workroom-sprint-icon { display: inline-block; font-size: 0.85rem; line-height: 1; }
+.workroom-sprint-launcher:hover, .workroom-sprint-launcher:focus-visible { background: rgba(186, 219, 158, 0.24); border-color: var(--phase-accent); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+.workroom-sprint-launcher.is-sprint-running { background: var(--phase-accent); color: #0c2018; border-color: var(--phase-accent); font-weight: 900; box-shadow: 0 0 16px rgba(186, 219, 158, 0.55); animation: sprint-btn-pulse 2s infinite ease-in-out; }
 @keyframes sprint-btn-pulse { 0%, 100% { box-shadow: 0 0 10px rgba(186, 219, 158, 0.35); } 50% { box-shadow: 0 0 22px rgba(186, 219, 158, 0.7); } }
-.workroom-sprint-icon { font-size: 0.82rem; }
 .workroom-awareness-rail { display: grid; min-width: 0; min-height: 0; grid-template-rows: minmax(0, 1fr) minmax(0, 1.15fr); gap: 0.65rem; }
 .workroom-radar-stage, .workroom-calendar-stage { overflow: hidden; padding: 0.75rem 0.85rem; border: 1px solid rgba(224, 236, 212, 0.12); background: rgba(9, 29, 23, 0.42); border-radius: 0.45rem; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .workroom-calendar-header-actions { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
@@ -212,8 +213,8 @@ body[data-day-phase="after-hours"] .workroom-display-shell { --phase-accent: #9d
 .workroom-cal-week-col.is-today .workroom-cal-col-num { color: var(--phase-accent); }
 .workroom-cal-col-events { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.22rem; padding: 0.22rem; scrollbar-width: none; }
 .workroom-cal-col-events::-webkit-scrollbar { display: none; }
-.workroom-cal-chip { position: relative; display: flex; flex-direction: column; gap: 0.06rem; padding: 0.2rem 0.3rem; border-radius: 0.25rem; background: rgba(143, 196, 197, 0.12); border-left: 2px solid var(--phase-cool); font-size: 0.56rem; line-height: 1.15; cursor: default; transition: background 140ms ease; }
-.workroom-cal-chip:hover { background: rgba(143, 196, 197, 0.22); }
+.workroom-cal-chip { position: relative; display: flex; flex-direction: column; gap: 0.06rem; padding: 0.2rem 0.3rem; border-radius: 0.25rem; background: rgba(143, 196, 197, 0.12); border-left: 2px solid var(--phase-cool); font-size: 0.56rem; line-height: 1.15; cursor: pointer; transition: background 140ms ease, transform 140ms ease; }
+.workroom-cal-chip:hover { background: rgba(143, 196, 197, 0.25); transform: translateY(-1px); }
 .workroom-cal-chip.cat-work { border-left-color: #badb9e; background: rgba(186, 219, 158, 0.12); }
 .workroom-cal-chip.cat-family { border-left-color: #e0c277; background: rgba(224, 194, 119, 0.12); }
 .workroom-cal-chip.cat-church { border-left-color: #c6d89a; background: rgba(198, 216, 154, 0.12); }
@@ -253,6 +254,20 @@ body[data-day-phase="after-hours"] .workroom-display-shell { --phase-accent: #9d
 .workroom-fullscreen-briefing-section h3 { margin: 0 0 0.5rem; color: var(--phase-accent); font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .workroom-fullscreen-briefing-section p { margin: 0 0 0.45rem; color: #dce4d9; font-size: 0.85rem; line-height: 1.5; }
 .workroom-event-dialog-panel { width: min(34rem, 100%); }
+.workroom-event-detail-panel { width: min(32rem, 100%); }
+.workroom-event-detail-body { display: flex; flex-direction: column; gap: 0.85rem; }
+.workroom-event-detail-meta-grid { display: flex; flex-direction: column; gap: 0.75rem; background: rgba(7, 23, 18, 0.4); border: 1px solid rgba(224, 236, 212, 0.1); border-radius: 0.45rem; padding: 0.85rem; }
+.workroom-event-detail-row { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 0.6rem; align-items: start; }
+.workroom-event-detail-label { font-size: 0.62rem; font-weight: 850; text-transform: uppercase; letter-spacing: 0.08em; color: var(--phase-cool); }
+.workroom-event-detail-val { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.82rem; color: #edf2e8; }
+.workroom-event-detail-val strong { font-size: 0.92rem; color: #fbf7ee; }
+.workroom-event-detail-notes { margin: 0; color: #b7c7ba; font-size: 0.8rem; line-height: 1.45; white-space: pre-wrap; }
+.workroom-event-source-tag { display: inline-block; font-size: 0.66rem; color: #9bb0a3; font-style: italic; }
+.workroom-event-detail-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; margin-top: 0.35rem; padding-top: 0.75rem; border-top: 1px solid rgba(224, 236, 212, 0.1); }
+.workroom-button-danger { color: #ffb9a1; background: rgba(237, 140, 112, 0.15); border: 1px solid rgba(237, 140, 112, 0.35); border-radius: 0.45rem; padding: 0.45rem 0.85rem; font: inherit; font-size: 0.72rem; font-weight: 850; cursor: pointer; transition: all 140ms ease; }
+.workroom-button-danger:hover { background: rgba(237, 140, 112, 0.28); border-color: #ed8c70; color: #fff; }
+.workroom-dayline-event { cursor: pointer; transition: background 140ms ease; }
+.workroom-dayline-event:hover { background: rgba(224, 236, 212, 0.08); }
 .workroom-form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
 body[data-page="workroom-display"] .workroom-section-heading-row { display: flex; align-items: start; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.65rem; }.workroom-section-heading-row h2 { margin: 0; color: #f5f2e9; font-size: clamp(1rem, 1.25vw, 1.35rem); }.workroom-stage-kicker { margin: 0 0 0.08rem; color: var(--phase-accent); font-size: 0.58rem; font-weight: 900; letter-spacing: 0.13em; text-transform: uppercase; }
 .workroom-focus-fullscreen { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; overflow: hidden; padding: clamp(1.5rem, 4vw, 4rem); background: radial-gradient(circle at 50% 35%, #18332b 0%, #0c201a 55%, #06110e 100%); isolation: isolate; animation: focus-fade-in 220ms ease-out; }
