@@ -17,6 +17,7 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 import { auth } from "./auth-shared.js";
 import {
   achEntriesRef,
+  calendarEventsRef,
   contactFollowUpsRef,
   connectionsRef,
   dateInputValue,
@@ -49,6 +50,8 @@ const elements = {
   ideaForm: $("workroom-idea-form"), ideaTitle: $("workroom-idea-title"), ideaBody: $("workroom-idea-body"), ideaTags: $("workroom-idea-tags"), ideaStatus: $("workroom-idea-status"), ideas: $("workroom-ideas"),
   financeForm: $("workroom-finance-form"), financeTitle: $("workroom-finance-title"), financeCategory: $("workroom-finance-category"), financeUrgency: $("workroom-finance-urgency"), financeDate: $("workroom-finance-date"), financeAmount: $("workroom-finance-amount"), financeReference: $("workroom-finance-reference"), finance: $("workroom-finance"),
   achForm: $("workroom-ach-form"), achName: $("workroom-ach-name"), achAmount: $("workroom-ach-amount"), achDate: $("workroom-ach-date"), achReason: $("workroom-ach-reason"), achRecurring: $("workroom-ach-recurring"), ach: $("workroom-ach"),
+  calendarList: $("workroom-calendar-events-list"), calendarCount: $("workroom-calendar-count"),
+  eventForm: $("workroom-event-form"), eventTitle: $("workroom-event-title"), eventDate: $("workroom-event-date"), eventTime: $("workroom-event-time"), eventAllDay: $("workroom-event-allday"), eventCategory: $("workroom-event-category"), eventLocation: $("workroom-event-location"), eventNotes: $("workroom-event-notes"),
   googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"), briefingCount: $("workroom-briefing-count"), briefingStatus: $("workroom-briefing-status"), briefingResult: $("workroom-briefing-result"), automationSummary: $("workroom-automation-summary"), todayStats: $("workroom-today-stats"), todayActions: $("workroom-today-actions"), quickAdd: $("workroom-quick-add"), quickAddDialog: $("workroom-quick-add-dialog"), guestDisplayForm: $("workroom-guest-display-form"), guestName: $("workroom-guest-name"), guestDisplayClear: $("workroom-guest-display-clear"), guestDisplayStatus: $("workroom-guest-display-status"),
 };
 const functions = getFunctions();
@@ -65,7 +68,7 @@ const getSourceAutomationStatus = httpsCallable(functions, "getWorkroomSourceAut
 const listSourceCandidates = httpsCallable(functions, "listWorkroomAutomationCandidates");
 const approveSourceCandidate = httpsCallable(functions, "approveWorkroomAutomationCandidate");
 const rejectSourceCandidate = httpsCallable(functions, "rejectWorkroomAutomationCandidate");
-let state = { user: null, session: null, profile: null, modules: [], projects: [], tasks: [], ideas: [], finance: [], contacts: [], ach: [], briefing: {}, focus: {}, connections: [], currentView: "today", quickAddType: "task", onboardingPreset: "pastor", unsubscribers: [] };
+let state = { user: null, session: null, profile: null, modules: [], projects: [], tasks: [], ideas: [], finance: [], contacts: [], ach: [], calendarEvents: [], briefing: {}, focus: {}, connections: [], currentView: "today", quickAddType: "task", onboardingPreset: "pastor", unsubscribers: [] };
 let speechRecognition = null;
 let speechActive = false;
 let automationStatusInterval = null;
@@ -403,10 +406,32 @@ const renderConnections = () => {
   if (elements.automationSummary) elements.automationSummary.textContent = state.connections.length ? `${state.connections.length} Google connection${state.connections.length === 1 ? "" : "s"} active.` : "Google is not connected yet.";
 };
 
+const renderCalendarEvents = () => {
+  if (!elements.calendarList) return;
+  const sorted = [...state.calendarEvents].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.time || "").localeCompare(String(b.time || "")));
+  if (elements.calendarCount) {
+    elements.calendarCount.textContent = `${sorted.length} event${sorted.length === 1 ? "" : "s"}`;
+  }
+  elements.calendarList.innerHTML = sorted.length
+    ? sorted.map((evt) => {
+      const timeLabel = evt.allDay ? "All day" : (evt.time || "No time specified");
+      const meta = [evt.date, timeLabel, evt.category, evt.location].filter(Boolean).join(" · ");
+      return `<div class="workroom-record">
+        <div>
+          <strong>${escapeHtml(evt.title)}</strong>
+          <small>${escapeHtml(meta)}${evt.notes ? ` — ${escapeHtml(evt.notes)}` : ""}</small>
+        </div>
+        <button data-delete-event="${evt.id}" class="workroom-icon-button" aria-label="Delete ${escapeHtml(evt.title)}">×</button>
+      </div>`;
+    }).join("")
+    : `<p class="workroom-empty">No events scheduled. Add an event to your calendar above.</p>`;
+};
+
 const subscribe = (user) => {
   cleanUp();
-  state.projects = []; state.ideas = []; state.finance = []; state.contacts = []; state.ach = []; state.connections = [];
+  state.projects = []; state.ideas = []; state.finance = []; state.contacts = []; state.ach = []; state.calendarEvents = []; state.connections = [];
   state.unsubscribers.push(onSnapshot(tasksRef(user.uid), (snapshot) => { state.tasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderTasks(); }));
+  state.unsubscribers.push(onSnapshot(calendarEventsRef(user.uid), (snapshot) => { state.calendarEvents = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderCalendarEvents(); }));
   if (hasModule("projects")) state.unsubscribers.push(onSnapshot(projectsRef(user.uid), (snapshot) => { state.projects = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderProjects(); renderTasks(); }));
   if (hasModule("ideas")) state.unsubscribers.push(onSnapshot(ideasRef(user.uid), (snapshot) => { state.ideas = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderIdeas(); }));
   if (hasModule("finance")) state.unsubscribers.push(onSnapshot(financeRef(user.uid), (snapshot) => { state.finance = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderFinance(); }));
@@ -459,6 +484,25 @@ elements.taskForm.addEventListener("submit", (event) => { event.preventDefault()
 elements.ideaForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { const tags = [...new Set(elements.ideaTags.value.split(",").map((tag) => clean(tag).toLowerCase()).filter(Boolean))].slice(0, 12); await addDoc(ideasRef(state.user.uid), { title: clean(elements.ideaTitle.value), body: clean(elements.ideaBody.value), tags, status: elements.ideaStatus.value, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.ideaForm.reset(); closeQuickAdd(); }, "Idea saved."); });
 elements.financeForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { const amount = clean(elements.financeAmount.value); await addDoc(financeRef(state.user.uid), { title: clean(elements.financeTitle.value), category: clean(elements.financeCategory.value), urgency: elements.financeUrgency.value, dueDate: timestampForDate(elements.financeDate.value), reference: clean(elements.financeReference.value), amount: amount ? Number(amount) : null, status: "open", completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.financeForm.reset(); closeQuickAdd(); }, "Reminder added."); });
 elements.achForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(achEntriesRef(state.user.uid), { name: clean(elements.achName.value), amount: Number(elements.achAmount.value), withdrawalDate: timestampForDate(elements.achDate.value), reason: clean(elements.achReason.value), recurring: elements.achRecurring.checked, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.achForm.reset(); closeQuickAdd(); }, "ACH entry added."); });
+elements.eventForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  run(async () => {
+    const isAllDay = Boolean(elements.eventAllDay.checked);
+    await addDoc(calendarEventsRef(state.user.uid), {
+      title: clean(elements.eventTitle.value),
+      date: clean(elements.eventDate.value),
+      time: isAllDay ? null : (clean(elements.eventTime.value) || null),
+      allDay: isAllDay,
+      category: clean(elements.eventCategory.value) || null,
+      location: clean(elements.eventLocation.value) || null,
+      notes: clean(elements.eventNotes.value) || null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    elements.eventForm.reset();
+    closeQuickAdd();
+  }, "Event added to calendar.");
+});
 elements.googleConnect.addEventListener("click", () => run(async () => { const result = await googleConnect(); window.location.assign(result.data.authorizeUrl); }));
 elements.googleSync.addEventListener("click", () => run(() => googleSync(), "Google data refreshed."));
 elements.briefingGenerate?.addEventListener("click", async () => { elements.briefingGenerate.disabled = true; await run(() => generateBriefing(), "Review complete. The receipt below shows what GPT checked and found."); elements.briefingGenerate.disabled = false; });
@@ -485,6 +529,7 @@ document.addEventListener("click", (event) => {
   if (button.dataset.deleteContact) run(() => deleteDoc(doc(contactFollowUpsRef(state.user.uid), button.dataset.deleteContact)));
   if (button.dataset.deleteAch) run(() => deleteDoc(doc(achEntriesRef(state.user.uid), button.dataset.deleteAch)));
   if (button.dataset.deleteIdea) run(() => deleteDoc(doc(ideasRef(state.user.uid), button.dataset.deleteIdea)), "Idea deleted.");
+  if (button.dataset.deleteEvent) run(() => deleteDoc(doc(calendarEventsRef(state.user.uid), button.dataset.deleteEvent)), "Event deleted.");
   if (taskId) { const task = state.tasks.find((item) => item.id === taskId); run(() => updateDoc(doc(tasksRef(state.user.uid), taskId), { status: task.status === "done" ? "next" : "done", completedAt: task.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
   if (financeId) { const item = state.finance.find((record) => record.id === financeId); run(() => updateDoc(doc(financeRef(state.user.uid), financeId), { status: item.status === "done" ? "open" : "done", completedAt: item.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
   if (button.dataset.completeContact) { const item = state.contacts.find((record) => record.id === button.dataset.completeContact); run(() => updateDoc(doc(contactFollowUpsRef(state.user.uid), item.id), { status: item.status === "done" ? "open" : "done", completedAt: item.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }

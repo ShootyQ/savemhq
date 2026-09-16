@@ -1,26 +1,47 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth } from "./auth-shared.js";
-import { achEntriesRef, actionStatesRef, asDate, briefingRef, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, focusRef, formatDay, formatDateTime, ideasRef, monthlyBillCyclesRef, monthlyBillVendorsRef, paymentEntrySourcesRef, priorityRank, projectsRef, resolveDeskSession, summaryRef, tasksRef } from "./workroom-shared.js";
+import { achEntriesRef, actionStatesRef, asDate, briefingRef, calendarEventsRef, contactFollowUpsRef, connectionsRef, escapeHtml, financeRef, focusRef, formatDay, formatDateTime, ideasRef, monthlyBillCyclesRef, monthlyBillVendorsRef, paymentEntrySourcesRef, priorityRank, projectsRef, resolveDeskSession, summaryRef, tasksRef } from "./workroom-shared.js";
 
 const $ = (id) => document.getElementById(id);
 const elements = {
-  gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), guestWelcome: $("workroom-guest-welcome"), guestWelcomeName: $("workroom-guest-welcome-name"), clock: $("workroom-clock"), date: $("workroom-date"), completedCount: $("workroom-completed-count"), overdueCount: $("workroom-overdue-count"), overdueStat: $("workroom-overdue-stat"), allCount: $("workroom-all-count"), billsCount: $("workroom-bills-count"), paymentEntriesCount: $("workroom-payment-entries-count"), dayline: $("workroom-dayline-events"), clearPin: $("workroom-clear-pin"), tasks: $("workroom-display-tasks"), radarTitle: $("workroom-radar-title"), radarTabs: $("workroom-radar-tabs"), radar: $("workroom-radar-list"), radarCounts: $("workroom-radar-counts"), briefingTitle: $("workroom-briefing-title"), briefingPreview: $("workroom-briefing-preview"), briefingUpdated: $("workroom-briefing-updated"), footer: $("workroom-context-footer"), completeToast: $("workroom-complete-toast"), allDialog: $("workroom-all-dialog"), allGroups: $("workroom-all-groups"), briefingDialog: $("workroom-briefing-dialog"), fullBriefing: $("workroom-full-briefing"), operationsDialog: $("workroom-operations-dialog"), operationsTabs: $("workroom-operations-tabs"), operationsContent: $("workroom-operations-content"), openOperations: $("workroom-open-operations"), openAll: $("workroom-open-all"), viewAll: $("workroom-view-all"), openBriefing: $("workroom-open-briefing"),
+  gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), guestWelcome: $("workroom-guest-welcome"), guestWelcomeName: $("workroom-guest-welcome-name"), clock: $("workroom-clock"), date: $("workroom-date"), completedCount: $("workroom-completed-count"), overdueCount: $("workroom-overdue-count"), overdueStat: $("workroom-overdue-stat"), allCount: $("workroom-all-count"), billsCount: $("workroom-bills-count"), paymentEntriesCount: $("workroom-payment-entries-count"), dayline: $("workroom-dayline-events"), clearPin: $("workroom-clear-pin"), tasks: $("workroom-display-tasks"), radarTitle: $("workroom-radar-title"), radarTabs: $("workroom-radar-tabs"), radar: $("workroom-radar-list"), footer: $("workroom-context-footer"), completeToast: $("workroom-complete-toast"), allDialog: $("workroom-all-dialog"), allGroups: $("workroom-all-groups"), operationsDialog: $("workroom-operations-dialog"), operationsTabs: $("workroom-operations-tabs"), operationsContent: $("workroom-operations-content"), openOperations: $("workroom-open-operations"), openAll: $("workroom-open-all"), viewAll: $("workroom-view-all"), openBriefing: $("workroom-open-briefing"),
   openSprint: $("workroom-open-sprint"), sprintLauncherText: $("workroom-sprint-launcher-text"),
   focusOverlay: $("workroom-focus-overlay"), focusClose: $("workroom-focus-close"),
   focusTaskProject: $("workroom-focus-task-project"), focusTaskTitle: $("workroom-focus-task-title"), focusTaskNotes: $("workroom-focus-task-notes"),
   focusRing: $("workroom-focus-ring"), focusTime: $("workroom-focus-time"), focusLabel: $("workroom-focus-label"), focusStatus: $("workroom-focus-status"),
   sprintToggle: $("workroom-sprint-toggle"), sprintCancel: $("workroom-sprint-cancel"), sprintChoices: [...document.querySelectorAll("[data-sprint-minutes]")],
   focusCompleteTask: $("workroom-focus-complete-task"),
+  briefingOverlay: $("workroom-briefing-overlay"), briefingClose: $("workroom-briefing-close"),
+  briefingFullscreenUpdated: $("workroom-briefing-fullscreen-updated"), fullBriefing: $("workroom-full-briefing"),
+  calTitle: $("workroom-calendar-title"), calBody: $("workroom-calendar-body"),
+  calViewWeek: $("workroom-cal-view-week"), calViewMonth: $("workroom-cal-view-month"),
+  calPrev: $("workroom-cal-prev"), calToday: $("workroom-cal-today"), calNext: $("workroom-cal-next"),
+  calAddBtn: $("workroom-cal-add-btn"),
+  eventDialog: $("workroom-event-dialog"), eventForm: $("workroom-display-event-form"),
+  eventTitle: $("workroom-display-event-title"), eventDate: $("workroom-display-event-date"),
+  eventTime: $("workroom-display-event-time"), eventAllDay: $("workroom-display-event-allday"),
+  eventCategory: $("workroom-display-event-category"), eventLocation: $("workroom-display-event-location"),
+  eventNotes: $("workroom-display-event-notes"),
 };
 const PIN_KEY = "workroom-compass-pinned-task";
 const SPRINT_KEY = "workroom-compass-sprint";
 const QUEUE_LIMIT = 9;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const quotes = ["Well begun is half done. - Aristotle", "The obstacle is the path. - Zen proverb", "Start where you are. Use what you have. Do what you can. - Arthur Ashe", "The most effective way to do it, is to do it. - Amelia Earhart"];
-let state = { user: null, session: null, modules: [], tasks: [], tasksLoaded: false, projects: [], ideas: [], finance: [], contacts: [], ach: [], paymentEntrySources: [], actionStates: [], billVendors: [], billCycles: [], summary: {}, briefing: {}, focus: {}, connections: [], unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25, radarCategory: "attention", operationsCategory: "all", activeDialog: null, dialogTrigger: null, focusOverlayTrigger: null };
+let state = {
+  user: null, session: null, modules: [], tasks: [], tasksLoaded: false,
+  projects: [], ideas: [], finance: [], contacts: [], ach: [],
+  paymentEntrySources: [], actionStates: [], billVendors: [], billCycles: [],
+  calendarEvents: [], summary: {}, briefing: {}, focus: {}, connections: [],
+  unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25,
+  radarCategory: "attention", operationsCategory: "all",
+  activeDialog: null, dialogTrigger: null, focusOverlayTrigger: null, briefingOverlayTrigger: null,
+  calendarView: "week", calendarDate: new Date(), selectedCalendarDay: null
+};
 let celebrationTimer = null;
 
+const clean = (val) => String(val || "").trim();
 const storageKey = (key) => `${key}:${state.user?.uid || "signed-out"}`;
 const loadStored = (key, fallback = null) => { try { return JSON.parse(window.localStorage.getItem(storageKey(key))) ?? fallback; } catch { return fallback; } };
 const saveStored = (key, value) => { try { const scopedKey = storageKey(key); if (value == null || value === "") window.localStorage.removeItem(scopedKey); else window.localStorage.setItem(scopedKey, JSON.stringify(value)); } catch { } };
@@ -43,8 +64,61 @@ const relativeDay = (value, now = new Date()) => { const offset = dayOffset(valu
 const dayPhase = (now) => { const minutes = now.getHours() * 60 + now.getMinutes(); if (minutes >= 480 && minutes < 600) return "morning"; if (minutes >= 600 && minutes < 930) return "execution"; if (minutes >= 930 && minutes < 1050) return "wrap"; return "after-hours"; };
 const taskBucket = (task, now = new Date()) => { const offset = dayOffset(task.dueDate, now); if (offset != null && offset < 0) return { id: "overdue", label: "Overdue", rank: 0 }; if (offset === 0) return { id: "today", label: "Today", rank: 1 }; if (offset != null && offset <= 7) return { id: "week", label: offset === 1 ? "Tomorrow" : "This week", rank: 2 }; if (offset == null && task.priority === "high") return { id: "high-unscheduled", label: "High priority", rank: 3 }; if (offset != null) return { id: "later", label: "Later", rank: 4 }; return { id: "unscheduled", label: "Unscheduled", rank: 5 }; };
 const rankTasks = (tasks, now = new Date()) => [...tasks].sort((left, right) => taskBucket(left, now).rank - taskBucket(right, now).rank || priorityRank(left.priority) - priorityRank(right.priority) || ((asDate(left.dueDate)?.getTime() || Number.MAX_SAFE_INTEGER) - (asDate(right.dueDate)?.getTime() || Number.MAX_SAFE_INTEGER)) || ((asDate(left.createdAt)?.getTime() || 0) - (asDate(right.createdAt)?.getTime() || 0)) || String(left.id).localeCompare(String(right.id)));
-const eventDate = (event) => { if (event.allDay && event.date) { const [year, month, day] = String(event.date).split("-").map(Number); return new Date(year, month - 1, day); } return asDate(event.start); };
-const eventWhen = (event) => { const date = eventDate(event); if (!date || Number.isNaN(date.getTime())) return "Time unavailable"; if (event.allDay) return "All day"; return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date); };
+const eventDate = (event) => {
+  if (event.allDay && event.date) {
+    const [year, month, day] = String(event.date).split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
+  if (event.date) {
+    const [year, month, day] = String(event.date).split("-").map(Number);
+    if (event.time) {
+      const [hours, minutes] = String(event.time).split(":").map(Number);
+      return new Date(year, month - 1, day, hours || 0, minutes || 0);
+    }
+    return new Date(year, month - 1, day);
+  }
+  return asDate(event.start);
+};
+const eventWhen = (event) => {
+  if (event.allDay) return "All day";
+  if (event.time) {
+    const [hours, minutes] = String(event.time).split(":").map(Number);
+    const date = new Date(2000, 0, 1, hours, minutes);
+    return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date);
+  }
+  const date = eventDate(event);
+  if (!date || Number.isNaN(date.getTime())) return "All day";
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date);
+};
+
+const getAllCalendarEvents = () => {
+  const custom = (state.calendarEvents || []).map((evt) => ({
+    id: evt.id,
+    title: evt.title,
+    date: evt.date,
+    time: evt.time || null,
+    allDay: evt.allDay !== false,
+    category: evt.category || "",
+    location: evt.location || "",
+    notes: evt.notes || "",
+    startDate: eventDate(evt),
+    isCustom: true
+  }));
+  const google = (state.summary.upcomingEvents || []).map((evt, idx) => ({
+    id: evt.id || `google-${idx}`,
+    title: evt.title,
+    date: evt.date,
+    time: evt.time || null,
+    allDay: Boolean(evt.allDay),
+    category: "Google",
+    location: evt.location || "",
+    notes: "",
+    startDate: eventDate(evt),
+    isCustom: false
+  }));
+  return [...custom, ...google].sort((a, b) => (a.startDate?.getTime() || 0) - (b.startDate?.getTime() || 0));
+};
+
 const parseBriefing = (text) => {
   const sections = { "DO TODAY": [], "THIS WEEK": [], WAITING: [], WATCH: [] };
   let active = "";
@@ -56,7 +130,15 @@ const deriveRadar = (now) => {
   const items = [];
   state.contacts.filter((item) => item.status !== "done").forEach((item) => { const offset = dayOffset(item.followUpDate, now); const score = offset < 0 ? 0 : offset === 0 ? 2 : offset === 1 ? 5 : 20 + (offset ?? 30); items.push(radarItem("Follow-up", item.name, item.reason, relativeDay(item.followUpDate, now), score, item.id, true, "contact")); });
   state.finance.filter((item) => item.status !== "done").forEach((item) => { const offset = dayOffset(item.dueDate, now); const score = offset < 0 ? 0 : offset === 0 ? 2 : offset === 1 ? 5 : 20 + (offset ?? 30); items.push(radarItem("Finance", item.title, item.category || "Reminder", relativeDay(item.dueDate, now), score, item.id, true, "finance")); });
-  (state.summary.upcomingEvents || []).forEach((event, index) => { const date = eventDate(event); if (!date) return; const minutes = (date - now) / 60000; if (minutes >= -30 && minutes <= 24 * 60) items.push(radarItem("Calendar", event.title, event.location || "Calendar", minutes <= 60 && minutes >= 0 ? `In ${Math.max(1, Math.round(minutes))} min` : eventWhen(event), minutes <= 60 ? 1 : 8 + minutes / 60, `event-${index}`)); });
+  const allEvents = getAllCalendarEvents();
+  allEvents.forEach((event, index) => {
+    const date = event.startDate;
+    if (!date) return;
+    const minutes = (date - now) / 60000;
+    if (minutes >= -30 && minutes <= 24 * 60) {
+      items.push(radarItem("Calendar", event.title, event.location || (event.isCustom ? "Desk Calendar" : "Calendar"), minutes <= 60 && minutes >= 0 ? `In ${Math.max(1, Math.round(minutes))} min` : eventWhen(event), minutes <= 60 ? 1 : 8 + minutes / 60, event.id || `event-${index}`));
+    }
+  });
   state.ach.forEach((item) => { const offset = dayOffset(item.withdrawalDate, now); if (offset != null && offset >= 0 && offset <= 3) items.push(radarItem("ACH", `${item.name} - $${Number(item.amount || 0).toFixed(2)}`, item.reason, relativeDay(item.withdrawalDate, now), 6 + offset, item.id, true, "ach")); });
   state.paymentEntrySources.forEach((source) => { const offset = paymentEntryDueOffset(source, now); if (offset == null || offset <= 0) items.push(radarItem("Payment entry", source.name, `Every ${Number(source.intervalDays)} days`, offset == null ? "Needs first entry" : offset < 0 ? `${Math.abs(offset)} days overdue` : "Due today", offset == null ? 0 : Math.max(0, offset), source.id, true, "payment-entry")); });
   state.projects.filter((item) => item.status === "active").forEach((item) => { const offset = dayOffset(item.targetDate, now); if (offset != null && offset <= 7) items.push(radarItem("Project", item.title, "Target date approaching", relativeDay(item.targetDate, now), offset < 0 ? 3 : 12 + offset, item.id, true, "project")); });
@@ -76,7 +158,8 @@ const operationGroups = (now) => {
   const finance = [...state.finance].filter((item) => item.status !== "done").sort(byDate("dueDate")).map((item) => radarItem("Finance", item.title, `${item.category || "Reminder"}${item.amount != null ? ` - $${Number(item.amount).toFixed(2)}` : ""}`, relativeDay(item.dueDate, now), 0, item.id, true, "finance"));
   const ach = [...state.ach].sort(byDate("withdrawalDate")).map((item) => radarItem("ACH", `${item.name} - $${Number(item.amount || 0).toFixed(2)}`, `${item.reason}${item.recurring ? " - recurring" : ""}`, relativeDay(item.withdrawalDate, now), 0, item.id, true, "ach"));
   const paymentEntries = [...state.paymentEntrySources].sort((left, right) => (paymentEntryDueOffset(left, now) ?? -Infinity) - (paymentEntryDueOffset(right, now) ?? -Infinity)).map((source) => { const offset = paymentEntryDueOffset(source, now); return radarItem("Payment entry", source.name, `Every ${Number(source.intervalDays)} days`, offset == null ? "Needs first entry" : offset < 0 ? `${Math.abs(offset)} days overdue` : offset === 0 ? "Due today" : `Due ${formatDay(paymentEntryDueDate(source))}`, 0, source.id, true, "payment-entry"); });
-  const calendar = (state.summary.upcomingEvents || []).map((event) => radarItem("Calendar", event.title, event.location || "Google Calendar", `${dayOffset(eventDate(event), now) === 0 ? "Today - " : `${formatDay(eventDate(event))} - `}${eventWhen(event)}`, 0, event.id, true, "calendar"));
+  const allEvents = getAllCalendarEvents();
+  const calendar = allEvents.map((event) => radarItem("Calendar", event.title, event.location || (event.isCustom ? "Desk Calendar" : "Google Calendar"), `${dayOffset(event.startDate, now) === 0 ? "Today - " : `${formatDay(event.startDate)} - `}${eventWhen(event)}`, 0, event.id, true, "calendar"));
   const mail = (state.summary.recentMail || []).map((message) => radarItem("Mail", message.subject, message.from || "Google Mail", "Unread", 0, message.id, true, "mail"));
   const projects = [...state.projects].filter((item) => item.status === "active").sort(byDate("targetDate")).map((item) => { const projectTasks = state.tasks.filter((task) => task.projectId === item.id); const complete = projectTasks.filter((task) => task.status === "done").length; const percent = projectTasks.length ? Math.round(complete / projectTasks.length * 100) : 0; return radarItem("Project", item.title, `${percent}% complete`, item.targetDate ? `Target ${formatDay(item.targetDate)}` : "No target date", 0, item.id, true, "project"); });
   const ideas = state.ideas.filter((idea) => idea.status !== "archived").map((idea) => radarItem("Idea", idea.title, (idea.tags || []).join(", ") || "Idea & note", idea.status === "developing" ? "Developing" : "Inbox", 0));
@@ -97,7 +180,8 @@ const deriveDayModel = (now = new Date()) => {
   const current = pinned || openTasks[0] || null;
   const queued = openTasks.filter((task) => task.id !== current?.id);
   const completedToday = state.tasks.filter((task) => task.status === "done" && dateKey(task.completedAt) === dateKey(now));
-  const events = (state.summary.upcomingEvents || []).map((event) => ({ ...event, startDate: eventDate(event) })).filter((event) => event.startDate && dayOffset(event.startDate, now) === 0).sort((left, right) => left.startDate - right.startDate);
+  const allEvents = getAllCalendarEvents();
+  const events = allEvents.filter((event) => event.startDate && dayOffset(event.startDate, now) === 0).sort((left, right) => (left.startDate?.getTime() || 0) - (right.startDate?.getTime() || 0));
   return { now, phase: dayPhase(now), openTasks, current, queued, completedToday, overdueCount: openTasks.filter((task) => taskBucket(task, now).id === "overdue").length, events, radar: deriveRadar(now), briefingSections: parseBriefing(state.briefing.text), briefingStale: Boolean(state.briefing.text) && state.briefing.dateKey !== dateKey(now), tomorrowCount: openTasks.filter((task) => dayOffset(task.dueDate, now) === 1).length };
 };
 
@@ -179,9 +263,168 @@ const renderRadar = (model) => {
   elements.radarTitle.textContent = selected.id === "attention" ? "Needs attention" : selected.label;
   elements.radarTabs.innerHTML = categories.map((category) => `<button class="workroom-radar-tab ${category.id === selected.id ? "is-active" : ""}" data-radar-category="${category.id}" type="button" aria-pressed="${category.id === selected.id}">${escapeHtml(category.label)}<span>${category.items.length}</span></button>`).join("");
   elements.radar.innerHTML = selected.items.length ? selected.items.slice(0, 5).map(operationRow).join("") : blank(`No ${selected.label.toLowerCase()} items right now.`);
-  elements.radarCounts.innerHTML = groups.map((group) => `<button data-radar-category="${group.id}" type="button"><strong>${group.items.length}</strong>${escapeHtml(group.label)}</button>`).join("");
 };
-const renderBriefing = (model) => { const today = model.briefingSections["DO TODAY"]; const waiting = model.briefingSections.WAITING; const failed = state.briefing.status === "error"; elements.briefingTitle.textContent = failed ? "Briefing unavailable" : model.briefingStale ? "Briefing needs refresh" : "Do today"; const lines = [...today.slice(0, 2), ...waiting.slice(0, 1).map((line) => `Waiting: ${line}`)]; elements.briefingPreview.innerHTML = failed ? blank(state.briefing.error || "The latest briefing could not be generated.") : lines.length ? lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("") : blank(state.briefing.text ? "No immediate items noted." : "Generate a briefing from the control room."); elements.briefingUpdated.textContent = failed ? "Run a new review from the control room." : state.briefing.generatedAt ? `${model.briefingStale ? "Stale - " : ""}Updated ${formatDateTime(state.briefing.generatedAt)}` : "Waiting for the first briefing."; elements.fullBriefing.innerHTML = (failed ? `<p class="workroom-briefing-error">${escapeHtml(state.briefing.error || "The latest briefing could not be generated.")}</p>` : "") + Object.entries(model.briefingSections).map(([heading, items]) => `<section><h3>${escapeHtml(heading)}</h3>${items.length ? items.map((item) => `<p>${escapeHtml(item)}</p>`).join("") : `<p class="workroom-tv-empty">None noted.</p>`}</section>`).join("") + (state.briefing.sourceCounts ? `<p class="workroom-briefing-receipt">Reviewed ${Number(state.briefing.sourceCounts.tasks || 0)} tasks, ${Number(state.briefing.sourceCounts.calendarEvents || 0)} events, ${Number(state.briefing.sourceCounts.recentMail || 0)} mail messages, and ${Number(state.briefing.sourceCounts.slackMessages || 0)} Slack messages.</p>` : ""); };
+const renderBriefing = (model) => {
+  if (!elements.fullBriefing) return;
+  const failed = state.briefing.status === "error";
+  if (elements.briefingFullscreenUpdated) {
+    elements.briefingFullscreenUpdated.textContent = failed
+      ? "Run a new review from the control room."
+      : state.briefing.generatedAt
+        ? `${model.briefingStale ? "Stale - " : ""}Updated ${formatDateTime(state.briefing.generatedAt)}`
+        : "Waiting for the first briefing.";
+  }
+  elements.fullBriefing.innerHTML = (failed ? `<p class="workroom-briefing-error">${escapeHtml(state.briefing.error || "The latest briefing could not be generated.")}</p>` : "")
+    + Object.entries(model.briefingSections).map(([heading, items]) => `<section class="workroom-fullscreen-briefing-section"><h3>${escapeHtml(heading)}</h3>${items.length ? items.map((item) => `<p>${escapeHtml(item)}</p>`).join("") : `<p class="workroom-tv-empty">None noted.</p>`}</section>`).join("")
+    + (state.briefing.sourceCounts ? `<p class="workroom-briefing-receipt">Reviewed ${Number(state.briefing.sourceCounts.tasks || 0)} tasks, ${Number(state.briefing.sourceCounts.calendarEvents || 0)} events, ${Number(state.briefing.sourceCounts.recentMail || 0)} mail messages, and ${Number(state.briefing.sourceCounts.slackMessages || 0)} Slack messages.</p>` : "");
+};
+
+const getWeekDays = (baseDate) => {
+  const current = startOfDay(baseDate);
+  const dayOfWeek = current.getDay();
+  const start = new Date(current);
+  start.setDate(current.getDate() - dayOfWeek);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    days.push(d);
+  }
+  return days;
+};
+
+const formatMonthYear = (date) => new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(date);
+const formatShortDay = (date) => new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date);
+const formatRange = (start, end) => {
+  const startMonth = new Intl.DateTimeFormat("en-US", { month: "short" }).format(start);
+  const endMonth = new Intl.DateTimeFormat("en-US", { month: "short" }).format(end);
+  if (startMonth === endMonth) {
+    return `${startMonth} ${start.getDate()} – ${end.getDate()}, ${end.getFullYear()}`;
+  }
+  return `${startMonth} ${start.getDate()} – ${endMonth} ${end.getDate()}, ${end.getFullYear()}`;
+};
+
+const renderCalendar = () => {
+  if (!elements.calBody) return;
+  const allEvents = getAllCalendarEvents();
+  const now = new Date();
+  const todayKey = dateKey(now);
+
+  if (state.calendarView === "week") {
+    elements.calViewWeek?.classList.add("is-active");
+    elements.calViewMonth?.classList.remove("is-active");
+
+    const days = getWeekDays(state.calendarDate);
+    if (elements.calTitle) elements.calTitle.textContent = formatRange(days[0], days[6]);
+
+    const daysHtml = days.map((day) => {
+      const dKey = dateKey(day);
+      const isToday = dKey === todayKey;
+      const dayName = formatShortDay(day);
+      const dayNum = day.getDate();
+      const dayEvents = allEvents.filter((evt) => dateKey(evt.startDate || evt.date) === dKey);
+
+      const eventsHtml = dayEvents.length ? dayEvents.map((evt) => `
+        <div class="workroom-cal-chip ${evt.category ? `cat-${escapeHtml(evt.category.toLowerCase().replace(/[^a-z0-9]/g, '-'))}` : ""}" title="${escapeHtml(evt.title)}">
+          <span class="workroom-cal-chip-time">${escapeHtml(eventWhen(evt))}</span>
+          <span class="workroom-cal-chip-title">${escapeHtml(evt.title)}</span>
+          ${evt.isCustom ? `<button class="workroom-cal-chip-del" data-delete-event="${escapeHtml(evt.id)}" type="button" aria-label="Delete ${escapeHtml(evt.title)}">&times;</button>` : ""}
+        </div>
+      `).join("") : `<div class="workroom-cal-empty-day" data-add-event-day="${dKey}"><span>+</span></div>`;
+
+      return `
+        <div class="workroom-cal-week-col ${isToday ? "is-today" : ""}">
+          <div class="workroom-cal-col-header" data-add-event-day="${dKey}">
+            <span class="workroom-cal-col-name">${escapeHtml(dayName)}</span>
+            <span class="workroom-cal-col-num">${dayNum}</span>
+          </div>
+          <div class="workroom-cal-col-events">
+            ${eventsHtml}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    elements.calBody.innerHTML = `<div class="workroom-cal-week-grid">${daysHtml}</div>`;
+  } else {
+    elements.calViewWeek?.classList.remove("is-active");
+    elements.calViewMonth?.classList.add("is-active");
+
+    const year = state.calendarDate.getFullYear();
+    const month = state.calendarDate.getMonth();
+    if (elements.calTitle) elements.calTitle.textContent = formatMonthYear(state.calendarDate);
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startOffset = firstDay.getDay();
+    const totalDays = lastDay.getDate();
+
+    const weekHeaders = ["S", "M", "T", "W", "T", "F", "S"].map((h) => `<div class="workroom-cal-month-th">${h}</div>`).join("");
+
+    let cellsHtml = "";
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = startOffset - 1; i >= 0; i--) {
+      const prevDate = new Date(year, month - 1, prevMonthLastDay - i);
+      const dKey = dateKey(prevDate);
+      cellsHtml += `<div class="workroom-cal-cell is-outside" data-select-day="${dKey}"><span class="workroom-cal-cell-num">${prevMonthLastDay - i}</span></div>`;
+    }
+
+    for (let d = 1; d <= totalDays; d++) {
+      const thisDate = new Date(year, month, d);
+      const dKey = dateKey(thisDate);
+      const isToday = dKey === todayKey;
+      const isSelected = dKey === (state.selectedCalendarDay || todayKey);
+      const dayEvents = allEvents.filter((evt) => dateKey(evt.startDate || evt.date) === dKey);
+      const dotsHtml = dayEvents.length ? `<span class="workroom-cal-dots">${dayEvents.slice(0, 3).map(() => `<span class="workroom-cal-dot"></span>`).join("")}${dayEvents.length > 3 ? `<span class="workroom-cal-plus">+</span>` : ""}</span>` : "";
+
+      cellsHtml += `
+        <div class="workroom-cal-cell ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""}" data-select-day="${dKey}">
+          <span class="workroom-cal-cell-num">${d}</span>
+          ${dotsHtml}
+        </div>
+      `;
+    }
+
+    const totalCells = startOffset + totalDays;
+    const remainingCells = (7 - (totalCells % 7)) % 7;
+    for (let nextD = 1; nextD <= remainingCells; nextD++) {
+      const nextDate = new Date(year, month + 1, nextD);
+      const dKey = dateKey(nextDate);
+      cellsHtml += `<div class="workroom-cal-cell is-outside" data-select-day="${dKey}"><span class="workroom-cal-cell-num">${nextD}</span></div>`;
+    }
+
+    const selDay = state.selectedCalendarDay || todayKey;
+    const selEvents = allEvents.filter((evt) => dateKey(evt.startDate || evt.date) === selDay);
+    const [sY, sM, sD] = selDay.split("-").map(Number);
+    const selDateObj = new Date(sY, sM - 1, sD);
+    const selDayLabel = `${new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(selDateObj)}${selDay === todayKey ? " (Today)" : ""}`;
+
+    const selEventsHtml = selEvents.length ? selEvents.map((evt) => `
+      <div class="workroom-cal-chip ${evt.category ? `cat-${escapeHtml(evt.category.toLowerCase().replace(/[^a-z0-9]/g, '-'))}` : ""}">
+        <span class="workroom-cal-chip-time">${escapeHtml(eventWhen(evt))}</span>
+        <span class="workroom-cal-chip-title">${escapeHtml(evt.title)}</span>
+        ${evt.location ? `<small class="workroom-cal-chip-loc">${escapeHtml(evt.location)}</small>` : ""}
+        ${evt.isCustom ? `<button class="workroom-cal-chip-del" data-delete-event="${escapeHtml(evt.id)}" type="button" aria-label="Delete ${escapeHtml(evt.title)}">&times;</button>` : ""}
+      </div>
+    `).join("") : `<div class="workroom-cal-no-events">No events scheduled. <button class="workroom-text-button" data-add-event-day="${selDay}" type="button">+ Add event</button></div>`;
+
+    elements.calBody.innerHTML = `
+      <div class="workroom-cal-month-wrap">
+        <div class="workroom-cal-month-grid">
+          ${weekHeaders}
+          ${cellsHtml}
+        </div>
+        <div class="workroom-cal-month-detail">
+          <div class="workroom-cal-detail-header">
+            <strong>${escapeHtml(selDayLabel)}</strong>
+            <button class="workroom-text-button" data-add-event-day="${selDay}" type="button">+ Add</button>
+          </div>
+          <div class="workroom-cal-detail-list">${selEventsHtml}</div>
+        </div>
+      </div>
+    `;
+  }
+};
 const renderAllWork = (model) => { const groups = [{ id: "overdue", title: "Overdue" }, { id: "today", title: "Today" }, { id: "week", title: "This week" }, { id: "high-unscheduled", title: "High priority" }, { id: "later", title: "Later" }, { id: "unscheduled", title: "Unscheduled" }]; elements.allGroups.innerHTML = groups.map((group) => { const tasks = model.openTasks.filter((task) => taskBucket(task, model.now).id === group.id); return tasks.length ? `<section><h3>${group.title} <span>${tasks.length}</span></h3>${tasks.map((task) => taskRow(task, model.now)).join("")}</section>` : ""; }).join("") + (model.completedToday.length ? `<section><h3>Finished today <span>${model.completedToday.length}</span></h3>${model.completedToday.map((task) => `<div class="workroom-finished-task">${escapeHtml(task.title)}</div>`).join("")}</section>` : ""); };
 const renderOperations = (model) => {
   const active = mixedActionItems(model);
@@ -260,6 +503,7 @@ const render = () => {
   renderDayline(model);
   renderQueue(model);
   renderRadar(model);
+  renderCalendar();
   renderBriefing(model);
   renderAllWork(model);
   renderOperations(model);
@@ -322,6 +566,33 @@ const closeFocusOverlay = () => {
   state.focusOverlayTrigger?.focus();
   state.focusOverlayTrigger = null;
 };
+const openBriefingOverlay = (trigger) => {
+  state.briefingOverlayTrigger = trigger || document.activeElement;
+  if (elements.briefingOverlay) {
+    elements.briefingOverlay.hidden = false;
+    document.body.classList.add("workroom-briefing-open");
+    elements.briefingClose?.focus();
+  }
+};
+const closeBriefingOverlay = () => {
+  if (!elements.briefingOverlay) return;
+  elements.briefingOverlay.hidden = true;
+  document.body.classList.remove("workroom-briefing-open");
+  state.briefingOverlayTrigger?.focus();
+  state.briefingOverlayTrigger = null;
+};
+const openEventDialog = (defaultDate = null, trigger = null) => {
+  if (!elements.eventDialog) return;
+  if (elements.eventForm) elements.eventForm.reset();
+  if (elements.eventDate) elements.eventDate.value = defaultDate || dateKey(state.calendarDate || new Date());
+  if (elements.eventAllDay) elements.eventAllDay.checked = true;
+  openDialog(elements.eventDialog, trigger || elements.calAddBtn);
+  elements.eventTitle?.focus();
+};
+const closeEventDialog = () => {
+  if (elements.eventDialog) closeDialog();
+};
+
 const toggleSprint = () => {
   const model = deriveDayModel();
   const current = state.tasks.find((item) => item.id === (state.sprint?.taskId || state.pinnedTaskId || model.current?.id)) || model.current;
@@ -345,11 +616,104 @@ const toggleSprint = () => {
   render();
 };
 
+elements.eventForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!state.user) return;
+  const title = clean(elements.eventTitle.value);
+  const dateVal = clean(elements.eventDate.value);
+  if (!title || !dateVal) return;
+  const isAllDay = Boolean(elements.eventAllDay.checked);
+  const timeVal = isAllDay ? null : (clean(elements.eventTime.value) || null);
+  const category = clean(elements.eventCategory.value) || null;
+  const location = clean(elements.eventLocation.value) || null;
+  const notes = clean(elements.eventNotes.value) || null;
+
+  try {
+    await addDoc(calendarEventsRef(state.user.uid), {
+      title,
+      date: dateVal,
+      time: timeVal,
+      allDay: isAllDay,
+      category,
+      location,
+      notes,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    celebrate("Event added to calendar.");
+    closeEventDialog();
+  } catch (error) {
+    celebrate(`Could not save event: ${error.message || "error"}`);
+  }
+});
+
 document.addEventListener("click", async (event) => {
   const pin = event.target.closest("[data-pin-task]"); if (pin) { if (state.sprint?.taskId && state.sprint.taskId !== pin.dataset.pinTask) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Desk"; } state.pinnedTaskId = pin.dataset.pinTask; saveStored(PIN_KEY, state.pinnedTaskId); closeDialog(); render(); return; }
   if (event.target.closest("#workroom-clear-pin")) { if (state.sprint?.taskId === state.pinnedTaskId) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Desk"; } state.pinnedTaskId = ""; saveStored(PIN_KEY, null); render(); return; }
   if (event.target.closest("#workroom-open-sprint")) { openFocusOverlay(event.target.closest("button")); return; }
   if (event.target.closest("#workroom-focus-close, [data-close-focus-overlay]")) { closeFocusOverlay(); return; }
+  if (event.target.closest("#workroom-open-briefing")) { openBriefingOverlay(event.target.closest("button")); return; }
+  if (event.target.closest("#workroom-briefing-close, [data-close-briefing-overlay]")) { closeBriefingOverlay(); return; }
+
+  if (event.target.closest("#workroom-cal-view-week")) { state.calendarView = "week"; renderCalendar(); return; }
+  if (event.target.closest("#workroom-cal-view-month")) { state.calendarView = "month"; renderCalendar(); return; }
+  if (event.target.closest("#workroom-cal-prev")) {
+    if (state.calendarView === "week") {
+      state.calendarDate.setDate(state.calendarDate.getDate() - 7);
+    } else {
+      state.calendarDate.setMonth(state.calendarDate.getMonth() - 1);
+    }
+    renderCalendar();
+    return;
+  }
+  if (event.target.closest("#workroom-cal-next")) {
+    if (state.calendarView === "week") {
+      state.calendarDate.setDate(state.calendarDate.getDate() + 7);
+    } else {
+      state.calendarDate.setMonth(state.calendarDate.getMonth() + 1);
+    }
+    renderCalendar();
+    return;
+  }
+  if (event.target.closest("#workroom-cal-today")) {
+    state.calendarDate = new Date();
+    state.selectedCalendarDay = dateKey(new Date());
+    renderCalendar();
+    return;
+  }
+  const selectDay = event.target.closest("[data-select-day]");
+  if (selectDay) {
+    state.selectedCalendarDay = selectDay.dataset.selectDay;
+    renderCalendar();
+    return;
+  }
+  const addDay = event.target.closest("[data-add-event-day]");
+  if (addDay) {
+    openEventDialog(addDay.dataset.addEventDay, addDay);
+    return;
+  }
+  if (event.target.closest("#workroom-cal-add-btn")) {
+    openEventDialog(state.selectedCalendarDay || dateKey(state.calendarDate || new Date()), event.target.closest("button"));
+    return;
+  }
+  if (event.target.closest("[data-close-event-dialog]")) {
+    closeEventDialog();
+    return;
+  }
+  const delEvent = event.target.closest("[data-delete-event]");
+  if (delEvent) {
+    const eventId = delEvent.dataset.deleteEvent;
+    delEvent.disabled = true;
+    try {
+      await deleteDoc(doc(calendarEventsRef(state.user.uid), eventId));
+      celebrate("Event removed.");
+    } catch {
+      celebrate("Could not delete event.");
+      delEvent.disabled = false;
+    }
+    return;
+  }
+
   const focusTask = event.target.closest("[data-focus-task]");
   if (focusTask) {
     const taskId = focusTask.dataset.focusTask;
@@ -386,7 +750,6 @@ document.addEventListener("click", async (event) => {
   }
   if (event.target.closest("#workroom-open-all")) { openDialog(elements.allDialog, event.target.closest("button")); return; }
   if (event.target.closest("#workroom-view-all")) { openDialog(elements.operationsDialog, event.target.closest("button")); return; }
-  if (event.target.closest("#workroom-open-briefing, [data-open-briefing]")) { openDialog(elements.briefingDialog, event.target.closest("button")); return; }
   if (event.target.closest("#workroom-open-operations")) { openDialog(elements.operationsDialog, event.target.closest("button")); return; }
   if (event.target.closest("[data-close-display-dialog]")) { closeDialog(); return; }
   const radarCategory = event.target.closest("[data-radar-category]"); if (radarCategory) { state.radarCategory = radarCategory.dataset.radarCategory; renderRadar(deriveDayModel()); return; }
@@ -408,6 +771,10 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     if (elements.focusOverlay && !elements.focusOverlay.hidden) {
       closeFocusOverlay();
+      return;
+    }
+    if (elements.briefingOverlay && !elements.briefingOverlay.hidden) {
+      closeBriefingOverlay();
       return;
     }
     closeDialog();
@@ -437,6 +804,7 @@ onAuthStateChanged(auth, async (user) => {
   state.unsubscribers.push(
     onSnapshot(tasksRef(user.uid), (snapshot) => { state.tasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); state.tasksLoaded = true; render(); }),
     onSnapshot(actionStatesRef(user.uid), (snapshot) => { state.actionStates = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
+    onSnapshot(calendarEventsRef(user.uid), (snapshot) => { state.calendarEvents = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
   );
   if (hasModule("projects")) state.unsubscribers.push(onSnapshot(projectsRef(user.uid), (snapshot) => { state.projects = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));
   if (hasModule("ideas")) state.unsubscribers.push(onSnapshot(ideasRef(user.uid), (snapshot) => { state.ideas = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));

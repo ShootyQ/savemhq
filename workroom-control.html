@@ -34,6 +34,7 @@
         <nav class="workroom-view-nav" aria-label="Desk sections">
           <button class="workroom-view-tab is-active" data-workroom-view="today" type="button">Today</button>
           <button class="workroom-view-tab" data-workroom-view="work" type="button">Work</button>
+          <button class="workroom-view-tab" data-workroom-view="calendar" type="button">Calendar</button>
           <button class="workroom-view-tab" data-workroom-view="ideas" data-module="ideas" type="button">Ideas</button>
           <button class="workroom-view-tab" data-workroom-view="money" data-module-any="finance ach monthly-bills payment-entries" type="button">Money</button>
           <button class="workroom-view-tab" data-workroom-view="automations" data-module="google" data-owner-fallback type="button">Connections</button>
@@ -74,6 +75,22 @@
             <article class="workroom-panel"><div class="workroom-panel-heading"><h2>Tasks</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="task" type="button">Add</button></div><div id="workroom-tasks" class="workroom-record-list"></div></article>
             <article class="workroom-panel" data-module="follow-ups"><div class="workroom-panel-heading"><h2>Follow-ups</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="contact" type="button">Add</button></div><div id="workroom-contacts" class="workroom-record-list"></div></article>
             <article class="workroom-panel" data-module="projects"><div class="workroom-panel-heading"><h2>Projects</h2><button class="workroom-button workroom-button-quiet" data-open-quick-add="project" type="button">Add</button></div><div id="workroom-projects" class="workroom-record-list"></div></article>
+          </div>
+        </section>
+
+        <section class="workroom-view" data-workroom-view-panel="calendar" hidden>
+          <div class="workroom-section-heading">
+            <div><p class="workroom-panel-kicker">Schedule</p><h2>Calendar</h2></div>
+            <div class="workroom-inline-actions">
+              <button class="workroom-button workroom-button-primary" data-open-quick-add="event" type="button">Add event</button>
+            </div>
+          </div>
+          <div class="workroom-panel">
+            <div class="workroom-panel-heading">
+              <h2>Scheduled events</h2>
+              <span id="workroom-calendar-count" class="workroom-inline-hint">0 events</span>
+            </div>
+            <div id="workroom-calendar-events-list" class="workroom-record-list"></div>
           </div>
         </section>
 
@@ -123,8 +140,18 @@
         <div class="workroom-dialog-backdrop" data-close-quick-add></div>
         <section class="workroom-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="workroom-quick-add-title">
           <div class="workroom-panel-heading"><div><p class="workroom-panel-kicker">Capture</p><h2 id="workroom-quick-add-title">Quick add</h2></div><button class="workroom-icon-button" data-close-quick-add aria-label="Close quick add" type="button">×</button></div>
-          <div class="workroom-quick-add-types" role="group" aria-label="Item type"><button data-quick-add-type="task" type="button">Task</button><button data-quick-add-type="idea" data-module="ideas" type="button">Idea</button><button data-quick-add-type="contact" data-module="follow-ups" type="button">Follow-up</button><button data-quick-add-type="finance" data-module="finance" type="button">Finance</button><button data-quick-add-type="project" data-module="projects" type="button">Project</button><button data-quick-add-type="ach" data-module="ach" type="button">ACH</button></div>
+          <div class="workroom-quick-add-types" role="group" aria-label="Item type"><button data-quick-add-type="task" type="button">Task</button><button data-quick-add-type="event" type="button">Event</button><button data-quick-add-type="idea" data-module="ideas" type="button">Idea</button><button data-quick-add-type="contact" data-module="follow-ups" type="button">Follow-up</button><button data-quick-add-type="finance" data-module="finance" type="button">Finance</button><button data-quick-add-type="project" data-module="projects" type="button">Project</button><button data-quick-add-type="ach" data-module="ach" type="button">ACH</button></div>
           <form id="workroom-task-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="task"><label>Task<input id="workroom-task-title" maxlength="180" required placeholder="The next useful thing" /></label><label>Project<select id="workroom-task-project"><option value="">No project</option></select></label><label>Priority<select id="workroom-task-priority"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></label><label>Due date<input id="workroom-task-date" type="date" /></label><label>Notes<textarea id="workroom-task-notes" maxlength="1000" placeholder="Optional context"></textarea></label><button class="workroom-button workroom-button-primary" type="submit">Add task</button></form>
+          <form id="workroom-event-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="event" hidden>
+            <label>Event title<input id="workroom-event-title" maxlength="180" required placeholder="Team sync, Doctor, Flight..." /></label>
+            <label>Date<input id="workroom-event-date" type="date" required /></label>
+            <label>Time (optional)<input id="workroom-event-time" type="time" /></label>
+            <label class="workroom-checkbox-label"><input id="workroom-event-allday" type="checkbox" checked /> All-day event</label>
+            <label>Category (optional)<input id="workroom-event-category" maxlength="60" placeholder="Work, Family, Church, Personal..." /></label>
+            <label>Location (optional)<input id="workroom-event-location" maxlength="180" placeholder="Office, Zoom, Home..." /></label>
+            <label>Notes (optional)<textarea id="workroom-event-notes" maxlength="1000" placeholder="Details or agenda"></textarea></label>
+            <button class="workroom-button workroom-button-primary" type="submit">Add event</button>
+          </form>
           <form id="workroom-idea-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="idea" hidden><label>Title<input id="workroom-idea-title" maxlength="180" required placeholder="A thought worth keeping" /></label><label>Notes<textarea id="workroom-idea-body" maxlength="12000" placeholder="Develop the thought..."></textarea></label><label>Tags<input id="workroom-idea-tags" maxlength="240" placeholder="sermon, grace, series" /></label><label>Status<select id="workroom-idea-status"><option value="inbox">Inbox</option><option value="developing">Developing</option><option value="archived">Archived</option></select></label><button class="workroom-button workroom-button-primary" type="submit">Save idea</button></form>
           <form id="workroom-contact-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="contact" hidden><label>Contact<input id="workroom-contact-name" maxlength="120" required placeholder="Name or organization" /></label><label>Follow up on<input id="workroom-contact-date" type="date" required /></label><label>Reason<textarea id="workroom-contact-reason" maxlength="500" required placeholder="What needs attention?"></textarea></label><label>How<select id="workroom-contact-method"><option value="phone">Phone</option><option value="email">Email</option></select></label><label>Phone or email<input id="workroom-contact-detail" maxlength="160" required placeholder="Number or address" /></label><button class="workroom-button workroom-button-primary" type="submit">Add follow-up</button></form>
           <form id="workroom-finance-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="finance" hidden><label>Reminder<input id="workroom-finance-title" maxlength="160" required placeholder="Invoice follow-up" /></label><label>Category<input id="workroom-finance-category" maxlength="50" placeholder="Invoice, approval, filing" /></label><label>Urgency<select id="workroom-finance-urgency"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></label><label>Due date<input id="workroom-finance-date" type="date" /></label><label>Amount (optional)<input id="workroom-finance-amount" type="number" step="0.01" min="0" /></label><label>Reference<input id="workroom-finance-reference" maxlength="160" placeholder="Vendor or note" /></label><button class="workroom-button workroom-button-primary" type="submit">Add reminder</button></form>
@@ -133,6 +160,6 @@
         </section>
       </div>
     </main>
-    <script type="module" src="js/workroom-control.js"></script>
+    <script type="module" src="js/workroom-control.js?v=workroom-calendar-control-20260916"></script>
   </body>
 </html>
