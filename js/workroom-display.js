@@ -5,14 +5,20 @@ import { achEntriesRef, actionStatesRef, asDate, briefingRef, contactFollowUpsRe
 
 const $ = (id) => document.getElementById(id);
 const elements = {
-  gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), guestWelcome: $("workroom-guest-welcome"), guestWelcomeName: $("workroom-guest-welcome-name"), clock: $("workroom-clock"), date: $("workroom-date"), completedCount: $("workroom-completed-count"), overdueCount: $("workroom-overdue-count"), overdueStat: $("workroom-overdue-stat"), allCount: $("workroom-all-count"), billsCount: $("workroom-bills-count"), paymentEntriesCount: $("workroom-payment-entries-count"), dayline: $("workroom-dayline-events"), nowReason: $("workroom-now-reason"), nowContent: $("workroom-now-content"), clearPin: $("workroom-clear-pin"), tasks: $("workroom-display-tasks"), radarTitle: $("workroom-radar-title"), radarTabs: $("workroom-radar-tabs"), radar: $("workroom-radar-list"), radarCounts: $("workroom-radar-counts"), briefingTitle: $("workroom-briefing-title"), briefingPreview: $("workroom-briefing-preview"), briefingUpdated: $("workroom-briefing-updated"), footer: $("workroom-context-footer"), completeToast: $("workroom-complete-toast"), allDialog: $("workroom-all-dialog"), allGroups: $("workroom-all-groups"), briefingDialog: $("workroom-briefing-dialog"), fullBriefing: $("workroom-full-briefing"), operationsDialog: $("workroom-operations-dialog"), operationsTabs: $("workroom-operations-tabs"), operationsContent: $("workroom-operations-content"), openOperations: $("workroom-open-operations"), openAll: $("workroom-open-all"), viewAll: $("workroom-view-all"), openBriefing: $("workroom-open-briefing"), focusRing: $("workroom-focus-ring"), focusTime: $("workroom-focus-time"), focusLabel: $("workroom-focus-label"), focusStatus: $("workroom-focus-status"), sprintToggle: $("workroom-sprint-toggle"), sprintCancel: $("workroom-sprint-cancel"), sprintChoices: [...document.querySelectorAll("[data-sprint-minutes]")],
+  gate: $("workroom-display-gate"), gateMessage: $("workroom-display-gate-message"), signIn: $("workroom-display-sign-in"), app: $("workroom-display-app"), guestWelcome: $("workroom-guest-welcome"), guestWelcomeName: $("workroom-guest-welcome-name"), clock: $("workroom-clock"), date: $("workroom-date"), completedCount: $("workroom-completed-count"), overdueCount: $("workroom-overdue-count"), overdueStat: $("workroom-overdue-stat"), allCount: $("workroom-all-count"), billsCount: $("workroom-bills-count"), paymentEntriesCount: $("workroom-payment-entries-count"), dayline: $("workroom-dayline-events"), clearPin: $("workroom-clear-pin"), tasks: $("workroom-display-tasks"), radarTitle: $("workroom-radar-title"), radarTabs: $("workroom-radar-tabs"), radar: $("workroom-radar-list"), radarCounts: $("workroom-radar-counts"), briefingTitle: $("workroom-briefing-title"), briefingPreview: $("workroom-briefing-preview"), briefingUpdated: $("workroom-briefing-updated"), footer: $("workroom-context-footer"), completeToast: $("workroom-complete-toast"), allDialog: $("workroom-all-dialog"), allGroups: $("workroom-all-groups"), briefingDialog: $("workroom-briefing-dialog"), fullBriefing: $("workroom-full-briefing"), operationsDialog: $("workroom-operations-dialog"), operationsTabs: $("workroom-operations-tabs"), operationsContent: $("workroom-operations-content"), openOperations: $("workroom-open-operations"), openAll: $("workroom-open-all"), viewAll: $("workroom-view-all"), openBriefing: $("workroom-open-briefing"),
+  openSprint: $("workroom-open-sprint"), sprintLauncherText: $("workroom-sprint-launcher-text"),
+  focusOverlay: $("workroom-focus-overlay"), focusClose: $("workroom-focus-close"),
+  focusTaskProject: $("workroom-focus-task-project"), focusTaskTitle: $("workroom-focus-task-title"), focusTaskNotes: $("workroom-focus-task-notes"),
+  focusRing: $("workroom-focus-ring"), focusTime: $("workroom-focus-time"), focusLabel: $("workroom-focus-label"), focusStatus: $("workroom-focus-status"),
+  sprintToggle: $("workroom-sprint-toggle"), sprintCancel: $("workroom-sprint-cancel"), sprintChoices: [...document.querySelectorAll("[data-sprint-minutes]")],
+  focusCompleteTask: $("workroom-focus-complete-task"),
 };
 const PIN_KEY = "workroom-compass-pinned-task";
 const SPRINT_KEY = "workroom-compass-sprint";
-const QUEUE_LIMIT = 5;
+const QUEUE_LIMIT = 9;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const quotes = ["Well begun is half done. - Aristotle", "The obstacle is the path. - Zen proverb", "Start where you are. Use what you have. Do what you can. - Arthur Ashe", "The most effective way to do it, is to do it. - Amelia Earhart"];
-let state = { user: null, session: null, modules: [], tasks: [], tasksLoaded: false, projects: [], ideas: [], finance: [], contacts: [], ach: [], paymentEntrySources: [], actionStates: [], billVendors: [], billCycles: [], summary: {}, briefing: {}, focus: {}, connections: [], unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25, radarCategory: "attention", operationsCategory: "all", activeDialog: null, dialogTrigger: null };
+let state = { user: null, session: null, modules: [], tasks: [], tasksLoaded: false, projects: [], ideas: [], finance: [], contacts: [], ach: [], paymentEntrySources: [], actionStates: [], billVendors: [], billCycles: [], summary: {}, briefing: {}, focus: {}, connections: [], unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25, radarCategory: "attention", operationsCategory: "all", activeDialog: null, dialogTrigger: null, focusOverlayTrigger: null };
 let celebrationTimer = null;
 
 const storageKey = (key) => `${key}:${state.user?.uid || "signed-out"}`;
@@ -97,11 +103,30 @@ const deriveDayModel = (now = new Date()) => {
 
 const mixedActionItems = (model) => {
   const attentionScores = new Map(model.radar.map((item) => [`${item.actionType}:${item.id}`, item.score]));
-  const tasks = model.queued.map((task) => {
+  const tasks = model.openTasks.map((task, index) => {
     const bucket = taskBucket(task, model.now);
-    return { actionType: "task", id: task.id, type: "Task", title: task.title, detail: projectName(task), time: task.dueDate ? relativeDay(task.dueDate, model.now) : bucket.label, score: bucket.rank * 10 + priorityRank(task.priority), task };
+    const isPinned = task.id === state.pinnedTaskId;
+    const isTop = !state.pinnedTaskId && index === 0;
+    return {
+      actionType: "task",
+      id: task.id,
+      type: "Task",
+      title: task.title,
+      detail: projectName(task),
+      time: task.dueDate ? relativeDay(task.dueDate, model.now) : bucket.label,
+      score: isPinned ? -20 : isTop ? -10 : bucket.rank * 10 + priorityRank(task.priority),
+      task,
+      isPinned,
+      isTop,
+      bucket
+    };
   });
-  const operations = operationGroups(model.now).flatMap((group, groupIndex) => group.items.map((item, itemIndex) => ({ ...item, score: attentionScores.get(`${item.actionType}:${item.id}`) ?? 35 + groupIndex * 8 + itemIndex })));
+  const operations = operationGroups(model.now).flatMap((group, groupIndex) =>
+    group.items.map((item, itemIndex) => ({
+      ...item,
+      score: attentionScores.get(`${item.actionType}:${item.id}`) ?? 35 + groupIndex * 8 + itemIndex
+    }))
+  );
   return [...tasks, ...operations]
     .filter((item) => item.id && !actionStateFor(item.actionType, item.id))
     .sort((left, right) => left.score - right.score || left.title.localeCompare(right.title));
@@ -112,12 +137,40 @@ const projectName = (task) => state.projects.find((project) => project.id === ta
 const completeButton = (type, item, label = item.title || item.name) => `<button class="workroom-display-check" data-complete-${type}="${escapeHtml(item.id)}" type="button" aria-label="Complete ${escapeHtml(label)}"></button>`;
 const actionButtons = (item) => `<div class="workroom-queue-actions"><button class="workroom-review-later" data-review-later-type="${escapeHtml(item.actionType)}" data-review-later-id="${escapeHtml(item.id)}" type="button" aria-label="Review ${escapeHtml(item.title)} later">Later</button>${completeButton(item.actionType, item)}</div>`;
 const operationRow = (item) => `<div class="workroom-radar-item ${item.score <= 3 ? "radar-urgent" : "radar-normal"}"><div><span>${escapeHtml(item.type)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}${item.detail ? ` - ${escapeHtml(item.detail)}` : ""}</small></div>${item.canComplete && item.id ? actionButtons(item) : ""}</div>`;
-const mixedQueueRow = (item) => `<div class="workroom-mixed-action ${item.score <= 3 ? "is-urgent" : ""}"><div class="workroom-mixed-action-copy"><span>${escapeHtml(item.type)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}${item.detail ? ` - ${escapeHtml(item.detail)}` : ""}</small></div>${actionButtons(item)}</div>`;
+const mixedQueueRow = (item) => {
+  const isTask = item.actionType === "task";
+  const isUrgent = item.score <= 3 || item.bucket?.id === "overdue";
+  return `<div class="workroom-mixed-action ${isUrgent ? "is-urgent" : ""} ${item.isPinned ? "is-pinned" : ""}">` +
+    `<div class="workroom-mixed-action-leading">` +
+      `<span class="workroom-item-badge badge-${escapeHtml(item.actionType)}">${escapeHtml(item.type)}</span>` +
+      `${item.isPinned ? `<span class="workroom-item-badge is-pinned-badge">Focus</span>` : ""}` +
+      `${isUrgent ? `<span class="workroom-item-badge is-urgent-badge">Urgent</span>` : ""}` +
+    `</div>` +
+    `<div class="workroom-mixed-action-copy">` +
+      `<strong class="workroom-mixed-action-title">${escapeHtml(item.title)}</strong>` +
+      `<div class="workroom-mixed-action-meta">` +
+        `<span class="workroom-meta-time ${item.bucket?.id === "overdue" ? "is-overdue" : ""}">${escapeHtml(item.time)}</span>` +
+        `${item.detail ? `<span class="workroom-meta-sep">•</span><span class="workroom-meta-detail">${escapeHtml(item.detail)}</span>` : ""}` +
+      `</div>` +
+    `</div>` +
+    `<div class="workroom-queue-actions">` +
+      `${isTask ? `<button class="workroom-action-sprint-btn" data-focus-task="${escapeHtml(item.id)}" type="button" aria-label="Focus on ${escapeHtml(item.title)}">Focus</button>` : ""}` +
+      `<button class="workroom-review-later" data-review-later-type="${escapeHtml(item.actionType)}" data-review-later-id="${escapeHtml(item.id)}" type="button" aria-label="Review ${escapeHtml(item.title)} later">Later</button>` +
+      `${completeButton(item.actionType, item)}` +
+    `</div>` +
+  `</div>`;
+};
 const reviewLaterRow = (item) => `<div class="workroom-radar-item"><div><span>${escapeHtml(item.itemType)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}${item.detail ? ` - ${escapeHtml(item.detail)}` : ""}</small></div><button class="workroom-restore-action" data-restore-action="${escapeHtml(item.id)}" type="button">Restore</button></div>`;
 const taskRow = (task, now) => { const bucket = taskBucket(task, now); const project = projectName(task); return `<div class="workroom-compass-task priority-${escapeHtml(task.priority)}"><button class="workroom-task-select" data-pin-task="${escapeHtml(task.id)}" type="button"><span class="workroom-task-title">${escapeHtml(task.title)}</span><small><span class="workroom-status-label status-${bucket.id}">${escapeHtml(bucket.label)}</span>${project ? ` <span>${escapeHtml(project)}</span>` : ""}${task.dueDate ? ` <span>${escapeHtml(formatDay(task.dueDate))}</span>` : ""}</small></button>${completeButton("task", task)}</div>`; };
 const renderDayline = (model) => { if (!model.events.length) { elements.dayline.innerHTML = `<span class="workroom-dayline-clear">Open runway - no calendar events today.</span>`; return; } const next = model.events.find((event) => !event.allDay && (event.startDate - model.now) / 60000 >= -30); elements.dayline.innerHTML = model.events.slice(0, 5).map((event) => { const minutes = (event.startDate - model.now) / 60000; const elapsed = !event.allDay && minutes < -30; const isNext = event === next; const countdown = isNext && minutes >= 0 && minutes <= 60 ? `In ${Math.max(1, Math.round(minutes))} min` : eventWhen(event); return `<div class="workroom-dayline-event ${elapsed ? "is-elapsed" : ""} ${isNext ? "is-next" : ""}"><time>${escapeHtml(countdown)}</time><strong>${escapeHtml(event.title)}</strong></div>`; }).join(""); };
-const renderNow = (model) => { const task = model.current; elements.clearPin.hidden = !state.pinnedTaskId; elements.nowReason.textContent = task ? (state.pinnedTaskId ? "Pinned focus" : taskBucket(task, model.now).label) : "Queue clear"; elements.nowContent.innerHTML = task ? `<div class="workroom-now-task"><div><span class="workroom-now-project">${escapeHtml(projectName(task) || "Independent task")}</span><h1>${escapeHtml(task.title)}</h1><p>${task.notes ? escapeHtml(task.notes) : task.dueDate ? `${escapeHtml(relativeDay(task.dueDate, model.now))} - ${escapeHtml(formatDay(task.dueDate))}` : "No due date - ready when you are."}</p></div>${completeButton("task", task)}</div>` : `<div class="workroom-now-empty"><h1>All clear.</h1><p>Nothing open is asking for your attention.</p></div>`; };
-const renderQueue = (model) => { const items = mixedActionItems(model); elements.tasks.innerHTML = items.length ? items.slice(0, QUEUE_LIMIT).map(mixedQueueRow).join("") : blank("The action queue is clear."); const remaining = Math.max(0, items.length - QUEUE_LIMIT); elements.viewAll.textContent = remaining ? `View all +${remaining}` : "View all"; elements.viewAll.hidden = !items.length; };
+const renderQueue = (model) => {
+  const items = mixedActionItems(model);
+  elements.tasks.innerHTML = items.length ? items.slice(0, QUEUE_LIMIT).map(mixedQueueRow).join("") : blank("The action queue is clear.");
+  const remaining = Math.max(0, items.length - QUEUE_LIMIT);
+  elements.viewAll.textContent = remaining ? `View all +${remaining}` : "View all";
+  elements.viewAll.hidden = !items.length;
+  if (elements.clearPin) elements.clearPin.hidden = !state.pinnedTaskId;
+};
 const renderRadar = (model) => {
   const groups = operationGroups(model.now).map((group) => ({ ...group, items: group.items.filter((item) => !actionStateFor(item.actionType, item.id)) }));
   const attention = model.radar.filter((item) => !actionStateFor(item.actionType, item.id));
@@ -137,8 +190,82 @@ const renderOperations = (model) => {
   elements.operationsContent.innerHTML = `<section><div class="workroom-operations-heading"><h3>Active queue</h3><span>${active.length}</span></div>${active.length ? active.map(mixedQueueRow).join("") : blank("The action queue is clear.")}</section><section><div class="workroom-operations-heading"><h3>Review later</h3><span>${later.length}</span></div>${later.length ? later.map(reviewLaterRow).join("") : blank("Nothing is waiting for later.")}</section>`;
 };
 const renderFooter = (model) => { if (!model.openTasks.length) elements.footer.textContent = `${model.completedToday.length} finished today. The room is clear.`; else if (model.phase === "wrap") elements.footer.textContent = `${model.completedToday.length} finished today - ${model.tomorrowCount} due tomorrow.`; else if (model.overdueCount) elements.footer.textContent = `${model.overdueCount} overdue item${model.overdueCount === 1 ? "" : "s"}. Clear the oldest promise first.`; else elements.footer.textContent = quotes[new Date().getDate() % quotes.length]; };
-const renderSprint = (now = Date.now()) => { const task = state.tasks.find((item) => item.id === state.sprint?.taskId && item.status !== "done"); if (state.tasksLoaded && state.sprint && !task) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Desk"; } const sprint = state.sprint; let remaining = state.sprintMinutes * 60 * 1000; let progress = 0; if (sprint) { remaining = sprint.running ? Math.max(0, sprint.endAt - now) : sprint.remainingMs; progress = 1 - remaining / sprint.durationMs; if (remaining <= 0 && sprint.running) { sprint.running = false; sprint.remainingMs = 0; document.title = "Focus complete - The Desk"; saveStored(SPRINT_KEY, sprint); } } const minutes = Math.floor(remaining / 60000); const seconds = Math.floor((remaining % 60000) / 1000); elements.focusTime.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`; elements.focusRing.style.setProperty("--focus-progress", `${Math.max(0, Math.min(1, progress)) * 360}deg`); elements.focusLabel.textContent = sprint ? task?.title || "Focus sprint" : "Focus sprint"; elements.focusStatus.textContent = !sprint ? "Choose a quiet block for this task." : remaining <= 0 ? "Sprint complete. Take a breath." : sprint.running ? "In progress" : "Paused"; elements.sprintToggle.disabled = !deriveDayModel().current; elements.sprintToggle.textContent = !sprint ? "Start" : sprint.running ? "Pause" : remaining <= 0 ? "Restart" : "Resume"; elements.sprintCancel.hidden = !sprint; elements.sprintChoices.forEach((button) => button.classList.toggle("is-active", Number(button.dataset.sprintMinutes) === state.sprintMinutes)); };
-const render = () => { const model = deriveDayModel(); document.body.dataset.dayPhase = model.phase; elements.completedCount.textContent = String(model.completedToday.length); elements.overdueCount.textContent = String(model.overdueCount); elements.overdueStat.classList.toggle("is-urgent", model.overdueCount > 0); elements.allCount.textContent = String(model.openTasks.length); elements.billsCount.textContent = String(pendingMonthlyBillCount()); elements.paymentEntriesCount.textContent = String(pendingPaymentEntryCount()); renderDayline(model); renderNow(model); renderQueue(model); renderRadar(model); renderBriefing(model); renderAllWork(model); renderOperations(model); renderFooter(model); renderSprint(); };
+const renderSprint = (now = Date.now()) => {
+  const model = deriveDayModel();
+  const task = state.tasks.find((item) => item.id === (state.sprint?.taskId || state.pinnedTaskId || model.current?.id)) || model.current;
+  if (state.tasksLoaded && state.sprint && state.sprint.taskId) {
+    const activeSprintTask = state.tasks.find((item) => item.id === state.sprint.taskId && item.status !== "done");
+    if (!activeSprintTask) {
+      state.sprint = null;
+      saveStored(SPRINT_KEY, null);
+      document.title = "The Desk";
+    }
+  }
+  const sprint = state.sprint;
+  let remaining = state.sprintMinutes * 60 * 1000;
+  let progress = 0;
+  if (sprint) {
+    remaining = sprint.running ? Math.max(0, sprint.endAt - now) : sprint.remainingMs;
+    progress = 1 - remaining / sprint.durationMs;
+    if (remaining <= 0 && sprint.running) {
+      sprint.running = false;
+      sprint.remainingMs = 0;
+      document.title = "Focus complete - The Desk";
+      saveStored(SPRINT_KEY, sprint);
+      celebrate("Focus sprint complete! Take a breath.");
+    }
+  }
+  const minutes = Math.floor(remaining / 60000);
+  const seconds = Math.floor((remaining % 60000) / 1000);
+  const timeFormatted = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+  if (elements.focusTime) elements.focusTime.textContent = timeFormatted;
+  if (elements.focusRing) elements.focusRing.style.setProperty("--focus-progress", `${Math.max(0, Math.min(1, progress)) * 360}deg`);
+  if (elements.focusLabel) elements.focusLabel.textContent = sprint ? task?.title || "Focus sprint" : "Focus sprint";
+  if (elements.focusStatus) elements.focusStatus.textContent = !sprint ? "Choose a quiet block for this task." : remaining <= 0 ? "Sprint complete. Take a breath." : sprint.running ? "In progress" : "Paused";
+  if (elements.sprintToggle) {
+    elements.sprintToggle.disabled = !task && !sprint;
+    elements.sprintToggle.textContent = !sprint ? "Start" : sprint.running ? "Pause" : remaining <= 0 ? "Restart" : "Resume";
+  }
+  if (elements.sprintCancel) elements.sprintCancel.hidden = !sprint;
+  elements.sprintChoices.forEach((button) => button.classList.toggle("is-active", Number(button.dataset.sprintMinutes) === state.sprintMinutes));
+
+  if (elements.focusTaskTitle) elements.focusTaskTitle.textContent = task ? task.title : "Queue clear";
+  if (elements.focusTaskProject) elements.focusTaskProject.textContent = task ? (projectName(task) || "Independent task") : "All clear";
+  if (elements.focusTaskNotes) elements.focusTaskNotes.textContent = task ? (task.notes || (task.dueDate ? `Due ${relativeDay(task.dueDate, new Date())}` : "Ready when you are.")) : "Nothing open is asking for your attention.";
+  if (elements.focusCompleteTask) elements.focusCompleteTask.hidden = !task;
+
+  if (elements.sprintLauncherText && elements.openSprint) {
+    if (sprint?.running) {
+      elements.sprintLauncherText.textContent = `${timeFormatted} Focus`;
+      elements.openSprint.classList.add("is-sprint-running");
+    } else if (sprint && sprint.remainingMs > 0) {
+      elements.sprintLauncherText.textContent = `${timeFormatted} Paused`;
+      elements.openSprint.classList.remove("is-sprint-running");
+    } else {
+      elements.sprintLauncherText.textContent = "Focus sprint";
+      elements.openSprint.classList.remove("is-sprint-running");
+    }
+  }
+};
+const render = () => {
+  const model = deriveDayModel();
+  document.body.dataset.dayPhase = model.phase;
+  elements.completedCount.textContent = String(model.completedToday.length);
+  elements.overdueCount.textContent = String(model.overdueCount);
+  elements.overdueStat.classList.toggle("is-urgent", model.overdueCount > 0);
+  elements.allCount.textContent = String(model.openTasks.length);
+  elements.billsCount.textContent = String(pendingMonthlyBillCount());
+  elements.paymentEntriesCount.textContent = String(pendingPaymentEntryCount());
+  renderDayline(model);
+  renderQueue(model);
+  renderRadar(model);
+  renderBriefing(model);
+  renderAllWork(model);
+  renderOperations(model);
+  renderFooter(model);
+  renderSprint();
+};
 
 const renderGuestWelcome = () => {
   const guestWelcome = state.focus.guestWelcome || {};
@@ -180,11 +307,83 @@ const writeCompletion = async (type, id, item) => {
 };
 const openDialog = (dialog, trigger) => { state.activeDialog = dialog; state.dialogTrigger = trigger; dialog.hidden = false; document.body.classList.add("workroom-dialog-open"); dialog.querySelector(".workroom-dialog-close")?.focus(); };
 const closeDialog = () => { if (!state.activeDialog) return; state.activeDialog.hidden = true; document.body.classList.remove("workroom-dialog-open"); state.dialogTrigger?.focus(); state.activeDialog = null; state.dialogTrigger = null; };
-const toggleSprint = () => { const current = deriveDayModel().current; if (!current) return; if (!state.sprint || state.sprint.remainingMs <= 0 || state.sprint.taskId !== current.id) { const durationMs = state.sprintMinutes * 60 * 1000; state.sprint = { taskId: current.id, durationMs, remainingMs: durationMs, endAt: Date.now() + durationMs, running: true }; state.pinnedTaskId = current.id; saveStored(PIN_KEY, current.id); } else if (state.sprint.running) { state.sprint.remainingMs = Math.max(0, state.sprint.endAt - Date.now()); state.sprint.running = false; } else { state.sprint.endAt = Date.now() + state.sprint.remainingMs; state.sprint.running = true; } saveStored(SPRINT_KEY, state.sprint); render(); };
+const openFocusOverlay = (trigger) => {
+  state.focusOverlayTrigger = trigger || document.activeElement;
+  if (elements.focusOverlay) {
+    elements.focusOverlay.hidden = false;
+    document.body.classList.add("workroom-focus-open");
+    elements.sprintToggle?.focus();
+  }
+};
+const closeFocusOverlay = () => {
+  if (!elements.focusOverlay) return;
+  elements.focusOverlay.hidden = true;
+  document.body.classList.remove("workroom-focus-open");
+  state.focusOverlayTrigger?.focus();
+  state.focusOverlayTrigger = null;
+};
+const toggleSprint = () => {
+  const model = deriveDayModel();
+  const current = state.tasks.find((item) => item.id === (state.sprint?.taskId || state.pinnedTaskId || model.current?.id)) || model.current;
+  if (!current && !state.sprint) return;
+  const targetTaskId = current?.id || state.sprint?.taskId || "";
+  if (!state.sprint || state.sprint.remainingMs <= 0 || (targetTaskId && state.sprint.taskId !== targetTaskId)) {
+    const durationMs = state.sprintMinutes * 60 * 1000;
+    state.sprint = { taskId: targetTaskId, durationMs, remainingMs: durationMs, endAt: Date.now() + durationMs, running: true };
+    if (targetTaskId) {
+      state.pinnedTaskId = targetTaskId;
+      saveStored(PIN_KEY, targetTaskId);
+    }
+  } else if (state.sprint.running) {
+    state.sprint.remainingMs = Math.max(0, state.sprint.endAt - Date.now());
+    state.sprint.running = false;
+  } else {
+    state.sprint.endAt = Date.now() + state.sprint.remainingMs;
+    state.sprint.running = true;
+  }
+  saveStored(SPRINT_KEY, state.sprint);
+  render();
+};
 
 document.addEventListener("click", async (event) => {
   const pin = event.target.closest("[data-pin-task]"); if (pin) { if (state.sprint?.taskId && state.sprint.taskId !== pin.dataset.pinTask) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Desk"; } state.pinnedTaskId = pin.dataset.pinTask; saveStored(PIN_KEY, state.pinnedTaskId); closeDialog(); render(); return; }
   if (event.target.closest("#workroom-clear-pin")) { if (state.sprint?.taskId === state.pinnedTaskId) { state.sprint = null; saveStored(SPRINT_KEY, null); document.title = "The Desk"; } state.pinnedTaskId = ""; saveStored(PIN_KEY, null); render(); return; }
+  if (event.target.closest("#workroom-open-sprint")) { openFocusOverlay(event.target.closest("button")); return; }
+  if (event.target.closest("#workroom-focus-close, [data-close-focus-overlay]")) { closeFocusOverlay(); return; }
+  const focusTask = event.target.closest("[data-focus-task]");
+  if (focusTask) {
+    const taskId = focusTask.dataset.focusTask;
+    if (state.sprint?.taskId && state.sprint.taskId !== taskId) {
+      state.sprint = null;
+      saveStored(SPRINT_KEY, null);
+      document.title = "The Desk";
+    }
+    state.pinnedTaskId = taskId;
+    saveStored(PIN_KEY, state.pinnedTaskId);
+    render();
+    openFocusOverlay(focusTask);
+    return;
+  }
+  const completeFocusTask = event.target.closest("#workroom-focus-complete-task");
+  if (completeFocusTask) {
+    const model = deriveDayModel();
+    const taskId = state.sprint?.taskId || state.pinnedTaskId || model.current?.id;
+    if (!taskId) return;
+    const task = state.tasks.find((item) => item.id === taskId);
+    if (task) {
+      completeFocusTask.disabled = true;
+      try {
+        await writeCompletion("task", taskId, { actionType: "task", id: taskId, title: task.title, detail: "", time: "" });
+        celebrate("Done - nice work.");
+      } catch {
+        celebrate("Could not complete task.");
+      } finally {
+        completeFocusTask.disabled = false;
+        render();
+      }
+    }
+    return;
+  }
   if (event.target.closest("#workroom-open-all")) { openDialog(elements.allDialog, event.target.closest("button")); return; }
   if (event.target.closest("#workroom-view-all")) { openDialog(elements.operationsDialog, event.target.closest("button")); return; }
   if (event.target.closest("#workroom-open-briefing, [data-open-briefing]")) { openDialog(elements.briefingDialog, event.target.closest("button")); return; }
@@ -206,7 +405,14 @@ document.addEventListener("click", async (event) => {
   complete.disabled = true; try { await writeCompletion(type, id, item); celebrate("Done - nice work."); } catch { celebrate("Could not update that item."); complete.disabled = false; }
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") { closeDialog(); return; }
+  if (event.key === "Escape") {
+    if (elements.focusOverlay && !elements.focusOverlay.hidden) {
+      closeFocusOverlay();
+      return;
+    }
+    closeDialog();
+    return;
+  }
   if (event.key !== "Tab" || !state.activeDialog) return;
   const focusable = [...state.activeDialog.querySelectorAll("button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])")];
   if (!focusable.length) return;
