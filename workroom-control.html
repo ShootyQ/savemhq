@@ -142,15 +142,57 @@
           <div class="workroom-panel-heading"><div><p class="workroom-panel-kicker">Capture</p><h2 id="workroom-quick-add-title">Quick add</h2></div><button class="workroom-icon-button" data-close-quick-add aria-label="Close quick add" type="button">×</button></div>
           <div class="workroom-quick-add-types" role="group" aria-label="Item type"><button data-quick-add-type="task" type="button">Task</button><button data-quick-add-type="event" type="button">Event</button><button data-quick-add-type="idea" data-module="ideas" type="button">Idea</button><button data-quick-add-type="contact" data-module="follow-ups" type="button">Follow-up</button><button data-quick-add-type="finance" data-module="finance" type="button">Finance</button><button data-quick-add-type="project" data-module="projects" type="button">Project</button><button data-quick-add-type="ach" data-module="ach" type="button">ACH</button></div>
           <form id="workroom-task-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="task"><label>Task<input id="workroom-task-title" maxlength="180" required placeholder="The next useful thing" /></label><label>Project<select id="workroom-task-project"><option value="">No project</option></select></label><label>Priority<select id="workroom-task-priority"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></label><label>Due date<input id="workroom-task-date" type="date" /></label><label>Notes<textarea id="workroom-task-notes" maxlength="1000" placeholder="Optional context"></textarea></label><button class="workroom-button workroom-button-primary" type="submit">Add task</button></form>
-          <form id="workroom-event-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="event" hidden>
+          <form id="workroom-event-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="event" novalidate hidden>
             <label>Event title<input id="workroom-event-title" maxlength="180" required placeholder="Team sync, Doctor, Flight..." /></label>
-            <label>Date<input id="workroom-event-date" type="date" required /></label>
-            <label>Time (optional)<input id="workroom-event-time" type="time" /></label>
-            <label class="workroom-checkbox-label"><input id="workroom-event-allday" type="checkbox" checked /> All-day event</label>
+            <div class="workroom-form-row">
+              <label>Date<input id="workroom-event-date" type="date" required /></label>
+              <div style="display:flex;align-items:flex-end;padding-bottom:0.65rem;">
+                <label class="workroom-checkbox-label"><input id="workroom-event-allday" type="checkbox" checked /> All-day event</label>
+              </div>
+            </div>
+            <div id="workroom-event-time-row" class="workroom-form-row" hidden>
+              <label>Start time<input id="workroom-event-time" type="time" step="60" list="workroom-time-list" /></label>
+              <label>End time (optional)<input id="workroom-event-end-time" type="time" step="60" list="workroom-time-list" /></label>
+            </div>
             <label>Category (optional)<input id="workroom-event-category" maxlength="60" placeholder="Work, Family, Church, Personal..." /></label>
             <label>Location (optional)<input id="workroom-event-location" maxlength="180" placeholder="Office, Zoom, Home..." /></label>
             <label>Notes (optional)<textarea id="workroom-event-notes" maxlength="1000" placeholder="Details or agenda"></textarea></label>
             <button class="workroom-button workroom-button-primary" type="submit">Add event</button>
+            <datalist id="workroom-time-list">
+              <option value="06:00">6:00 AM</option>
+              <option value="06:30">6:30 AM</option>
+              <option value="07:00">7:00 AM</option>
+              <option value="07:30">7:30 AM</option>
+              <option value="08:00">8:00 AM</option>
+              <option value="08:30">8:30 AM</option>
+              <option value="09:00">9:00 AM</option>
+              <option value="09:30">9:30 AM</option>
+              <option value="10:00">10:00 AM</option>
+              <option value="10:30">10:30 AM</option>
+              <option value="11:00">11:00 AM</option>
+              <option value="11:30">11:30 AM</option>
+              <option value="12:00">12:00 PM</option>
+              <option value="12:30">12:30 PM</option>
+              <option value="13:00">1:00 PM</option>
+              <option value="13:30">1:30 PM</option>
+              <option value="14:00">2:00 PM</option>
+              <option value="14:30">2:30 PM</option>
+              <option value="15:00">3:00 PM</option>
+              <option value="15:30">3:30 PM</option>
+              <option value="16:00">4:00 PM</option>
+              <option value="16:30">4:30 PM</option>
+              <option value="17:00">5:00 PM</option>
+              <option value="17:30">5:30 PM</option>
+              <option value="18:00">6:00 PM</option>
+              <option value="18:30">6:30 PM</option>
+              <option value="19:00">7:00 PM</option>
+              <option value="19:30">7:30 PM</option>
+              <option value="20:00">8:00 PM</option>
+              <option value="20:30">8:30 PM</option>
+              <option value="21:00">9:00 PM</option>
+              <option value="21:30">9:30 PM</option>
+              <option value="22:00">10:00 PM</option>
+            </datalist>
           </form>
           <form id="workroom-idea-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="idea" hidden><label>Title<input id="workroom-idea-title" maxlength="180" required placeholder="A thought worth keeping" /></label><label>Notes<textarea id="workroom-idea-body" maxlength="12000" placeholder="Develop the thought..."></textarea></label><label>Tags<input id="workroom-idea-tags" maxlength="240" placeholder="sermon, grace, series" /></label><label>Status<select id="workroom-idea-status"><option value="inbox">Inbox</option><option value="developing">Developing</option><option value="archived">Archived</option></select></label><button class="workroom-button workroom-button-primary" type="submit">Save idea</button></form>
           <form id="workroom-contact-form" class="workroom-form workroom-quick-add-form" data-quick-add-form="contact" hidden><label>Contact<input id="workroom-contact-name" maxlength="120" required placeholder="Name or organization" /></label><label>Follow up on<input id="workroom-contact-date" type="date" required /></label><label>Reason<textarea id="workroom-contact-reason" maxlength="500" required placeholder="What needs attention?"></textarea></label><label>How<select id="workroom-contact-method"><option value="phone">Phone</option><option value="email">Email</option></select></label><label>Phone or email<input id="workroom-contact-detail" maxlength="160" required placeholder="Number or address" /></label><button class="workroom-button workroom-button-primary" type="submit">Add follow-up</button></form>
@@ -160,6 +202,6 @@
         </section>
       </div>
     </main>
-    <script type="module" src="js/workroom-control.js?v=workroom-calendar-control-20260916"></script>
+    <script type="module" src="js/workroom-control.js?v=workroom-calendar-control-20261015"></script>
   </body>
 </html>

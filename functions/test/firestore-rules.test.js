@@ -88,3 +88,22 @@ test("the legacy admin can still read their existing root document", async () =>
   await testEnvironment.withSecurityRulesDisabled(async (context) => setDoc(doc(context.firestore(), "workrooms", ADMIN_UID), { title: "The Workroom" }));
   await assertSucceeds(getDoc(doc(authedDb(ADMIN_UID, ADMIN_EMAIL), "workrooms", ADMIN_UID)));
 });
+
+test("calendar events can be created and updated with start and end times", async () => {
+  const database = authedDb(DESK_UID, "desk@example.com");
+  const reference = doc(database, "workrooms", DESK_UID, "calendarEvents", "event-1");
+  const event = {
+    title: "SOC zoom meeting",
+    date: "2026-10-15",
+    time: "18:30",
+    endTime: "19:30",
+    allDay: false,
+    category: "Work",
+    location: "Zoom",
+    notes: "Meeting agenda",
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  };
+  await assertSucceeds(setDoc(reference, event));
+  await assertSucceeds(setDoc(reference, { ...event, title: "SOC meeting updated", updatedAt: Timestamp.now() }));
+});

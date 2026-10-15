@@ -51,7 +51,7 @@ const elements = {
   financeForm: $("workroom-finance-form"), financeTitle: $("workroom-finance-title"), financeCategory: $("workroom-finance-category"), financeUrgency: $("workroom-finance-urgency"), financeDate: $("workroom-finance-date"), financeAmount: $("workroom-finance-amount"), financeReference: $("workroom-finance-reference"), finance: $("workroom-finance"),
   achForm: $("workroom-ach-form"), achName: $("workroom-ach-name"), achAmount: $("workroom-ach-amount"), achDate: $("workroom-ach-date"), achReason: $("workroom-ach-reason"), achRecurring: $("workroom-ach-recurring"), ach: $("workroom-ach"),
   calendarList: $("workroom-calendar-events-list"), calendarCount: $("workroom-calendar-count"),
-  eventForm: $("workroom-event-form"), eventTitle: $("workroom-event-title"), eventDate: $("workroom-event-date"), eventTime: $("workroom-event-time"), eventAllDay: $("workroom-event-allday"), eventCategory: $("workroom-event-category"), eventLocation: $("workroom-event-location"), eventNotes: $("workroom-event-notes"),
+  eventForm: $("workroom-event-form"), eventTitle: $("workroom-event-title"), eventDate: $("workroom-event-date"), eventTime: $("workroom-event-time"), eventEndTime: $("workroom-event-end-time"), eventTimeRow: $("workroom-event-time-row"), eventAllDay: $("workroom-event-allday"), eventCategory: $("workroom-event-category"), eventLocation: $("workroom-event-location"), eventNotes: $("workroom-event-notes"),
   googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"), briefingCount: $("workroom-briefing-count"), briefingStatus: $("workroom-briefing-status"), briefingResult: $("workroom-briefing-result"), automationSummary: $("workroom-automation-summary"), todayStats: $("workroom-today-stats"), todayActions: $("workroom-today-actions"), quickAdd: $("workroom-quick-add"), quickAddDialog: $("workroom-quick-add-dialog"), guestDisplayForm: $("workroom-guest-display-form"), guestName: $("workroom-guest-name"), guestDisplayClear: $("workroom-guest-display-clear"), guestDisplayStatus: $("workroom-guest-display-status"),
 };
 const functions = getFunctions();
@@ -414,7 +414,7 @@ const renderCalendarEvents = () => {
   }
   elements.calendarList.innerHTML = sorted.length
     ? sorted.map((evt) => {
-      const timeLabel = evt.allDay ? "All day" : (evt.time || "No time specified");
+      const timeLabel = evt.allDay ? "All day" : (evt.time ? (evt.endTime ? `${evt.time} – ${evt.endTime}` : evt.time) : "No time specified");
       const meta = [evt.date, timeLabel, evt.category, evt.location].filter(Boolean).join(" · ");
       return `<div class="workroom-record">
         <div>
@@ -484,6 +484,9 @@ elements.taskForm.addEventListener("submit", (event) => { event.preventDefault()
 elements.ideaForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { const tags = [...new Set(elements.ideaTags.value.split(",").map((tag) => clean(tag).toLowerCase()).filter(Boolean))].slice(0, 12); await addDoc(ideasRef(state.user.uid), { title: clean(elements.ideaTitle.value), body: clean(elements.ideaBody.value), tags, status: elements.ideaStatus.value, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.ideaForm.reset(); closeQuickAdd(); }, "Idea saved."); });
 elements.financeForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { const amount = clean(elements.financeAmount.value); await addDoc(financeRef(state.user.uid), { title: clean(elements.financeTitle.value), category: clean(elements.financeCategory.value), urgency: elements.financeUrgency.value, dueDate: timestampForDate(elements.financeDate.value), reference: clean(elements.financeReference.value), amount: amount ? Number(amount) : null, status: "open", completedAt: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.financeForm.reset(); closeQuickAdd(); }, "Reminder added."); });
 elements.achForm.addEventListener("submit", (event) => { event.preventDefault(); run(async () => { await addDoc(achEntriesRef(state.user.uid), { name: clean(elements.achName.value), amount: Number(elements.achAmount.value), withdrawalDate: timestampForDate(elements.achDate.value), reason: clean(elements.achReason.value), recurring: elements.achRecurring.checked, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); elements.achForm.reset(); closeQuickAdd(); }, "ACH entry added."); });
+elements.eventAllDay?.addEventListener("change", () => {
+  if (elements.eventTimeRow) elements.eventTimeRow.hidden = Boolean(elements.eventAllDay.checked);
+});
 elements.eventForm?.addEventListener("submit", (event) => {
   event.preventDefault();
   run(async () => {
@@ -492,6 +495,7 @@ elements.eventForm?.addEventListener("submit", (event) => {
       title: clean(elements.eventTitle.value),
       date: clean(elements.eventDate.value),
       time: isAllDay ? null : (clean(elements.eventTime.value) || null),
+      endTime: isAllDay ? null : (clean(elements.eventEndTime?.value) || null),
       allDay: isAllDay,
       category: clean(elements.eventCategory.value) || null,
       location: clean(elements.eventLocation.value) || null,
@@ -500,6 +504,7 @@ elements.eventForm?.addEventListener("submit", (event) => {
       updatedAt: serverTimestamp()
     });
     elements.eventForm.reset();
+    if (elements.eventTimeRow) elements.eventTimeRow.hidden = true;
     closeQuickAdd();
   }, "Event added to calendar.");
 });

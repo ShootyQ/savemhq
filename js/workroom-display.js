@@ -19,8 +19,11 @@ const elements = {
   calPrev: $("workroom-cal-prev"), calToday: $("workroom-cal-today"), calNext: $("workroom-cal-next"),
   calAddBtn: $("workroom-cal-add-btn"),
   eventDialog: $("workroom-event-dialog"), eventForm: $("workroom-display-event-form"),
+  eventDialogTitle: $("workroom-event-dialog-title"), eventFormSubmit: $("workroom-display-event-submit"),
   eventTitle: $("workroom-display-event-title"), eventDate: $("workroom-display-event-date"),
-  eventTime: $("workroom-display-event-time"), eventAllDay: $("workroom-display-event-allday"),
+  eventTime: $("workroom-display-event-time"), eventEndTime: $("workroom-display-event-end-time"),
+  eventTimeRow: $("workroom-display-event-time-row"),
+  eventAllDay: $("workroom-display-event-allday"),
   eventCategory: $("workroom-display-event-category"), eventLocation: $("workroom-display-event-location"),
   eventNotes: $("workroom-display-event-notes"),
   eventDetailDialog: $("workroom-event-detail-dialog"),
@@ -41,7 +44,8 @@ let state = {
   unsubscribers: [], pinnedTaskId: "", sprint: null, sprintMinutes: 25,
   radarCategory: "attention", operationsCategory: "all",
   activeDialog: null, dialogTrigger: null, focusOverlayTrigger: null, briefingOverlayTrigger: null,
-  calendarView: "week", calendarDate: new Date(), selectedCalendarDay: null
+  calendarView: "week", calendarDate: new Date(), selectedCalendarDay: null,
+  editingEventId: null
 };
 let celebrationTimer = null;
 
@@ -83,16 +87,33 @@ const eventDate = (event) => {
   }
   return asDate(event.start);
 };
+const formatTimeString = (timeStr) => {
+  if (!timeStr) return "";
+  const parts = String(timeStr).split(":");
+  const hours = Number(parts[0]);
+  const minutes = Number(parts[1] || 0);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return timeStr;
+  const date = new Date(2000, 0, 1, hours, minutes);
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date);
+};
 const eventWhen = (event) => {
   if (event.allDay) return "All day";
   if (event.time) {
-    const [hours, minutes] = String(event.time).split(":").map(Number);
-    const date = new Date(2000, 0, 1, hours, minutes);
-    return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date);
+    const startStr = formatTimeString(event.time);
+    if (event.endTime) {
+      return `${startStr} – ${formatTimeString(event.endTime)}`;
+    }
+    return startStr;
   }
-  const date = eventDate(event);
-  if (!date || Number.isNaN(date.getTime())) return "All day";
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date);
+  const start = eventDate(event);
+  if (!start || Number.isNaN(start.getTime()) || (start.getHours() === 0 && start.getMinutes() === 0)) return "All day";
+  const startFormatted = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(start);
+  const end = asDate(event.end || event.endDate);
+  if (end && !Number.isNaN(end.getTime()) && (end.getHours() !== 0 || end.getMinutes() !== 0)) {
+    const endFormatted = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(end);
+    return `${startFormatted} – ${endFormatted}`;
+  }
+  return startFormatted;
 };
 
 const getAllCalendarEvents = () => {
@@ -101,6 +122,7 @@ const getAllCalendarEvents = () => {
     title: evt.title,
     date: evt.date,
     time: evt.time || null,
+    endTime: evt.endTime || null,
     allDay: evt.allDay !== false,
     category: evt.category || "",
     location: evt.location || "",
@@ -113,11 +135,13 @@ const getAllCalendarEvents = () => {
     title: evt.title,
     date: evt.date,
     time: evt.time || null,
+    endTime: evt.endTime || null,
     allDay: Boolean(evt.allDay),
     category: "Google",
     location: evt.location || "",
     notes: "",
     startDate: eventDate(evt),
+    endDate: asDate(evt.end),
     isCustom: false
   }));
   return [...custom, ...google].sort((a, b) => (a.startDate?.getTime() || 0) - (b.startDate?.getTime() || 0));
@@ -502,7 +526,10 @@ const showEventDetail = (eventId, trigger) => {
         </div>
       </div>
       <div class="workroom-event-detail-actions">
-        ${evt.isCustom ? `<button class="workroom-button-danger" data-delete-event="${escapeHtml(evt.id)}" type="button">Delete event</button>` : ""}
+        ${evt.isCustom ? `
+          <button class="workroom-button-secondary" data-edit-event="${escapeHtml(evt.id)}" type="button">Edit event</button>
+          <button class="workroom-button-danger" data-delete-event="${escapeHtml(evt.id)}" type="button">Delete event</button>
+        ` : ""}
         <button class="workroom-text-button" data-close-event-detail-dialog type="button">Close</button>
       </div>
     `;
@@ -666,15 +693,56 @@ const closeBriefingOverlay = () => {
   state.briefingOverlayTrigger?.focus();
   state.briefingOverlayTrigger = null;
 };
+const syncEventTimeVisibility = () => {
+  const isAllDay = Boolean(elements.eventAllDay?.checked);
+  if (elements.eventTimeRow) {
+    elements.eventTimeRow.hidden = isAllDay;
+  }
+};
+elements.eventAllDay?.addEventListener("change", () => {
+  syncEventTimeVisibility();
+  if (!elements.eventAllDay.checked && elements.eventTime && !elements.eventTime.value) {
+    elements.eventTime.focus();
+  }
+});
+
 const openEventDialog = (defaultDate = null, trigger = null) => {
   if (!elements.eventDialog) return;
+  state.editingEventId = null;
+  if (elements.eventDialogTitle) elements.eventDialogTitle.textContent = "Add event";
+  if (elements.eventFormSubmit) elements.eventFormSubmit.textContent = "Save event";
   if (elements.eventForm) elements.eventForm.reset();
   if (elements.eventDate) elements.eventDate.value = defaultDate || dateKey(state.calendarDate || new Date());
   if (elements.eventAllDay) elements.eventAllDay.checked = true;
+  if (elements.eventTime) elements.eventTime.value = "";
+  if (elements.eventEndTime) elements.eventEndTime.value = "";
+  syncEventTimeVisibility();
   openDialog(elements.eventDialog, trigger || elements.calAddBtn);
   elements.eventTitle?.focus();
 };
+
+const openEventDialogForEdit = (evt, trigger = null) => {
+  if (!elements.eventDialog) return;
+  state.editingEventId = evt.id;
+  if (elements.eventDialogTitle) elements.eventDialogTitle.textContent = "Edit event";
+  if (elements.eventFormSubmit) elements.eventFormSubmit.textContent = "Save changes";
+  if (elements.eventTitle) elements.eventTitle.value = evt.title || "";
+  if (elements.eventDate) elements.eventDate.value = evt.date || "";
+  if (elements.eventAllDay) elements.eventAllDay.checked = Boolean(evt.allDay);
+  if (elements.eventTime) elements.eventTime.value = evt.time || "";
+  if (elements.eventEndTime) elements.eventEndTime.value = evt.endTime || "";
+  if (elements.eventCategory) elements.eventCategory.value = evt.category || "";
+  if (elements.eventLocation) elements.eventLocation.value = evt.location || "";
+  if (elements.eventNotes) elements.eventNotes.value = evt.notes || "";
+  syncEventTimeVisibility();
+  openDialog(elements.eventDialog, trigger || elements.calAddBtn);
+  elements.eventTitle?.focus();
+};
+
 const closeEventDialog = () => {
+  state.editingEventId = null;
+  if (elements.eventDialogTitle) elements.eventDialogTitle.textContent = "Add event";
+  if (elements.eventFormSubmit) elements.eventFormSubmit.textContent = "Save event";
   if (elements.eventDialog) closeDialog();
 };
 
@@ -706,26 +774,69 @@ elements.eventForm?.addEventListener("submit", async (event) => {
   if (!state.user) return;
   const title = clean(elements.eventTitle.value);
   const dateVal = clean(elements.eventDate.value);
-  if (!title || !dateVal) return;
+  if (!title) {
+    celebrate("Please enter an event title.");
+    elements.eventTitle?.focus();
+    return;
+  }
+  if (!dateVal) {
+    celebrate("Please choose a date.");
+    elements.eventDate?.focus();
+    return;
+  }
+
   const isAllDay = Boolean(elements.eventAllDay.checked);
-  const timeVal = isAllDay ? null : (clean(elements.eventTime.value) || null);
+  let timeVal = null;
+  let endTimeVal = null;
+
+  if (!isAllDay) {
+    if (elements.eventTime?.validity?.badInput) {
+      celebrate("Please enter a valid start time.");
+      elements.eventTime?.focus();
+      return;
+    }
+    if (elements.eventEndTime?.validity?.badInput) {
+      celebrate("Please enter a valid end time.");
+      elements.eventEndTime?.focus();
+      return;
+    }
+    timeVal = clean(elements.eventTime?.value) || null;
+    endTimeVal = clean(elements.eventEndTime?.value) || null;
+  }
+
   const category = clean(elements.eventCategory.value) || null;
   const location = clean(elements.eventLocation.value) || null;
   const notes = clean(elements.eventNotes.value) || null;
 
   try {
-    await addDoc(calendarEventsRef(state.user.uid), {
-      title,
-      date: dateVal,
-      time: timeVal,
-      allDay: isAllDay,
-      category,
-      location,
-      notes,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    celebrate("Event added to calendar.");
+    if (state.editingEventId) {
+      await updateDoc(doc(calendarEventsRef(state.user.uid), state.editingEventId), {
+        title,
+        date: dateVal,
+        time: timeVal,
+        endTime: endTimeVal,
+        allDay: isAllDay,
+        category,
+        location,
+        notes,
+        updatedAt: serverTimestamp()
+      });
+      celebrate("Event updated.");
+    } else {
+      await addDoc(calendarEventsRef(state.user.uid), {
+        title,
+        date: dateVal,
+        time: timeVal,
+        endTime: endTimeVal,
+        allDay: isAllDay,
+        category,
+        location,
+        notes,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      celebrate("Event added to calendar.");
+    }
     closeEventDialog();
   } catch (error) {
     celebrate(`Could not save event: ${error.message || "error"}`);
@@ -783,6 +894,19 @@ document.addEventListener("click", async (event) => {
   }
   if (event.target.closest("[data-close-event-dialog]")) {
     closeEventDialog();
+    return;
+  }
+  const editEvent = event.target.closest("[data-edit-event]");
+  if (editEvent) {
+    const eventId = editEvent.dataset.editEvent;
+    const allEvents = getAllCalendarEvents();
+    const evt = allEvents.find((item) => String(item.id) === String(eventId));
+    if (evt) {
+      if (state.activeDialog === elements.eventDetailDialog) {
+        closeDialog();
+      }
+      openEventDialogForEdit(evt, editEvent);
+    }
     return;
   }
   const delEvent = event.target.closest("[data-delete-event]");

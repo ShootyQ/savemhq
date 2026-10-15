@@ -264,6 +264,8 @@ body[data-day-phase="after-hours"] .workroom-display-shell { --phase-accent: #9d
 .workroom-event-detail-notes { margin: 0; color: #b7c7ba; font-size: 0.8rem; line-height: 1.45; white-space: pre-wrap; }
 .workroom-event-source-tag { display: inline-block; font-size: 0.66rem; color: #9bb0a3; font-style: italic; }
 .workroom-event-detail-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; margin-top: 0.35rem; padding-top: 0.75rem; border-top: 1px solid rgba(224, 236, 212, 0.1); }
+.workroom-button-secondary { color: #dce6d6; background: rgba(224, 236, 212, 0.12); border: 1px solid rgba(224, 236, 212, 0.28); border-radius: 0.45rem; padding: 0.45rem 0.85rem; font: inherit; font-size: 0.72rem; font-weight: 850; cursor: pointer; transition: all 140ms ease; }
+.workroom-button-secondary:hover { background: rgba(224, 236, 212, 0.22); border-color: rgba(224, 236, 212, 0.45); color: #fff; }
 .workroom-button-danger { color: #ffb9a1; background: rgba(237, 140, 112, 0.15); border: 1px solid rgba(237, 140, 112, 0.35); border-radius: 0.45rem; padding: 0.45rem 0.85rem; font: inherit; font-size: 0.72rem; font-weight: 850; cursor: pointer; transition: all 140ms ease; }
 .workroom-button-danger:hover { background: rgba(237, 140, 112, 0.28); border-color: #ed8c70; color: #fff; }
 .workroom-dayline-event { cursor: pointer; transition: background 140ms ease; }
