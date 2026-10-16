@@ -750,7 +750,8 @@ const extractSourceCandidate = async ({ record, openTaskTitles }) => {
           },
         },
       },
-    });
+    },
+  });
   let extracted = null;
   try {
     extracted = JSON.parse(String(response.output_text || "{}"));
