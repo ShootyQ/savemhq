@@ -78,6 +78,7 @@ let sourceScanInFlight = false;
 let sourceStatusCache = null;
 let sourceCandidateCache = [];
 let sourceRunError = "";
+const sourceReviewActions = new Map();
 
 const notice = (message = "", error = false) => {
   elements.notice.textContent = message;
@@ -341,9 +342,11 @@ const renderSourceAutomation = ({ status, candidates } = {}) => {
   const items = Array.isArray(candidates) ? candidates : [];
   elements.sourceCandidates.innerHTML = items.length ? items.map((candidate) => {
     const dueDate = candidate.dueDate ? formatDay(candidate.dueDate) : "No due date";
-    const source = [candidate.sourceType === "gmail" ? "Gmail" : "Slack", candidate.sourceAuthor, candidate.sourceSubject].filter(Boolean).join(" · ");
+    const source = [candidate.sourceType === "gmail" ? "Gmail" : "Slack", candidate.sourceAccount, candidate.sourceAuthor, candidate.sourceSubject].filter(Boolean).join(" · ");
     const sourceLink = sourceLinkHtml(candidate.sourceUrl);
-    return `<article class="workroom-source-candidate"><div><small>${escapeHtml(source)}</small><strong>${escapeHtml(candidate.title)}</strong><span><span class="workroom-priority ${escapeHtml(candidate.priority)}">${escapeHtml(candidate.priority)}</span> · ${escapeHtml(dueDate)} · ${Math.round(Number(candidate.confidence || 0) * 100)}%</span></div><p>${escapeHtml(candidate.reason)}</p><p class="workroom-source-excerpt">${escapeHtml(candidate.excerpt)}</p><div class="workroom-inline-actions"><button class="workroom-button workroom-button-primary" data-approve-source-candidate="${escapeHtml(candidate.id)}" type="button">Approve</button><button class="workroom-button workroom-button-quiet" data-reject-source-candidate="${escapeHtml(candidate.id)}" type="button">Dismiss</button>${sourceLink}</div></article>`;
+    const action = sourceReviewActions.get(candidate.id);
+    const disabled = action?.busy ? " disabled" : "";
+    return `<article class="workroom-source-candidate" aria-busy="${Boolean(action?.busy)}"><div><small>${escapeHtml(source)}</small><strong>${escapeHtml(candidate.title)}</strong><span><span class="workroom-priority ${escapeHtml(candidate.priority)}">${escapeHtml(candidate.priority)}</span> · ${escapeHtml(dueDate)} · ${Math.round(Number(candidate.confidence || 0) * 100)}%</span></div><p>${escapeHtml(candidate.reason)}</p><p class="workroom-source-excerpt">${escapeHtml(candidate.excerpt)}</p><div class="workroom-inline-actions"><button class="workroom-button workroom-button-primary" data-approve-source-candidate="${escapeHtml(candidate.id)}" type="button"${disabled}>${action?.busy && action.approve ? "Creating task..." : "Approve"}</button><button class="workroom-button workroom-button-quiet" data-reject-source-candidate="${escapeHtml(candidate.id)}" type="button"${disabled}>${action?.busy && !action.approve ? "Dismissing..." : "Dismiss"}</button>${sourceLink}</div>${action?.error ? `<p role="alert">${escapeHtml(action.error)}</p>` : ""}</article>`;
   }).join("") : `<p class="workroom-empty">No source suggestions need review.</p>`;
 };
 
@@ -370,6 +373,25 @@ const refreshSourceAutomation = async (quiet = false) => {
     if (state.session?.isAdmin && (sourceScanInFlight || sourceStatusCache?.sources?.some(sourceIsRunning))) {
       sourcePollTimer = window.setTimeout(() => refreshSourceAutomation(true), 4000);
     }
+  }
+};
+
+const handleSourceReview = async (candidateId, approve) => {
+  if (sourceReviewActions.get(candidateId)?.busy) return;
+  sourceReviewActions.set(candidateId, { busy: true, approve });
+  renderSourceAutomation({ status: sourceStatusCache, candidates: sourceCandidateCache });
+  try {
+    await (approve ? approveSourceCandidate : rejectSourceCandidate)({ candidateId });
+    sourceCandidateCache = sourceCandidateCache.filter((candidate) => candidate.id !== candidateId);
+    sourceReviewActions.delete(candidateId);
+    renderSourceAutomation({ status: sourceStatusCache, candidates: sourceCandidateCache });
+    notice(approve ? "Task created from source suggestion." : "Source suggestion dismissed.");
+    await refreshSourceAutomation(true);
+  } catch (error) {
+    const message = String(error.message || "The review action failed. Try again.");
+    sourceReviewActions.set(candidateId, { busy: false, error: message });
+    renderSourceAutomation({ status: sourceStatusCache, candidates: sourceCandidateCache });
+    notice(message, true);
   }
 };
 
@@ -649,8 +671,8 @@ document.addEventListener("click", (event) => {
   if (financeId) { const item = state.finance.find((record) => record.id === financeId); run(() => updateDoc(doc(financeRef(state.user.uid), financeId), { status: item.status === "done" ? "open" : "done", completedAt: item.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
   if (button.dataset.completeContact) { const item = state.contacts.find((record) => record.id === button.dataset.completeContact); run(() => updateDoc(doc(contactFollowUpsRef(state.user.uid), item.id), { status: item.status === "done" ? "open" : "done", completedAt: item.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
   if (button.dataset.disconnectConnection) run(() => googleDisconnect({ connectionId: button.dataset.disconnectConnection }), "Google account disconnected.");
-  if (button.dataset.approveSourceCandidate) run(async () => { await approveSourceCandidate({ candidateId: button.dataset.approveSourceCandidate }); await refreshSourceAutomation(true); }, "Task created from source suggestion.");
-  if (button.dataset.rejectSourceCandidate) run(async () => { await rejectSourceCandidate({ candidateId: button.dataset.rejectSourceCandidate }); await refreshSourceAutomation(true); }, "Source suggestion dismissed.");
+  if (button.dataset.approveSourceCandidate) { handleSourceReview(button.dataset.approveSourceCandidate, true); return; }
+  if (button.dataset.rejectSourceCandidate) { handleSourceReview(button.dataset.rejectSourceCandidate, false); return; }
   if (button.dataset.manageConnection) run(async () => { const connectionId = button.dataset.manageConnection; const result = await googleCalendars({ connectionId }); const selected = state.connections.find((item) => item.id === connectionId)?.selectedCalendars || []; const choices = result.data.calendars.map((calendar) => `<label class="workroom-calendar-choice"><input type="checkbox" value="${escapeHtml(calendar.id)}" ${selected.includes(calendar.id) ? "checked" : ""} /> ${escapeHtml(calendar.summary)}${calendar.primary ? " (primary)" : ""}</label>`).join(""); elements.connections.innerHTML = `<div class="workroom-calendar-picker" data-connection-id="${connectionId}"><strong>Choose calendars for the TV</strong>${choices}<button class="workroom-button workroom-button-primary" data-save-calendars="${connectionId}" type="button">Save calendars</button></div>`; });
   if (button.dataset.saveCalendars) run(() => saveGoogleCalendars({ connectionId: button.dataset.saveCalendars, calendarIds: [...document.querySelectorAll(".workroom-calendar-picker input:checked")].map((input) => input.value) }), "Calendars saved and synced.");
 });

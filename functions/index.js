@@ -27,6 +27,7 @@ const SLACK_OWNER_USER_ID = defineString("SLACK_OWNER_USER_ID", { default: "" })
 const WORKROOM_OWNER_UID = defineString("WORKROOM_OWNER_UID", { default: "" });
 
 const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
+const WORKROOM_TASK_EMAIL = "office@minnetonkachristian.com";
 const SEASON_ID = "2026-andrew-august-22";
 const STRAVA_SCOPE = "read,activity:read_all";
 const GOOGLE_SCOPE = [
@@ -907,7 +908,12 @@ const scanWorkroomSource = async ({ uid, source, loader, openTaskTitles }) => {
     return { source, ok: !error, ...totals, error };
   } catch (error) {
     totals.phase = "failed";
-    const message = compactSourceText(error?.message || "Source scan failed.", 500);
+    const slackError = source === "slack" ? error?.data?.error : "";
+    const message = slackError === "missing_scope"
+      ? `Slack needs bot permissions: ${compactSourceText(error?.data?.needed || "Check OAuth scopes in your Slack app", 250)}. Reinstall the Slack app after updating scopes.`
+      : slackError === "not_in_channel" || slackError === "channel_not_found"
+        ? "Slack cannot access a configured channel. Invite the bot to both selected channels and check their channel IDs."
+        : compactSourceText(error?.message || "Source scan failed.", 500);
     await writeSourceScanState({ uid, source, result: totals, error: message });
     return { source, ok: false, ...totals, error: message };
   }
@@ -1276,12 +1282,13 @@ const normalizeGmailSourceRecord = ({ connectionId, message, accountEmail = "" }
 const loadGmailSourceRecords = async (uid) => {
   const connections = await db.collection("workroomConnections").doc(uid).collection("connections").where("status", "==", "connected").get();
   const records = [];
+  let officeConnected = false;
   for (const connection of connections.docs) {
     const tokenData = await getFreshGoogleToken(uid, connection.id);
-    const profile = await googleApi("/gmail/v1/users/me/profile", tokenData).catch(() => null);
+    const profile = await googleApi("/gmail/v1/users/me/profile", tokenData);
     const emailAddress = String(profile?.emailAddress || "").toLowerCase();
-    // Exclude personal account from automatic task generation
-    if (emailAddress === ADMIN_EMAIL) continue;
+    if (emailAddress !== WORKROOM_TASK_EMAIL) continue;
+    officeConnected = true;
     const mailList = await googleApi("/gmail/v1/users/me/messages?labelIds=INBOX&labelIds=UNREAD&maxResults=20", tokenData);
     const messages = await Promise.all((mailList.messages || []).slice(0, 20).map((item) => googleApi(`/gmail/v1/users/me/messages/${encodeURIComponent(item.id)}?format=full`, tokenData)));
     for (const message of messages) {
@@ -1289,6 +1296,7 @@ const loadGmailSourceRecords = async (uid) => {
       if (record) records.push(record);
     }
   }
+  if (!officeConnected) throw new HttpsError("failed-precondition", `Connect ${WORKROOM_TASK_EMAIL} under Google Account before scanning email. OAuth audience access alone does not connect the inbox.`);
   return records.sort((left, right) => right.receivedAt.getTime() - left.receivedAt.getTime()).slice(0, 30);
 };
 
