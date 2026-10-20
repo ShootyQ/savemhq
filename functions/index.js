@@ -1210,7 +1210,7 @@ const isIgnoredGmailMessage = (message) => {
   return /\b(newsletter|weekly digest|receipt|order confirmation|shipping update|password reset)\b/.test(subject);
 };
 
-const normalizeGmailSourceRecord = ({ connectionId, message }) => {
+const normalizeGmailSourceRecord = ({ connectionId, message, accountEmail = "" }) => {
   if (isIgnoredGmailMessage(message)) return null;
   const headers = message.payload?.headers || [];
   const body = messageTextFromPayload(message.payload);
@@ -1219,7 +1219,7 @@ const normalizeGmailSourceRecord = ({ connectionId, message }) => {
     sourceType: "gmail",
     sourceId: `${connectionId}:${String(message.id || "")}`,
     accountId: connectionId,
-    accountLabel: "Gmail",
+    accountLabel: accountEmail || "Gmail",
     author: safeHeader(headers, "from"),
     subject: safeHeader(headers, "subject") || "(No subject)",
     receivedAt: message.internalDate ? new Date(Number(message.internalDate)) : new Date(),
@@ -1234,10 +1234,14 @@ const loadGmailSourceRecords = async (uid) => {
   const records = [];
   for (const connection of connections.docs) {
     const tokenData = await getFreshGoogleToken(uid, connection.id);
+    const profile = await googleApi("/gmail/v1/users/me/profile", tokenData).catch(() => null);
+    const emailAddress = String(profile?.emailAddress || "").toLowerCase();
+    // Exclude personal account from automatic task generation
+    if (emailAddress === ADMIN_EMAIL) continue;
     const mailList = await googleApi("/gmail/v1/users/me/messages?labelIds=INBOX&labelIds=UNREAD&maxResults=20", tokenData);
     const messages = await Promise.all((mailList.messages || []).slice(0, 20).map((item) => googleApi(`/gmail/v1/users/me/messages/${encodeURIComponent(item.id)}?format=full`, tokenData)));
     for (const message of messages) {
-      const record = normalizeGmailSourceRecord({ connectionId: connection.id, message });
+      const record = normalizeGmailSourceRecord({ connectionId: connection.id, message, accountEmail: emailAddress });
       if (record) records.push(record);
     }
   }
@@ -1373,9 +1377,17 @@ exports.handleWorkroomGoogleCallback = onRequest({ secrets: [GOOGLE_CLIENT_SECRE
     }
     const payload = await exchangeGoogleCode(code);
     const tokenData = googleTokenFromExchange(payload, stateData.uid, stateData.connectionId);
+    let connectedEmail = "";
+    try {
+      const profile = await googleApi("/gmail/v1/users/me/profile", tokenData);
+      connectedEmail = String(profile?.emailAddress || "").toLowerCase();
+    } catch {
+      connectedEmail = "";
+    }
     await workroomSecretRef(stateData.uid, stateData.connectionId).set(tokenData, { merge: true });
     await workroomConnectionRef(stateData.uid, stateData.connectionId).set({
       status: "connected",
+      email: connectedEmail,
       selectedCalendars: ["primary"],
       connectedAt: FieldValue.serverTimestamp(),
       lastSyncAt: null,

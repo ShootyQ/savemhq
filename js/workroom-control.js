@@ -402,7 +402,10 @@ const renderIdeas = () => {
 };
 
 const renderConnections = () => {
-  elements.connections.innerHTML = state.connections.length ? state.connections.map((connection) => `<div class="workroom-connection"><div><strong>Google account</strong><small>${escapeHtml(connection.status)}${connection.lastSyncAt ? ` · synced ${formatDateTime(connection.lastSyncAt)}` : " · waiting for first sync"}${connection.error ? ` · ${escapeHtml(connection.error)}` : ""}</small></div><div class="workroom-connection-actions"><button class="workroom-button workroom-button-quiet" data-manage-connection="${connection.id}" type="button">Calendars</button><button class="workroom-button workroom-button-quiet" data-disconnect-connection="${connection.id}" type="button">Disconnect</button></div></div>`).join("") : `<p class="workroom-empty">No Google accounts connected yet.</p>`;
+  elements.connections.innerHTML = state.connections.length ? state.connections.map((connection) => {
+    const label = connection.email ? `Google account (${escapeHtml(connection.email)})` : "Google account";
+    return `<div class="workroom-connection"><div><strong>${label}</strong><small>${escapeHtml(connection.status)}${connection.lastSyncAt ? ` · synced ${formatDateTime(connection.lastSyncAt)}` : " · waiting for first sync"}${connection.error ? ` · ${escapeHtml(connection.error)}` : ""}</small></div><div class="workroom-connection-actions"><button class="workroom-button workroom-button-quiet" data-manage-connection="${connection.id}" type="button">Calendars</button><button class="workroom-button workroom-button-quiet" data-disconnect-connection="${connection.id}" type="button">Disconnect</button></div></div>`;
+  }).join("") : `<p class="workroom-empty">No Google accounts connected yet.</p>`;
   if (elements.automationSummary) elements.automationSummary.textContent = state.connections.length ? `${state.connections.length} Google connection${state.connections.length === 1 ? "" : "s"} active.` : "Google is not connected yet.";
 };
 
