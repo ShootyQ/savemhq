@@ -22,6 +22,7 @@ const WORKROOM_AUTOMATION_KEY = defineSecret("WORKROOM_AUTOMATION_KEY");
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 const OPENAI_MODEL = defineString("OPENAI_MODEL", { default: "gpt-4o-mini" });
 const SLACK_BOT_TOKEN = defineSecret("SLACK_BOT_TOKEN");
+const SLACK_USER_TOKEN = defineSecret("SLACK_USER_TOKEN");
 const SLACK_CHANNELS = defineString("SLACK_CHANNELS", { default: "" });
 const SLACK_OWNER_USER_ID = defineString("SLACK_OWNER_USER_ID", { default: "" });
 const WORKROOM_OWNER_UID = defineString("WORKROOM_OWNER_UID", { default: "" });
@@ -99,13 +100,13 @@ const isSlackOwnerCommitment = (text) => /\b(i(?:'ll| will| can| need to| should
 
 const isSlackFinancialOrRelevant = (text) => /\b(financ(?:e|es|ial)|treasur(?:er|y)|budget|reimburse(?:ment)?|invoice|check|payment|bill|expense|audit|giving|tithe|offering|bank|account(?:ing)?|deposit|payroll|stipend|w-?9|1099)\b/i.test(String(text || ""));
 
-const normalizeSlackSourceRecord = ({ channel, message, isWorkbotDm = false }) => {
+const normalizeSlackSourceRecord = ({ channel, message, isWorkbotDm = false, isPersonalDm = false }) => {
   const ownerUserId = slackOwnerUserId();
   const text = String(message.text || "").trim();
   const ownerMentioned = Boolean(ownerUserId && text.includes(`<@${ownerUserId}>`));
   const ownerCommitment = Boolean(ownerUserId && String(message.user || "") === ownerUserId && isSlackOwnerCommitment(text));
   const financialTopic = isSlackFinancialOrRelevant(text);
-  if (!text || message.subtype || (!ownerMentioned && !ownerCommitment && !isWorkbotDm && !financialTopic)) return null;
+  if (!text || message.subtype || (!ownerMentioned && !ownerCommitment && !isWorkbotDm && !isPersonalDm && !financialTopic)) return null;
   return {
     sourceType: "slack",
     sourceId: `${channel.id}:${String(message.ts || "")}`,
@@ -120,6 +121,7 @@ const normalizeSlackSourceRecord = ({ channel, message, isWorkbotDm = false }) =
       ownerMentioned,
       ownerCommitment,
       workbotDm: isWorkbotDm,
+      personalDm: isPersonalDm,
       financialTopic,
     },
   };
@@ -157,6 +159,37 @@ const loadSlackSourceRecords = async ({ since, until }) => {
       if (record) records.push(record);
     }
   }
+  return { records: records.sort((left, right) => left.receivedAt.getTime() - right.receivedAt.getTime()), truncated };
+};
+
+const loadSlackDirectMessageRecords = async ({ since, until }) => {
+  const ownerUserId = slackOwnerUserId();
+  if (!ownerUserId || !SLACK_USER_TOKEN.value()) throw new Error("Set SLACK_USER_TOKEN to your Slack user OAuth token before scanning personal DMs.");
+  const client = new WebClient(SLACK_USER_TOKEN.value());
+  const identity = await client.auth.test();
+  if (identity.user_id !== ownerUserId || identity.bot_id) {
+    throw new Error("The Slack user token must belong to the configured Desk owner's Slack member, not Workbot or another user.");
+  }
+  const records = [];
+  let cursor;
+  let truncated = false;
+  do {
+    const conversations = await client.conversations.list({ types: "im", limit: 200, cursor });
+    for (const conversation of conversations.channels || []) {
+      if (!conversation.id || !conversation.is_im) continue;
+      const result = await client.conversations.history({ channel: conversation.id, oldest: String(since / 1000), latest: String(until / 1000), inclusive: true, limit: 100 });
+      truncated ||= Boolean(result.has_more || result.response_metadata?.next_cursor);
+      for (const message of result.messages || []) {
+        const record = normalizeSlackSourceRecord({
+          channel: { id: conversation.id, label: `Slack DM with ${conversation.user || "contact"}` },
+          message,
+          isPersonalDm: true,
+        });
+        if (record) records.push(record);
+      }
+    }
+    cursor = conversations.response_metadata?.next_cursor || undefined;
+  } while (cursor);
   return { records: records.sort((left, right) => left.receivedAt.getTime() - right.receivedAt.getTime()), truncated };
 };
 
@@ -798,6 +831,7 @@ const persistSourceCandidate = async ({ uid, record, candidate }) => {
   if (existing.exists) return { classification: String(existing.data()?.status || "proposed"), candidateId, replayed: true };
   const duplicate = Boolean(candidate.duplicateTaskId);
   const qualifiesForAutoCreate = !WORKROOM_SOURCE_AUTOMATION_REVIEW_ONLY
+    && !record.assignmentSignals?.personalDm
     && !duplicate
     && candidate.confidence >= WORKROOM_SOURCE_AUTOMATION_AUTO_CONFIDENCE
     && Boolean(candidate.assignmentEvidence);
@@ -930,9 +964,9 @@ const scanWorkroomSource = async ({ uid, source, loader, openTaskTitles }) => {
     return { source, ok: !error, ...totals, error };
   } catch (error) {
     totals.phase = "failed";
-    const slackError = source === "slack" ? error?.data?.error : "";
+    const slackError = source.startsWith("slack") ? error?.data?.error : "";
     const message = slackError === "missing_scope"
-      ? `Slack needs bot permissions: ${compactSourceText(error?.data?.needed || "Check OAuth scopes in your Slack app", 250)}. Reinstall the Slack app after updating scopes.`
+      ? `Slack needs ${source === "slack-dm" ? "user" : "bot"} permissions: ${compactSourceText(error?.data?.needed || "Check OAuth scopes in your Slack app", 250)}. Reinstall the Slack app after updating scopes.`
       : slackError === "not_in_channel" || slackError === "channel_not_found"
         ? "Slack cannot access a configured channel. Invite the bot to both selected channels and check their channel IDs."
         : compactSourceText(error?.message || "Source scan failed.", 500);
@@ -945,11 +979,12 @@ const runWorkroomSourceScan = async (uid) => {
   await ensureWorkroomOwnerUid(uid);
   const taskSnapshot = await workroomTasksCollectionRef(uid).where("status", "!=", "done").limit(80).get();
   const openTaskTitles = taskSnapshot.docs.map((task) => compactSourceText(task.data()?.title, 180)).filter(Boolean);
-  const [gmail, slack] = await Promise.all([
+  const [gmail, slack, slackDm] = await Promise.all([
     scanWorkroomSource({ uid, source: "gmail", loader: (window) => loadGmailSourceRecords(uid, window), openTaskTitles }),
     scanWorkroomSource({ uid, source: "slack", loader: loadSlackSourceRecords, openTaskTitles }),
+    scanWorkroomSource({ uid, source: "slack-dm", loader: loadSlackDirectMessageRecords, openTaskTitles }),
   ]);
-  return { ok: gmail.ok || slack.ok, reviewOnly: WORKROOM_SOURCE_AUTOMATION_REVIEW_ONLY, sources: [gmail, slack] };
+  return { ok: gmail.ok || slack.ok || slackDm.ok, reviewOnly: WORKROOM_SOURCE_AUTOMATION_REVIEW_ONLY, sources: [gmail, slack, slackDm] };
 };
 
 const fetchJson = async (url, options = {}) => {
@@ -1555,7 +1590,7 @@ exports.scheduledWorkroomGoogleSync = onSchedule({
   }));
 });
 
-exports.runWorkroomSourceScan = onCall({ timeoutSeconds: 540, secrets: [GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, SLACK_BOT_TOKEN] }, async (request) => {
+exports.runWorkroomSourceScan = onCall({ timeoutSeconds: 540, secrets: [GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, SLACK_BOT_TOKEN, SLACK_USER_TOKEN] }, async (request) => {
   const auth = requireAuth(request);
   requireWorkroomOwner(auth);
   return runWorkroomSourceScan(auth.uid);
@@ -1565,7 +1600,7 @@ exports.scheduledWorkroomSourceScan = onSchedule({
   schedule: "30 7 * * *",
   timeZone: "America/Chicago",
   timeoutSeconds: 540,
-  secrets: [GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, SLACK_BOT_TOKEN],
+  secrets: [GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, SLACK_BOT_TOKEN, SLACK_USER_TOKEN],
 }, async () => {
   const uid = configuredWorkroomOwnerUid();
   if (!uid) throw new Error("WORKROOM_OWNER_UID must be configured before source scans can run.");
@@ -1653,9 +1688,10 @@ exports.rejectWorkroomAutomationCandidate = onCall(async (request) => {
 exports.getWorkroomSourceAutomationStatus = onCall(async (request) => {
   const auth = requireAuth(request);
   requireWorkroomOwner(auth);
-  const [gmail, slack, proposed] = await Promise.all([
+  const [gmail, slack, slackDm, proposed] = await Promise.all([
     workroomAutomationStateRef(auth.uid, "gmail").get(),
     workroomAutomationStateRef(auth.uid, "slack").get(),
+    workroomAutomationStateRef(auth.uid, "slack-dm").get(),
     db.collection("workroomAutomationCandidates").doc(auth.uid).collection("items").where("status", "==", "proposed").count().get(),
   ]);
   const sourceState = (snapshot, source) => {
@@ -1683,7 +1719,7 @@ exports.getWorkroomSourceAutomationStatus = onCall(async (request) => {
   return {
     reviewOnly: WORKROOM_SOURCE_AUTOMATION_REVIEW_ONLY,
     pendingReviewCount: Number(proposed.data().count || 0),
-    sources: [sourceState(gmail, "gmail"), sourceState(slack, "slack")],
+    sources: [sourceState(gmail, "gmail"), sourceState(slack, "slack"), sourceState(slackDm, "slack-dm")],
   };
 });
 

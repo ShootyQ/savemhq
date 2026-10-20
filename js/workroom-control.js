@@ -283,6 +283,8 @@ const sourceLinkHtml = (value) => {
   } catch { return ""; }
 };
 
+const sourceLabel = (source) => source === "gmail" ? "Gmail" : source === "slack-dm" ? "Slack DMs (review only)" : "Slack channels & Workbot";
+
 const renderSourceReceipt = (sources) => {
   if (!elements.sourceReceipt) return;
   const scanned = sources.filter((source) => source.startedAt);
@@ -297,7 +299,7 @@ const renderSourceReceipt = (sources) => {
   const highlights = items.filter((item) => item.missedSummary && !["already_handled", "duplicate", "failed"].includes(item.outcome));
   const messagesOpen = elements.sourceReceipt.querySelector("details")?.open;
   const renderItem = (item, isTask = false) => `<article class="workroom-scan-item" data-outcome="${escapeHtml(item.outcome)}">
-    <div class="workroom-scan-item-heading"><span class="workroom-scan-outcome">${escapeHtml(outcomes[item.outcome] || item.outcome)}</span><small>${escapeHtml(item.source === "gmail" ? "Gmail" : "Slack")}</small></div>
+    <div class="workroom-scan-item-heading"><span class="workroom-scan-outcome">${escapeHtml(outcomes[item.outcome] || item.outcome)}</span><small>${escapeHtml(sourceLabel(item.source))}</small></div>
     <strong>${escapeHtml(isTask ? item.title : item.subject || item.author || "Message")}</strong>
     <small>${escapeHtml([item.account, item.author].filter(Boolean).join(" · "))}</small>
     ${isTask ? `<small>${escapeHtml(item.priority || "medium")}${item.dueDate ? ` · Due ${escapeHtml(item.dueDate)}` : ""}</small>` : ""}
@@ -306,10 +308,10 @@ const renderSourceReceipt = (sources) => {
     ${sourceLinkHtml(item.sourceUrl)}</article>`;
   elements.sourceReceipt.innerHTML = `<section class="workroom-missed-updates" aria-labelledby="workroom-missed-heading">
     <h3 id="workroom-missed-heading" class="workroom-scan-subheading">What you might have missed</h3>
-    ${highlights.length ? highlights.map((item) => `<article class="workroom-scan-item"><div class="workroom-scan-item-heading"><span class="workroom-scan-outcome">${escapeHtml(outcomes[item.outcome] || "Update")}</span><small>${escapeHtml(item.source === "gmail" ? "Gmail" : "Slack")}</small></div><strong>${escapeHtml(item.subject || item.author || "Update")}</strong><p>${escapeHtml(item.missedSummary)}</p><small>${escapeHtml([item.account, item.author].filter(Boolean).join(" · "))}</small>${sourceLinkHtml(item.sourceUrl)}</article>`).join("") : '<p class="workroom-empty">No new highlights in the latest scan results.</p>'}
+    ${highlights.length ? highlights.map((item) => `<article class="workroom-scan-item"><div class="workroom-scan-item-heading"><span class="workroom-scan-outcome">${escapeHtml(outcomes[item.outcome] || "Update")}</span><small>${escapeHtml(sourceLabel(item.source))}</small></div><strong>${escapeHtml(item.subject || item.author || "Update")}</strong><p>${escapeHtml(item.missedSummary)}</p><small>${escapeHtml([item.account, item.author].filter(Boolean).join(" · "))}</small>${sourceLinkHtml(item.sourceUrl)}</article>`).join("") : '<p class="workroom-empty">No new highlights in the latest scan results.</p>'}
     </section>
     <div class="workroom-panel-heading workroom-source-queue-heading"><h3>Latest scan receipt</h3></div>
-    ${scanned.filter((source) => source.windowStart && source.windowEnd).map((source) => `<p class="workroom-inline-hint">${source.source === "gmail" ? "Gmail" : "Slack"}: ${escapeHtml(formatStatusStamp(source.windowStart))} to ${escapeHtml(formatStatusStamp(source.windowEnd))}</p>`).join("")}
+    ${scanned.filter((source) => source.windowStart && source.windowEnd).map((source) => `<p class="workroom-inline-hint">${escapeHtml(sourceLabel(source.source))}: ${escapeHtml(formatStatusStamp(source.windowStart))} to ${escapeHtml(formatStatusStamp(source.windowEnd))}</p>`).join("")}
     <dl class="workroom-scan-totals">${[["Eligible messages pulled", count("sourceCount")], ["Tasks created", count("createdCount")], ["Needs review", count("proposedCount")], ["Already handled", count("replayedCount")], ["No task / duplicate", count("discardedCount") + count("duplicateCount")], ["Failed", count("failedCount")]].map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("")}</dl>
     <h4 class="workroom-scan-subheading">Tasks created</h4>
     <div class="workroom-scan-created">${created.length ? created.map((item) => renderItem(item, true)).join("") : '<p class="workroom-empty">No new tasks created in these scans.</p>'}</div>
@@ -342,7 +344,7 @@ const renderSourceAutomation = ({ status, candidates } = {}) => {
         : stale ? "No recent update. This scan may have been interrupted."
               : source.lastScanAt ? `${formatStatusStamp(source.lastScanAt)} · ${source.sourceCount || 0} messages${source.startedAt ? ` · ${source.createdCount || 0} tasks created` : " · No detailed receipt"}` : "Not scanned yet";
             const progress = active ? `<progress aria-label="${escapeHtml(source.source)} scan progress"${source.phase === "processing" ? ` max="${Math.max(1, Number(source.sourceCount || 0))}" value="${Number(source.processedCount || 0)}"` : ""}></progress>` : "";
-            return `<div class="workroom-source-health-row" data-state="${active ? "running" : source.lastError || stale ? "error" : "ready"}"><strong>${escapeHtml(source.source === "gmail" ? "Gmail" : "Slack")}</strong><span>${escapeHtml(details)}</span>${progress}</div>`;
+            return `<div class="workroom-source-health-row" data-state="${active ? "running" : source.lastError || stale ? "error" : "ready"}"><strong>${escapeHtml(sourceLabel(source.source))}</strong><span>${escapeHtml(details)}</span>${progress}</div>`;
   }).join("") : `<p class="workroom-empty">No source health available yet.</p>`;
   renderSourceReceipt(sources);
   const items = Array.isArray(candidates) ? candidates : [];
