@@ -720,7 +720,7 @@ const extractSourceCandidate = async ({ record, openTaskTitles }) => {
   const client = new OpenAI({ apiKey: OPENAI_API_KEY.value() });
   const response = await client.responses.create({
     model: OPENAI_MODEL.value(),
-    instructions: "You extract Workroom task suggestions from private Gmail and Slack messages for the workspace owner. Return actionable=true if the message contains an explicit request/action item assigned to the owner, an @mention requiring action or response, a direct message asking the owner to act, an explicit commitment made by the owner, or any message regarding finances, treasurer duties, budgets, payments, checks, or reimbursements where the owner should review or take action. Exclude generic newsletters, marketing, automated system notices, and trivial chatter. Title must be concise and actionable. When auto-creating, a '*' indicator will be added automatically, so keep title clean. Do not invent dates; only preserve a YYYY-MM-DD due date directly grounded in the source. Notes must be a concise, privacy-preserving explanation with relevant context or amounts, never a full transcript. Return one proposed task at most.",
+    instructions: "You extract Workroom task suggestions from private Gmail and Slack messages for the workspace owner. Return actionable=true if the message contains an explicit request/action item assigned to the owner, an @mention requiring action or response, a direct message asking the owner to act, an explicit commitment made by the owner, or any message regarding finances, treasurer duties, budgets, payments, checks, or reimbursements where the owner should review or take action. For Gmail, the owner explicitly wants a review/reconciliation task for financial statements and confirmations of payments already made, received, posted, or processed, including automated/no-reply financial emails. For these financial records, set actionable=true and assignedToOwner=true even without an explicit request; assignmentEvidence must cite the financial record and the owner's standing instruction to review it. Use a title such as Review [issuer] statement or Reconcile payment to/from [party]. A completed payment is NOT an instruction to pay again; never create a new payment obligation from a confirmation. Financial assignment signals are hints, not proof: verify the actual message is a financial record. Exclude generic newsletters, marketing, nonfinancial statements, other automated system notices, and trivial chatter. Title must be concise and actionable. When auto-creating, a '*' indicator will be added automatically, so keep title clean. Do not invent dates; only preserve a YYYY-MM-DD due date directly grounded in the source, and do not treat a statement period or completed payment date as a task deadline. Notes must be a concise, privacy-preserving explanation with relevant context or amounts, never a full transcript. Return one proposed task at most.",
     input: JSON.stringify({
       today: briefingDateKey(),
       source: {
@@ -1249,13 +1249,26 @@ const messageTextFromPayload = (payload) => {
   return parts.join("\n").replace(/\s+/g, " ").trim().slice(0, 6000);
 };
 
+const gmailFinancialSignals = (message) => {
+  const subject = safeHeader(message.payload?.headers || [], "subject");
+  const text = `${subject} ${messageTextFromPayload(message.payload)}`;
+  return {
+    financialStatement: /\bstatements?\b/i.test(subject)
+      || /\b(?:bank|account|billing|monthly|financial|credit card)\s+statements?\b/i.test(text),
+    paymentConfirmation: /\bpayments?\s+(?:(?:has|have)\s+been\s+|was\s+|is\s+)?(?:made|received|processed|posted|completed|successful|confirmed)\b|\b(?:received|processed|posted|completed|confirmed)\s+(?:your\s+)?payments?\b|\bpayment\s+(?:confirmation|receipt)\b|\bpaid\s+in\s+full\b|\binvoice\s+(?:has\s+been\s+)?paid\b/i.test(text),
+  };
+};
+
 const isIgnoredGmailMessage = (message) => {
   const headers = message.payload?.headers || [];
   const from = safeHeader(headers, "from").toLowerCase();
   const subject = safeHeader(headers, "subject").toLowerCase();
   const listId = safeHeader(headers, "list-id");
   const autoSubmitted = safeHeader(headers, "auto-submitted").toLowerCase();
-  if (listId || autoSubmitted && autoSubmitted !== "no") return true;
+  if (listId || /\b(newsletter|weekly digest|shipping update|password reset)\b/.test(subject)) return true;
+  const financial = gmailFinancialSignals(message);
+  if (financial.financialStatement || financial.paymentConfirmation) return false;
+  if (autoSubmitted && autoSubmitted !== "no") return true;
   if (/\b(no[._-]?reply|donotreply|mailer-daemon)@/.test(from)) return true;
   return /\b(newsletter|weekly digest|receipt|order confirmation|shipping update|password reset)\b/.test(subject);
 };
@@ -1275,7 +1288,7 @@ const normalizeGmailSourceRecord = ({ connectionId, message, accountEmail = "" }
     receivedAt: message.internalDate ? new Date(Number(message.internalDate)) : new Date(),
     processingText: body,
     sourceUrl: "",
-    assignmentSignals: { unreadInbox: true },
+    assignmentSignals: { unreadInbox: true, ...gmailFinancialSignals(message) },
   };
 };
 
