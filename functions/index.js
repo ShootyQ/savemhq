@@ -812,13 +812,14 @@ const persistSourceCandidate = async ({ uid, record, candidate }) => {
     assignmentEvidence: candidate.assignmentEvidence,
     reason: candidate.reason,
     duplicateTaskId: candidate.duplicateTaskId || "",
-    status,
+    status: qualifiesForAutoCreate ? "failed" : status,
     expiresAt,
     createdId: "",
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   };
   await candidateRef.create(data);
+  let createdId = "";
   if (qualifiesForAutoCreate) {
     const autoTitle = candidate.title.startsWith("* ") ? candidate.title : `* ${candidate.title}`;
     const result = await executeWorkroomAction({
@@ -828,9 +829,10 @@ const persistSourceCandidate = async ({ uid, record, candidate }) => {
       source: `${record.sourceType}-auto`,
       payload: { title: autoTitle, notes: candidate.notes, priority: candidate.priority, dueDate: candidate.dueDate },
     });
-    await candidateRef.set({ createdId: result.createdId, autoCreatedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    createdId = result.createdId;
+    await candidateRef.set({ status: "auto_created", createdId, autoCreatedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   }
-  return { classification: status, candidateId, replayed: false };
+  return { classification: status, candidateId, createdId, replayed: false };
 };
 
 const writeSourceScanState = async ({ uid, source, result, error = "" }) => {
@@ -843,29 +845,71 @@ const writeSourceScanState = async ({ uid, source, result, error = "" }) => {
     proposedCount: Number(result?.proposedCount || 0),
     duplicateCount: Number(result?.duplicateCount || 0),
     discardedCount: Number(result?.discardedCount || 0),
+    createdCount: Number(result?.createdCount || 0),
+    replayedCount: Number(result?.replayedCount || 0),
+    failedCount: Number(result?.failedCount || 0),
+    processedCount: Number(result?.processedCount || 0),
+    phase: result?.phase || "complete",
+    startedAt: result?.startedAt || "",
+    items: result?.items || [],
     updatedAt: FieldValue.serverTimestamp(),
   };
-  if (!error) data.lastSuccessAt = FieldValue.serverTimestamp();
+  if (!error && data.phase === "complete") data.lastSuccessAt = FieldValue.serverTimestamp();
   return workroomAutomationStateRef(uid, source).set(data, { merge: true });
 };
 
 const scanWorkroomSource = async ({ uid, source, loader, openTaskTitles }) => {
+  const totals = { sourceCount: 0, processedCount: 0, createdCount: 0, proposedCount: 0, duplicateCount: 0, discardedCount: 0, replayedCount: 0, failedCount: 0, phase: "loading", startedAt: new Date().toISOString(), items: [] };
+  await writeSourceScanState({ uid, source, result: totals });
   try {
     const records = await loader();
-    const totals = { sourceCount: records.length, proposedCount: 0, duplicateCount: 0, discardedCount: 0 };
-    for (const record of records) {
-      const candidate = await extractSourceCandidate({ record, openTaskTitles });
-      const stored = await persistSourceCandidate({ uid, record, candidate });
-      if (stored.classification === "proposed") totals.proposedCount += 1;
-      else if (stored.classification === "duplicate") totals.duplicateCount += 1;
-      else if (stored.classification === "discarded") totals.discardedCount += 1;
-    }
+    totals.sourceCount = records.length;
+    totals.phase = "processing";
     await writeSourceScanState({ uid, source, result: totals });
-    return { source, ok: true, ...totals };
+    for (const record of records) {
+      const item = {
+        author: compactSourceText(record.author, 180),
+        account: compactSourceText(record.accountLabel, 120),
+        subject: compactSourceText(record.subject, 240),
+        sourceUrl: compactSourceText(record.sourceUrl, 500),
+        excerpt: compactSourceText(record.processingText, 240),
+      };
+      try {
+        const candidate = await extractSourceCandidate({ record, openTaskTitles });
+        const stored = await persistSourceCandidate({ uid, record, candidate });
+        item.outcome = stored.classification === "failed" ? "failed" : stored.replayed ? "already_handled" : stored.classification;
+        item.title = stored.classification === "auto_created" && !candidate.title.startsWith("* ") ? `* ${candidate.title}` : candidate.title || "";
+        item.reason = candidate.reason || "No actionable task found.";
+        item.createdId = stored.createdId || "";
+        item.dueDate = candidate.dueDate || "";
+        item.priority = candidate.priority || "medium";
+        if (stored.classification === "failed") {
+          totals.failedCount += 1;
+          item.reason = "A previous task creation could not be confirmed. This message needs attention.";
+        } else if (stored.replayed) totals.replayedCount += 1;
+        else if (stored.classification === "auto_created") totals.createdCount += 1;
+        else if (stored.classification === "proposed") totals.proposedCount += 1;
+        else if (stored.classification === "duplicate") totals.duplicateCount += 1;
+        else totals.discardedCount += 1;
+      } catch (error) {
+        totals.failedCount += 1;
+        item.outcome = "failed";
+        item.reason = "Could not process this message. No new task was confirmed.";
+        console.error("Source message processing failed", { source, message: String(error?.message || error) });
+      }
+      totals.items.push(item);
+      totals.processedCount += 1;
+      await writeSourceScanState({ uid, source, result: totals });
+    }
+    totals.phase = "complete";
+    const error = totals.failedCount ? `${totals.failedCount} message(s) could not be processed. Other results were saved.` : "";
+    await writeSourceScanState({ uid, source, result: totals, error });
+    return { source, ok: !error, ...totals, error };
   } catch (error) {
-    const result = { sourceCount: 0, proposedCount: 0, duplicateCount: 0, discardedCount: 0 };
-    await writeSourceScanState({ uid, source, result, error: String(error?.message || "Source scan failed.") });
-    return { source, ok: false, ...result, error: "This source needs attention." };
+    totals.phase = "failed";
+    const message = compactSourceText(error?.message || "Source scan failed.", 500);
+    await writeSourceScanState({ uid, source, result: totals, error: message });
+    return { source, ok: false, ...totals, error: message };
   }
 };
 
@@ -1465,7 +1509,7 @@ exports.scheduledWorkroomGoogleSync = onSchedule({
   }));
 });
 
-exports.runWorkroomSourceScan = onCall({ secrets: [GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, SLACK_BOT_TOKEN] }, async (request) => {
+exports.runWorkroomSourceScan = onCall({ timeoutSeconds: 540, secrets: [GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, SLACK_BOT_TOKEN] }, async (request) => {
   const auth = requireAuth(request);
   requireWorkroomOwner(auth);
   return runWorkroomSourceScan(auth.uid);
@@ -1474,6 +1518,7 @@ exports.runWorkroomSourceScan = onCall({ secrets: [GOOGLE_CLIENT_SECRET, OPENAI_
 exports.scheduledWorkroomSourceScan = onSchedule({
   schedule: "30 7 * * *",
   timeZone: "America/Chicago",
+  timeoutSeconds: 540,
   secrets: [GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, SLACK_BOT_TOKEN],
 }, async () => {
   const uid = configuredWorkroomOwnerUid();
@@ -1578,6 +1623,13 @@ exports.getWorkroomSourceAutomationStatus = onCall(async (request) => {
       proposedCount: Number(data.proposedCount || 0),
       duplicateCount: Number(data.duplicateCount || 0),
       discardedCount: Number(data.discardedCount || 0),
+      createdCount: Number(data.createdCount || 0),
+      replayedCount: Number(data.replayedCount || 0),
+      failedCount: Number(data.failedCount || 0),
+      processedCount: Number(data.processedCount || 0),
+      phase: String(data.phase || ""),
+      startedAt: String(data.startedAt || ""),
+      items: Array.isArray(data.items) ? data.items : [],
     };
   };
   return {

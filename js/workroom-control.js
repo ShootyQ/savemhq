@@ -44,6 +44,7 @@ const elements = {
   automationForm: $("workroom-automation-form"), automationSource: $("workroom-automation-source"), automationText: $("workroom-automation-text"), automationVoice: $("workroom-automation-voice"),
   automationRefresh: $("workroom-automation-refresh"), automationUsage: $("workroom-automation-usage"), automationAudit: $("workroom-automation-audit"),
   sourceScan: $("workroom-source-scan"), sourceRefresh: $("workroom-source-refresh"), sourceStatus: $("workroom-source-status"), sourceHealth: $("workroom-source-health"), sourceCandidates: $("workroom-source-candidates"),
+  sourceProgress: $("workroom-source-progress"), sourceReceipt: $("workroom-source-receipt"),
   contactForm: $("workroom-contact-form"), contactName: $("workroom-contact-name"), contactDate: $("workroom-contact-date"), contactReason: $("workroom-contact-reason"), contactMethod: $("workroom-contact-method"), contactDetail: $("workroom-contact-detail"), contacts: $("workroom-contacts"),
   projectForm: $("workroom-project-form"), projectTitle: $("workroom-project-title"), projectDate: $("workroom-project-date"), projectColor: $("workroom-project-color"), projects: $("workroom-projects"),
   taskForm: $("workroom-task-form"), taskTitle: $("workroom-task-title"), taskProject: $("workroom-task-project"), taskPriority: $("workroom-task-priority"), taskDate: $("workroom-task-date"), taskNotes: $("workroom-task-notes"), tasks: $("workroom-tasks"),
@@ -63,7 +64,7 @@ const saveGoogleCalendars = httpsCallable(functions, "setWorkroomGoogleCalendars
 const generateBriefing = httpsCallable(functions, "generateWorkroomBriefing");
 const parseAutomationText = httpsCallable(functions, "parseWorkroomAutomationText");
 const getAutomationStatus = httpsCallable(functions, "getWorkroomAutomationStatus");
-const runSourceScan = httpsCallable(functions, "runWorkroomSourceScan");
+const runSourceScan = httpsCallable(functions, "runWorkroomSourceScan", { timeout: 540000 });
 const getSourceAutomationStatus = httpsCallable(functions, "getWorkroomSourceAutomationStatus");
 const listSourceCandidates = httpsCallable(functions, "listWorkroomAutomationCandidates");
 const approveSourceCandidate = httpsCallable(functions, "approveWorkroomAutomationCandidate");
@@ -72,6 +73,11 @@ let state = { user: null, session: null, profile: null, modules: [], projects: [
 let speechRecognition = null;
 let speechActive = false;
 let automationStatusInterval = null;
+let sourcePollTimer = null;
+let sourceScanInFlight = false;
+let sourceStatusCache = null;
+let sourceCandidateCache = [];
+let sourceRunError = "";
 
 const notice = (message = "", error = false) => {
   elements.notice.textContent = message;
@@ -79,7 +85,7 @@ const notice = (message = "", error = false) => {
 };
 const clean = (value) => String(value || "").trim();
 const timestampForDate = (value) => value ? new Date(`${value}T12:00:00`) : null;
-const cleanUp = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; };
+const cleanUp = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; window.clearTimeout(sourcePollTimer); sourceStatusCache = null; sourceCandidateCache = []; sourceRunError = ""; };
 const hasModule = (moduleId) => state.modules.includes(moduleId);
 const renderBriefingCount = () => {
   const count = Number(state.briefing.dailyRunCount || 0);
@@ -266,40 +272,104 @@ const refreshAutomationStatus = async (quiet = false) => {
   }
 };
 
+const sourceIsRunning = (source) => ["loading", "processing"].includes(source.phase)
+  && Date.now() - new Date(source.startedAt).getTime() < 12 * 60 * 1000;
+
+const sourceLinkHtml = (value) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? `<a href="${escapeHtml(url.href)}" target="_blank" rel="noopener noreferrer">Open original</a>` : "";
+  } catch { return ""; }
+};
+
+const renderSourceReceipt = (sources) => {
+  if (!elements.sourceReceipt) return;
+  const scanned = sources.filter((source) => source.startedAt);
+  if (!scanned.length) {
+    elements.sourceReceipt.innerHTML = '<p class="workroom-empty">No detailed scan receipt yet.</p>';
+    return;
+  }
+  const count = (key) => scanned.reduce((total, source) => total + Number(source[key] || 0), 0);
+  const outcomes = { auto_created: "Task created", proposed: "Needs review", already_handled: "Already handled", duplicate: "Duplicate", discarded: "No task needed", failed: "Failed" };
+  const items = scanned.flatMap((source) => (source.items || []).map((item) => ({ ...item, source: source.source })));
+  const created = items.filter((item) => item.outcome === "auto_created");
+  const messagesOpen = elements.sourceReceipt.querySelector("details")?.open;
+  const renderItem = (item, isTask = false) => `<article class="workroom-scan-item" data-outcome="${escapeHtml(item.outcome)}">
+    <div class="workroom-scan-item-heading"><span class="workroom-scan-outcome">${escapeHtml(outcomes[item.outcome] || item.outcome)}</span><small>${escapeHtml(item.source === "gmail" ? "Gmail" : "Slack")}</small></div>
+    <strong>${escapeHtml(isTask ? item.title : item.subject || item.author || "Message")}</strong>
+    <small>${escapeHtml([item.account, item.author].filter(Boolean).join(" · "))}</small>
+    ${isTask ? `<small>${escapeHtml(item.priority || "medium")}${item.dueDate ? ` · Due ${escapeHtml(item.dueDate)}` : ""}</small>` : ""}
+    <p>${escapeHtml(item.reason || "")}</p>
+    ${isTask ? `<small>From: ${escapeHtml(item.subject || "Message")}</small>` : `<p class="workroom-source-excerpt">${escapeHtml(item.excerpt || "")}</p>${item.title ? `<small>Task: ${escapeHtml(item.title)}</small>` : ""}`}
+    ${sourceLinkHtml(item.sourceUrl)}</article>`;
+  elements.sourceReceipt.innerHTML = `<div class="workroom-panel-heading workroom-source-queue-heading"><h3>Latest scan receipt</h3></div>
+    <dl class="workroom-scan-totals">${[["Eligible messages pulled", count("sourceCount")], ["Tasks created", count("createdCount")], ["Needs review", count("proposedCount")], ["Already handled", count("replayedCount")], ["No task / duplicate", count("discardedCount") + count("duplicateCount")], ["Failed", count("failedCount")]].map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("")}</dl>
+    <h4 class="workroom-scan-subheading">Tasks created</h4>
+    <div class="workroom-scan-created">${created.length ? created.map((item) => renderItem(item, true)).join("") : '<p class="workroom-empty">No new tasks created in these scans.</p>'}</div>
+    <details class="workroom-scan-messages"${messagesOpen ? " open" : ""}><summary>Messages pulled & decisions (${items.length})</summary>${items.length ? items.map((item) => renderItem(item)).join("") : '<p class="workroom-empty">No processed messages to show.</p>'}</details>`;
+};
+
 const renderSourceAutomation = ({ status, candidates } = {}) => {
   if (!elements.sourceStatus || !elements.sourceHealth || !elements.sourceCandidates) return;
   const pending = Number(status?.pendingReviewCount || 0);
   elements.sourceStatus.textContent = status
     ? `${status.reviewOnly ? "Review-only mode" : "Auto-create enabled"} · ${pending} suggestion${pending === 1 ? "" : "s"} waiting.`
-    : "Source Copilot is unavailable until you sign in.";
+    : state.user ? "Scan status is not available yet." : "Sign in to view scan activity.";
   const sources = Array.isArray(status?.sources) ? status.sources : [];
+  const running = sourceScanInFlight || sources.some(sourceIsRunning);
+  elements.sourceScan.disabled = running;
+  elements.sourceScan.textContent = running ? "Scanning..." : "Scan Gmail & Slack";
+  elements.sourceReceipt?.setAttribute("aria-busy", String(running));
+  if (elements.sourceProgress) elements.sourceProgress.textContent = sourceRunError || (sources.some(sourceIsRunning)
+    ? "Scan in progress. Results update as messages are processed."
+    : sourceScanInFlight ? "Starting Gmail and Slack scan..."
+    : sources.some((source) => source.lastError || ["loading", "processing"].includes(source.phase))
+      ? "Scan needs attention. See source details below; completed results are preserved."
+      : sources.some((source) => source.lastScanAt) ? "Scan finished. Results are saved below." : "Ready to scan.");
   elements.sourceHealth.innerHTML = sources.length ? sources.map((source) => {
-    const details = source.lastError
-      ? `Needs attention · ${source.lastError}`
-      : source.lastSuccessAt
-        ? `Last scan ${formatStatusStamp(source.lastSuccessAt)} · ${source.proposedCount} proposed`
-        : "Not scanned yet";
-    return `<div class="workroom-source-health-row"><strong>${escapeHtml(source.source === "gmail" ? "Gmail" : "Slack")}</strong><span>${escapeHtml(details)}</span></div>`;
+    const active = sourceIsRunning(source);
+    const stale = !active && ["loading", "processing"].includes(source.phase);
+    const details = active
+      ? source.phase === "loading" ? "Fetching eligible messages..." : `Reviewing ${source.processedCount || 0} of ${source.sourceCount || 0} messages · ${source.createdCount || 0} tasks created`
+      : source.lastError ? `Needs attention · ${source.lastError}`
+        : stale ? "No recent update. This scan may have been interrupted."
+              : source.lastScanAt ? `${formatStatusStamp(source.lastScanAt)} · ${source.sourceCount || 0} messages${source.startedAt ? ` · ${source.createdCount || 0} tasks created` : " · No detailed receipt"}` : "Not scanned yet";
+            const progress = active ? `<progress aria-label="${escapeHtml(source.source)} scan progress"${source.phase === "processing" ? ` max="${Math.max(1, Number(source.sourceCount || 0))}" value="${Number(source.processedCount || 0)}"` : ""}></progress>` : "";
+            return `<div class="workroom-source-health-row" data-state="${active ? "running" : source.lastError || stale ? "error" : "ready"}"><strong>${escapeHtml(source.source === "gmail" ? "Gmail" : "Slack")}</strong><span>${escapeHtml(details)}</span>${progress}</div>`;
   }).join("") : `<p class="workroom-empty">No source health available yet.</p>`;
+  renderSourceReceipt(sources);
   const items = Array.isArray(candidates) ? candidates : [];
   elements.sourceCandidates.innerHTML = items.length ? items.map((candidate) => {
     const dueDate = candidate.dueDate ? formatDay(candidate.dueDate) : "No due date";
     const source = [candidate.sourceType === "gmail" ? "Gmail" : "Slack", candidate.sourceAuthor, candidate.sourceSubject].filter(Boolean).join(" · ");
-    const sourceLink = candidate.sourceUrl ? `<a href="${escapeHtml(candidate.sourceUrl)}" target="_blank" rel="noopener">Open source</a>` : "";
+    const sourceLink = sourceLinkHtml(candidate.sourceUrl);
     return `<article class="workroom-source-candidate"><div><small>${escapeHtml(source)}</small><strong>${escapeHtml(candidate.title)}</strong><span><span class="workroom-priority ${escapeHtml(candidate.priority)}">${escapeHtml(candidate.priority)}</span> · ${escapeHtml(dueDate)} · ${Math.round(Number(candidate.confidence || 0) * 100)}%</span></div><p>${escapeHtml(candidate.reason)}</p><p class="workroom-source-excerpt">${escapeHtml(candidate.excerpt)}</p><div class="workroom-inline-actions"><button class="workroom-button workroom-button-primary" data-approve-source-candidate="${escapeHtml(candidate.id)}" type="button">Approve</button><button class="workroom-button workroom-button-quiet" data-reject-source-candidate="${escapeHtml(candidate.id)}" type="button">Dismiss</button>${sourceLink}</div></article>`;
   }).join("") : `<p class="workroom-empty">No source suggestions need review.</p>`;
 };
 
 const refreshSourceAutomation = async (quiet = false) => {
   if (!state.user || !state.session?.isAdmin) {
-    renderSourceAutomation(null);
+    renderSourceAutomation();
     return;
   }
   try {
-    const [statusResult, candidatesResult] = await Promise.all([getSourceAutomationStatus(), listSourceCandidates()]);
-    renderSourceAutomation({ status: statusResult.data || null, candidates: candidatesResult.data?.candidates || [] });
+    const [statusResult, candidatesResult] = await Promise.allSettled([getSourceAutomationStatus(), listSourceCandidates()]);
+    if (statusResult.status === "fulfilled") sourceStatusCache = statusResult.value.data || null;
+    if (candidatesResult.status === "fulfilled") sourceCandidateCache = candidatesResult.value.data?.candidates || [];
+    renderSourceAutomation({ status: sourceStatusCache, candidates: sourceCandidateCache });
+    if (statusResult.status === "rejected" || candidatesResult.status === "rejected") {
+      elements.sourceProgress.textContent = statusResult.status === "rejected"
+        ? `Live status unavailable: ${String(statusResult.reason?.message || "Connection failed.")} The scan may still be running.`
+        : `Scan results loaded. Review queue unavailable: ${String(candidatesResult.reason?.message || "Connection failed.")}`;
+    }
   } catch (error) {
+    elements.sourceProgress.textContent = "Could not load scan results. Try refreshing.";
     if (!quiet) notice(String(error.message || "Could not refresh Source Copilot."), true);
+  } finally {
+    window.clearTimeout(sourcePollTimer);
+    if (state.session?.isAdmin && (sourceScanInFlight || sourceStatusCache?.sources?.some(sourceIsRunning))) {
+      sourcePollTimer = window.setTimeout(() => refreshSourceAutomation(true), 4000);
+    }
   }
 };
 
@@ -453,15 +523,31 @@ elements.signOut.addEventListener("click", () => signOut(auth));
 elements.automationRefresh?.addEventListener("click", () => run(() => refreshAutomationStatus(), "Automation status refreshed."));
 elements.sourceRefresh?.addEventListener("click", () => run(() => refreshSourceAutomation(), "Source Copilot refreshed."));
 elements.sourceScan?.addEventListener("click", async () => {
+  if (sourceScanInFlight) return;
+  sourceRunError = "";
+  sourceScanInFlight = true;
   elements.sourceScan.disabled = true;
-  await run(async () => {
+  elements.sourceScan.textContent = "Scanning...";
+  elements.sourceProgress.textContent = "Starting Gmail and Slack scan...";
+  sourcePollTimer = window.setTimeout(() => refreshSourceAutomation(true), 1500);
+  try {
     const result = await runSourceScan();
     const sources = Array.isArray(result.data?.sources) ? result.data.sources : [];
+    sourceStatusCache = { ...result.data, sources: sources.map((source) => ({ ...source, lastScanAt: new Date().toISOString(), lastError: source.error || "" })) };
+    renderSourceAutomation({ status: sourceStatusCache, candidates: sourceCandidateCache });
+    const created = sources.reduce((total, source) => total + Number(source.createdCount || 0), 0);
     const proposed = sources.reduce((total, source) => total + Number(source.proposedCount || 0), 0);
+    const hasErrors = sources.some((source) => !source.ok);
+    elements.sourceProgress.textContent = `${hasErrors ? "Scan finished with issues" : "Scan complete"}. ${created} tasks created; ${proposed} awaiting review.`;
+    notice(elements.sourceProgress.textContent, hasErrors);
+  } catch (error) {
+    sourceRunError = `Scan could not be confirmed: ${String(error.message || "Connection interrupted.")} Saved results are shown below.`;
+    elements.sourceProgress.textContent = sourceRunError;
+    notice(elements.sourceProgress.textContent, true);
+  } finally {
+    sourceScanInFlight = false;
     await refreshSourceAutomation(true);
-    notice(`Source scan complete. ${proposed} suggestion${proposed === 1 ? "" : "s"} ready for review.`);
-  });
-  elements.sourceScan.disabled = false;
+  }
 });
 elements.automationVoice?.addEventListener("click", () => toggleVoiceCapture());
 elements.automationForm?.addEventListener("submit", (event) => {

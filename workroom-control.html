@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>The Desk | Control Room</title>
     <meta name="description" content="Your private, customizable Desk." />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=scan-receipt-20261020" />
   </head>
   <body data-page="workroom-control">
     <main class="workroom-control-shell">
@@ -131,14 +131,15 @@
             <article class="workroom-panel workroom-source-copilot-panel" data-owner-only>
               <div class="workroom-panel-heading">
                 <div>
-                  <p class="workroom-panel-kicker">Background AI</p>
-                  <h2>Source Copilot (Gmail & Slack)</h2>
+                  <p class="workroom-panel-kicker">Gmail & Slack · Daily 7:30 AM Central</p>
+                  <h2>Scan activity</h2>
                 </div>
-                <button id="workroom-source-scan" class="workroom-button workroom-button-primary" type="button">Scan now</button>
+                <button id="workroom-source-scan" class="workroom-button workroom-button-primary" type="button">Scan Gmail & Slack</button>
               </div>
-              <p class="workroom-inline-hint" style="margin:0.35rem 0 0.85rem;line-height:1.45;">Scans your Slack channels and unread organization emails daily at 7:30 AM. Detects actionable requests, finances/treasurer items, and @mentions, then auto-creates them as tasks (prefixed with <strong>*</strong>). Personal email accounts are automatically excluded. Click <strong>Scan now</strong> to run an instant scan anytime.</p>
+              <p id="workroom-source-progress" class="workroom-scan-progress" role="status" aria-live="polite">Loading latest scan...</p>
               <div id="workroom-source-health" class="workroom-source-health"></div>
               <p id="workroom-source-status" class="workroom-inline-hint">Checking Gmail and Slack...</p>
+              <div id="workroom-source-receipt"></div>
               <div class="workroom-panel-heading workroom-source-queue-heading">
                 <h3>Needs review</h3>
                 <button id="workroom-source-refresh" class="workroom-button workroom-button-quiet" type="button">Refresh</button>
@@ -278,6 +279,6 @@
         </section>
       </div>
     </main>
-    <script type="module" src="js/workroom-control.js?v=workroom-calendar-control-20261015"></script>
+    <script type="module" src="js/workroom-control.js?v=scan-receipt-20261020"></script>
   </body>
 </html>
