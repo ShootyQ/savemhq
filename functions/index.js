@@ -171,13 +171,22 @@ const loadSlackDirectMessageRecords = async ({ since, until }) => {
     throw new Error("The Slack user token must belong to the configured Desk owner's Slack member, not Workbot or another user.");
   }
   const records = [];
+  const warnings = [];
   let cursor;
   let truncated = false;
   do {
     const conversations = await client.conversations.list({ types: "im", limit: 200, cursor });
     for (const conversation of conversations.channels || []) {
       if (!conversation.id || !conversation.is_im) continue;
-      const result = await client.conversations.history({ channel: conversation.id, oldest: String(since / 1000), latest: String(until / 1000), inclusive: true, limit: 100 });
+      let result;
+      try {
+        result = await client.conversations.history({ channel: conversation.id, oldest: String(since / 1000), latest: String(until / 1000), inclusive: true, limit: 100 });
+      } catch (error) {
+        const code = error?.data?.error;
+        if (!["channel_not_found", "not_in_channel", "access_denied", "restricted_action", "no_permission"].includes(code)) throw error;
+        warnings.push(`DM ${conversation.id}: ${code}`);
+        continue;
+      }
       truncated ||= Boolean(result.has_more || result.response_metadata?.next_cursor);
       for (const message of result.messages || []) {
         const record = normalizeSlackSourceRecord({
@@ -190,7 +199,7 @@ const loadSlackDirectMessageRecords = async ({ since, until }) => {
     }
     cursor = conversations.response_metadata?.next_cursor || undefined;
   } while (cursor);
-  return { records: records.sort((left, right) => left.receivedAt.getTime() - right.receivedAt.getTime()), truncated };
+  return { records: records.sort((left, right) => left.receivedAt.getTime() - right.receivedAt.getTime()), truncated, warnings };
 };
 
 const loadSlackBriefingInput = async () => {
@@ -918,7 +927,7 @@ const scanWorkroomSource = async ({ uid, source, loader, openTaskTitles }) => {
   const totals = { sourceCount: 0, processedCount: 0, createdCount: 0, proposedCount: 0, duplicateCount: 0, discardedCount: 0, replayedCount: 0, failedCount: 0, phase: "loading", startedAt: new Date(window.until).toISOString(), windowStart: new Date(window.since).toISOString(), windowEnd: new Date(window.until).toISOString(), items: [] };
   await writeSourceScanState({ uid, source, result: totals });
   try {
-    const { records, truncated } = await loader(window);
+    const { records, truncated, warnings = [] } = await loader(window);
     totals.sourceCount = records.length;
     totals.phase = "processing";
     await writeSourceScanState({ uid, source, result: totals });
@@ -959,7 +968,11 @@ const scanWorkroomSource = async ({ uid, source, loader, openTaskTitles }) => {
       await writeSourceScanState({ uid, source, result: totals });
     }
     totals.phase = "complete";
-    const error = totals.failedCount ? `${totals.failedCount} message(s) could not be processed. Other results were saved.` : truncated ? "This window exceeds the source API page limit. Results are partial; the last-pull checkpoint was not advanced." : "";
+    const error = [
+      totals.failedCount ? `${totals.failedCount} message(s) could not be processed. Other results were saved.` : "",
+      truncated ? "This window exceeds the source API page limit. Results are partial; the last-pull checkpoint was not advanced." : "",
+      warnings.length ? `${warnings.length} DM(s) inaccessible to your Slack user token (${warnings.slice(0, 3).join("; ")}). Readable DMs were processed; the checkpoint was not advanced. Check User Token Scopes im:read/im:history and reauthorize the correct workspace account.` : "",
+    ].filter(Boolean).join(" ");
     await writeSourceScanState({ uid, source, result: totals, error });
     return { source, ok: !error, ...totals, error };
   } catch (error) {
@@ -968,7 +981,9 @@ const scanWorkroomSource = async ({ uid, source, loader, openTaskTitles }) => {
     const message = slackError === "missing_scope"
       ? `Slack needs ${source === "slack-dm" ? "user" : "bot"} permissions: ${compactSourceText(error?.data?.needed || "Check OAuth scopes in your Slack app", 250)}. Reinstall the Slack app after updating scopes.`
       : slackError === "not_in_channel" || slackError === "channel_not_found"
-        ? "Slack cannot access a configured channel. Invite the bot to both selected channels and check their channel IDs."
+        ? source === "slack-dm"
+          ? `Your Slack user token cannot access a DM (${slackError}). Check User Token Scopes im:read/im:history and reauthorize the correct workspace account. Inviting Workbot to a channel will not fix DM access.`
+          : "Slack cannot access a configured channel. Invite the bot to both selected channels and check their channel IDs."
         : compactSourceText(error?.message || "Source scan failed.", 500);
     await writeSourceScanState({ uid, source, result: totals, error: message });
     return { source, ok: false, ...totals, error: message };
