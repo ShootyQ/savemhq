@@ -24,6 +24,7 @@ const elements = {
   eventTime: $("workroom-display-event-time"), eventEndTime: $("workroom-display-event-end-time"),
   eventTimeRow: $("workroom-display-event-time-row"),
   eventAllDay: $("workroom-display-event-allday"),
+  eventAddTask: $("workroom-display-event-add-task"),
   eventCategory: $("workroom-display-event-category"), eventLocation: $("workroom-display-event-location"),
   eventNotes: $("workroom-display-event-notes"),
   eventDetailDialog: $("workroom-event-detail-dialog"),
@@ -158,15 +159,6 @@ const deriveRadar = (now) => {
   const items = [];
   state.contacts.filter((item) => item.status !== "done").forEach((item) => { const offset = dayOffset(item.followUpDate, now); const score = offset < 0 ? 0 : offset === 0 ? 2 : offset === 1 ? 5 : 20 + (offset ?? 30); items.push(radarItem("Follow-up", item.name, item.reason, relativeDay(item.followUpDate, now), score, item.id, true, "contact")); });
   state.finance.filter((item) => item.status !== "done").forEach((item) => { const offset = dayOffset(item.dueDate, now); const score = offset < 0 ? 0 : offset === 0 ? 2 : offset === 1 ? 5 : 20 + (offset ?? 30); items.push(radarItem("Finance", item.title, item.category || "Reminder", relativeDay(item.dueDate, now), score, item.id, true, "finance")); });
-  const allEvents = getAllCalendarEvents();
-  allEvents.forEach((event, index) => {
-    const date = event.startDate;
-    if (!date) return;
-    const minutes = (date - now) / 60000;
-    if (minutes >= -30 && minutes <= 24 * 60) {
-      items.push(radarItem("Calendar", event.title, event.location || (event.isCustom ? "Desk Calendar" : "Calendar"), minutes <= 60 && minutes >= 0 ? `In ${Math.max(1, Math.round(minutes))} min` : eventWhen(event), minutes <= 60 ? 1 : 8 + minutes / 60, event.id || `event-${index}`));
-    }
-  });
   state.ach.forEach((item) => { const offset = dayOffset(item.withdrawalDate, now); if (offset != null && offset >= 0 && offset <= 3) items.push(radarItem("ACH", `${item.name} - $${Number(item.amount || 0).toFixed(2)}`, item.reason, relativeDay(item.withdrawalDate, now), 6 + offset, item.id, true, "ach")); });
   state.paymentEntrySources.forEach((source) => { const offset = paymentEntryDueOffset(source, now); if (offset == null || offset <= 0) items.push(radarItem("Payment entry", source.name, `Every ${Number(source.intervalDays)} days`, offset == null ? "Needs first entry" : offset < 0 ? `${Math.abs(offset)} days overdue` : "Due today", offset == null ? 0 : Math.max(0, offset), source.id, true, "payment-entry")); });
   state.projects.filter((item) => item.status === "active").forEach((item) => { const offset = dayOffset(item.targetDate, now); if (offset != null && offset <= 7) items.push(radarItem("Project", item.title, "Target date approaching", relativeDay(item.targetDate, now), offset < 0 ? 3 : 12 + offset, item.id, true, "project")); });
@@ -233,12 +225,14 @@ const mixedActionItems = (model) => {
       bucket
     };
   });
-  const operations = operationGroups(model.now).flatMap((group, groupIndex) =>
-    group.items.map((item, itemIndex) => ({
-      ...item,
-      score: attentionScores.get(`${item.actionType}:${item.id}`) ?? 35 + groupIndex * 8 + itemIndex
-    }))
-  );
+  const operations = operationGroups(model.now)
+    .filter((group) => group.id !== "calendar")
+    .flatMap((group, groupIndex) =>
+      group.items.map((item, itemIndex) => ({
+        ...item,
+        score: attentionScores.get(`${item.actionType}:${item.id}`) ?? 35 + groupIndex * 8 + itemIndex
+      }))
+    );
   return [...tasks, ...operations]
     .filter((item) => item.id && !actionStateFor(item.actionType, item.id))
     .sort((left, right) => left.score - right.score || left.title.localeCompare(right.title));
@@ -526,6 +520,7 @@ const showEventDetail = (eventId, trigger) => {
         </div>
       </div>
       <div class="workroom-event-detail-actions">
+        <button class="workroom-button-secondary" data-add-event-to-tasks="${escapeHtml(evt.id)}" type="button">Add to tasks</button>
         ${evt.isCustom ? `
           <button class="workroom-button-secondary" data-edit-event="${escapeHtml(evt.id)}" type="button">Edit event</button>
           <button class="workroom-button-danger" data-delete-event="${escapeHtml(evt.id)}" type="button">Delete event</button>
@@ -714,6 +709,7 @@ const openEventDialog = (defaultDate = null, trigger = null) => {
   if (elements.eventForm) elements.eventForm.reset();
   if (elements.eventDate) elements.eventDate.value = defaultDate || dateKey(state.calendarDate || new Date());
   if (elements.eventAllDay) elements.eventAllDay.checked = true;
+  if (elements.eventAddTask) elements.eventAddTask.checked = false;
   if (elements.eventTime) elements.eventTime.value = "";
   if (elements.eventEndTime) elements.eventEndTime.value = "";
   syncEventTimeVisibility();
@@ -729,6 +725,7 @@ const openEventDialogForEdit = (evt, trigger = null) => {
   if (elements.eventTitle) elements.eventTitle.value = evt.title || "";
   if (elements.eventDate) elements.eventDate.value = evt.date || "";
   if (elements.eventAllDay) elements.eventAllDay.checked = Boolean(evt.allDay);
+  if (elements.eventAddTask) elements.eventAddTask.checked = false;
   if (elements.eventTime) elements.eventTime.value = evt.time || "";
   if (elements.eventEndTime) elements.eventEndTime.value = evt.endTime || "";
   if (elements.eventCategory) elements.eventCategory.value = evt.category || "";
@@ -837,6 +834,23 @@ elements.eventForm?.addEventListener("submit", async (event) => {
       });
       celebrate("Event added to calendar.");
     }
+    if (elements.eventAddTask?.checked) {
+      const [year, month, day] = dateVal.split("-").map(Number);
+      const dueTimestamp = new Date(year, month - 1, day, 12, 0, 0);
+      const notesMeta = [timeVal ? `Time: ${timeVal}${endTimeVal ? ` – ${endTimeVal}` : ""}` : "", location ? `Location: ${location}` : "", notes].filter(Boolean).join(" · ");
+      await addDoc(tasksRef(state.user.uid), {
+        title,
+        projectId: "",
+        status: "next",
+        priority: "medium",
+        dueDate: dueTimestamp,
+        notes: notesMeta,
+        completedAt: null,
+        source: "calendar",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    }
     closeEventDialog();
   } catch (error) {
     celebrate(`Could not save event: ${error.message || "error"}`);
@@ -906,6 +920,36 @@ document.addEventListener("click", async (event) => {
         closeDialog();
       }
       openEventDialogForEdit(evt, editEvent);
+    }
+    return;
+  }
+  const addToTasksBtn = event.target.closest("[data-add-event-to-tasks]");
+  if (addToTasksBtn) {
+    const eventId = addToTasksBtn.dataset.addEventToTasks;
+    const allEvents = getAllCalendarEvents();
+    const evt = allEvents.find((item) => String(item.id) === String(eventId));
+    if (!evt || !state.user) return;
+    addToTasksBtn.disabled = true;
+    try {
+      const dueTimestamp = evt.date ? new Date(`${evt.date}T12:00:00`) : (evt.startDate || null);
+      const notesMeta = [evt.time ? `Time: ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}` : "", evt.location ? `Location: ${evt.location}` : "", evt.notes].filter(Boolean).join(" · ");
+      await addDoc(tasksRef(state.user.uid), {
+        title: evt.title,
+        projectId: "",
+        status: "next",
+        priority: "medium",
+        dueDate: dueTimestamp,
+        notes: notesMeta,
+        completedAt: null,
+        source: "calendar",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      celebrate("Event added to tasks!");
+      closeDialog();
+    } catch (err) {
+      celebrate(`Could not add to tasks: ${err.message || "error"}`);
+      addToTasksBtn.disabled = false;
     }
     return;
   }

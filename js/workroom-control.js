@@ -51,7 +51,7 @@ const elements = {
   financeForm: $("workroom-finance-form"), financeTitle: $("workroom-finance-title"), financeCategory: $("workroom-finance-category"), financeUrgency: $("workroom-finance-urgency"), financeDate: $("workroom-finance-date"), financeAmount: $("workroom-finance-amount"), financeReference: $("workroom-finance-reference"), finance: $("workroom-finance"),
   achForm: $("workroom-ach-form"), achName: $("workroom-ach-name"), achAmount: $("workroom-ach-amount"), achDate: $("workroom-ach-date"), achReason: $("workroom-ach-reason"), achRecurring: $("workroom-ach-recurring"), ach: $("workroom-ach"),
   calendarList: $("workroom-calendar-events-list"), calendarCount: $("workroom-calendar-count"),
-  eventForm: $("workroom-event-form"), eventTitle: $("workroom-event-title"), eventDate: $("workroom-event-date"), eventTime: $("workroom-event-time"), eventEndTime: $("workroom-event-end-time"), eventTimeRow: $("workroom-event-time-row"), eventAllDay: $("workroom-event-allday"), eventCategory: $("workroom-event-category"), eventLocation: $("workroom-event-location"), eventNotes: $("workroom-event-notes"),
+  eventForm: $("workroom-event-form"), eventTitle: $("workroom-event-title"), eventDate: $("workroom-event-date"), eventTime: $("workroom-event-time"), eventEndTime: $("workroom-event-end-time"), eventTimeRow: $("workroom-event-time-row"), eventAllDay: $("workroom-event-allday"), eventAddTask: $("workroom-event-add-task"), eventCategory: $("workroom-event-category"), eventLocation: $("workroom-event-location"), eventNotes: $("workroom-event-notes"),
   googleConnect: $("workroom-google-connect"), googleSync: $("workroom-google-sync"), connections: $("workroom-connections"), briefingGenerate: $("workroom-briefing-generate"), briefingCount: $("workroom-briefing-count"), briefingStatus: $("workroom-briefing-status"), briefingResult: $("workroom-briefing-result"), automationSummary: $("workroom-automation-summary"), todayStats: $("workroom-today-stats"), todayActions: $("workroom-today-actions"), quickAdd: $("workroom-quick-add"), quickAddDialog: $("workroom-quick-add-dialog"), guestDisplayForm: $("workroom-guest-display-form"), guestName: $("workroom-guest-name"), guestDisplayClear: $("workroom-guest-display-clear"), guestDisplayStatus: $("workroom-guest-display-status"),
 };
 const functions = getFunctions();
@@ -494,18 +494,39 @@ elements.eventForm?.addEventListener("submit", (event) => {
   event.preventDefault();
   run(async () => {
     const isAllDay = Boolean(elements.eventAllDay.checked);
+    const titleVal = clean(elements.eventTitle.value);
+    const dateVal = clean(elements.eventDate.value);
+    const timeVal = isAllDay ? null : (clean(elements.eventTime.value) || null);
+    const endTimeVal = isAllDay ? null : (clean(elements.eventEndTime?.value) || null);
+    const locationVal = clean(elements.eventLocation.value) || null;
+    const notesVal = clean(elements.eventNotes.value) || null;
     await addDoc(calendarEventsRef(state.user.uid), {
-      title: clean(elements.eventTitle.value),
-      date: clean(elements.eventDate.value),
-      time: isAllDay ? null : (clean(elements.eventTime.value) || null),
-      endTime: isAllDay ? null : (clean(elements.eventEndTime?.value) || null),
+      title: titleVal,
+      date: dateVal,
+      time: timeVal,
+      endTime: endTimeVal,
       allDay: isAllDay,
       category: clean(elements.eventCategory.value) || null,
-      location: clean(elements.eventLocation.value) || null,
-      notes: clean(elements.eventNotes.value) || null,
+      location: locationVal,
+      notes: notesVal,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
+    if (elements.eventAddTask?.checked) {
+      const notesMeta = [timeVal ? `Time: ${timeVal}${endTimeVal ? ` – ${endTimeVal}` : ""}` : "", locationVal ? `Location: ${locationVal}` : "", notesVal].filter(Boolean).join(" · ");
+      await addDoc(tasksRef(state.user.uid), {
+        title: titleVal,
+        projectId: "",
+        status: "next",
+        priority: "medium",
+        dueDate: timestampForDate(dateVal),
+        notes: notesMeta,
+        completedAt: null,
+        source: "calendar",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    }
     elements.eventForm.reset();
     if (elements.eventTimeRow) elements.eventTimeRow.hidden = true;
     closeQuickAdd();

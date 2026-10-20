@@ -105,12 +105,87 @@
         </section>
 
         <section class="workroom-view" data-workroom-view-panel="automations" hidden>
-          <div class="workroom-section-heading"><div><p class="workroom-panel-kicker">Connected tools</p><h2>Automations</h2></div></div>
+          <div class="workroom-section-heading">
+            <div>
+              <p class="workroom-panel-kicker">Integrations & AI</p>
+              <h2>Automations</h2>
+              <p class="workroom-panel-subheading" style="color:#9bb0a3;font-size:0.85rem;margin:0.25rem 0 0;">Manage your Google account sync, automatic AI task extraction from Gmail & Slack, and quick note dictation.</p>
+            </div>
+          </div>
           <div class="workroom-automation-grid">
-            <article class="workroom-panel workroom-google-panel" data-module="google"><h2>Calendar & email</h2><div class="workroom-inline-actions"><button id="workroom-google-connect" class="workroom-button workroom-button-primary" type="button">Connect Google account</button><button id="workroom-google-sync" class="workroom-button workroom-button-quiet" type="button">Sync now</button></div><div id="workroom-connections" class="workroom-connection-list" aria-live="polite"></div></article>
-            <article class="workroom-panel workroom-source-copilot-panel" data-owner-only><div class="workroom-panel-heading"><div><p class="workroom-panel-kicker">Review only</p><h2>Source Copilot</h2></div><button id="workroom-source-scan" class="workroom-button workroom-button-primary" type="button">Scan now</button></div><p id="workroom-source-status" class="workroom-inline-hint">Checking Gmail and Slack...</p><div id="workroom-source-health" class="workroom-source-health"></div><div class="workroom-panel-heading workroom-source-queue-heading"><h3>Needs review</h3><button id="workroom-source-refresh" class="workroom-button workroom-button-quiet" type="button">Refresh</button></div><div id="workroom-source-candidates" class="workroom-record-list" aria-live="polite"></div></article>
-            <article class="workroom-panel" data-owner-only><h2>Automation inbox</h2><form id="workroom-automation-form" class="workroom-form workroom-compact-form"><label>Source<select id="workroom-automation-source"><option value="voice">Voice note</option><option value="slack">Slack summary</option><option value="gmail">Gmail summary</option><option value="gpt">GPT assistant</option><option value="manual" selected>Manual notes</option></select></label><label>Inbox text<textarea id="workroom-automation-text" maxlength="12000" required placeholder="Paste a summary or dictate your notes."></textarea></label><div class="workroom-inline-actions"><button id="workroom-automation-voice" class="workroom-button workroom-button-quiet" type="button">Start voice capture</button><button class="workroom-button workroom-button-primary" type="submit">Create tasks</button></div></form></article>
-            <article class="workroom-panel" data-owner-only><div class="workroom-panel-heading"><h2>GPT Action status</h2><button id="workroom-automation-refresh" class="workroom-button workroom-button-quiet" type="button">Refresh</button></div><p id="workroom-automation-usage" class="workroom-inline-hint">Usage data will appear after sign-in.</p><div id="workroom-automation-audit" class="workroom-record-list"></div></article>
+            <article class="workroom-panel workroom-google-panel" data-module="google">
+              <div class="workroom-panel-heading">
+                <div>
+                  <p class="workroom-panel-kicker">Calendar & Email</p>
+                  <h2>Google Account</h2>
+                </div>
+              </div>
+              <p class="workroom-inline-hint" style="margin:0.35rem 0 0.85rem;line-height:1.45;">Connect your Google account to sync calendars and unread emails. Click <strong>Calendars</strong> on a connected account to choose which calendars show on the TV display, or <strong>Sync now</strong> to refresh immediately.</p>
+              <div class="workroom-inline-actions">
+                <button id="workroom-google-connect" class="workroom-button workroom-button-primary" type="button">Connect Google account</button>
+                <button id="workroom-google-sync" class="workroom-button workroom-button-quiet" type="button">Sync now</button>
+              </div>
+              <div id="workroom-connections" class="workroom-connection-list" aria-live="polite"></div>
+            </article>
+
+            <article class="workroom-panel workroom-source-copilot-panel" data-owner-only>
+              <div class="workroom-panel-heading">
+                <div>
+                  <p class="workroom-panel-kicker">Background AI</p>
+                  <h2>Source Copilot (Gmail & Slack)</h2>
+                </div>
+                <button id="workroom-source-scan" class="workroom-button workroom-button-primary" type="button">Scan now</button>
+              </div>
+              <p class="workroom-inline-hint" style="margin:0.35rem 0 0.85rem;line-height:1.45;">Scans your Slack channels and unread organization emails daily at 7:30 AM. Detects actionable requests, finances/treasurer items, and @mentions, then auto-creates them as tasks (prefixed with <strong>*</strong>). Personal email accounts are automatically excluded. Click <strong>Scan now</strong> to run an instant scan anytime.</p>
+              <div id="workroom-source-health" class="workroom-source-health"></div>
+              <p id="workroom-source-status" class="workroom-inline-hint">Checking Gmail and Slack...</p>
+              <div class="workroom-panel-heading workroom-source-queue-heading">
+                <h3>Needs review</h3>
+                <button id="workroom-source-refresh" class="workroom-button workroom-button-quiet" type="button">Refresh</button>
+              </div>
+              <div id="workroom-source-candidates" class="workroom-record-list" aria-live="polite"></div>
+            </article>
+
+            <article class="workroom-panel" data-owner-only>
+              <div class="workroom-panel-heading">
+                <div>
+                  <p class="workroom-panel-kicker">Dictate or Paste</p>
+                  <h2>Quick Note Ingestion</h2>
+                </div>
+              </div>
+              <p class="workroom-inline-hint" style="margin:0.35rem 0 0.85rem;line-height:1.45;">Paste raw text from a meeting, message, or notes, or click <strong>Start voice capture</strong> to dictate. AI will analyze the text and automatically generate to-do tasks with due dates.</p>
+              <form id="workroom-automation-form" class="workroom-form workroom-compact-form">
+                <label>Source
+                  <select id="workroom-automation-source">
+                    <option value="voice">Voice note</option>
+                    <option value="slack">Slack summary</option>
+                    <option value="gmail">Gmail summary</option>
+                    <option value="gpt">GPT assistant</option>
+                    <option value="manual" selected>Manual notes</option>
+                  </select>
+                </label>
+                <label>Inbox text
+                  <textarea id="workroom-automation-text" maxlength="12000" required placeholder="Paste a summary, email, or dictate your notes..."></textarea>
+                </label>
+                <div class="workroom-inline-actions">
+                  <button id="workroom-automation-voice" class="workroom-button workroom-button-quiet" type="button">Start voice capture</button>
+                  <button class="workroom-button workroom-button-primary" type="submit">Create tasks</button>
+                </div>
+              </form>
+            </article>
+
+            <article class="workroom-panel" data-owner-only>
+              <div class="workroom-panel-heading">
+                <div>
+                  <p class="workroom-panel-kicker">External API</p>
+                  <h2>ChatGPT Custom Action</h2>
+                </div>
+                <button id="workroom-automation-refresh" class="workroom-button workroom-button-quiet" type="button">Refresh</button>
+              </div>
+              <p class="workroom-inline-hint" style="margin:0.35rem 0 0.85rem;line-height:1.45;">Tracks activity and daily limits when ChatGPT creates tasks or reminders on your Desk via the custom GPT Action.</p>
+              <p id="workroom-automation-usage" class="workroom-inline-hint">Usage data will appear after sign-in.</p>
+              <div id="workroom-automation-audit" class="workroom-record-list"></div>
+            </article>
           </div>
         </section>
 
@@ -154,6 +229,7 @@
               <label>Start time<input id="workroom-event-time" type="time" step="60" list="workroom-time-list" /></label>
               <label>End time (optional)<input id="workroom-event-end-time" type="time" step="60" list="workroom-time-list" /></label>
             </div>
+            <label class="workroom-checkbox-label"><input id="workroom-event-add-task" type="checkbox" /> Add to tasks</label>
             <label>Category (optional)<input id="workroom-event-category" maxlength="60" placeholder="Work, Family, Church, Personal..." /></label>
             <label>Location (optional)<input id="workroom-event-location" maxlength="180" placeholder="Office, Zoom, Home..." /></label>
             <label>Notes (optional)<textarea id="workroom-event-notes" maxlength="1000" placeholder="Details or agenda"></textarea></label>
