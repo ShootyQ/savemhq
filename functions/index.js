@@ -96,12 +96,15 @@ const slackMessageUrl = (channelId, timestamp) => {
 
 const isSlackOwnerCommitment = (text) => /\b(i(?:'ll| will| can| need to| should| am going to)|i'm going to)\b/i.test(String(text || ""));
 
+const isSlackFinancialOrRelevant = (text) => /\b(financ(?:e|es|ial)|treasur(?:er|y)|budget|reimburse(?:ment)?|invoice|check|payment|bill|expense|audit|giving|tithe|offering|bank|account(?:ing)?|deposit|payroll|stipend|w-?9|1099)\b/i.test(String(text || ""));
+
 const normalizeSlackSourceRecord = ({ channel, message, isWorkbotDm = false }) => {
   const ownerUserId = slackOwnerUserId();
   const text = String(message.text || "").trim();
-  const ownerMentioned = ownerUserId && text.includes(`<@${ownerUserId}>`);
-  const ownerCommitment = ownerUserId && String(message.user || "") === ownerUserId && isSlackOwnerCommitment(text);
-  if (!text || message.subtype || (!ownerMentioned && !ownerCommitment && !isWorkbotDm)) return null;
+  const ownerMentioned = Boolean(ownerUserId && text.includes(`<@${ownerUserId}>`));
+  const ownerCommitment = Boolean(ownerUserId && String(message.user || "") === ownerUserId && isSlackOwnerCommitment(text));
+  const financialTopic = isSlackFinancialOrRelevant(text);
+  if (!text || message.subtype || (!ownerMentioned && !ownerCommitment && !isWorkbotDm && !financialTopic)) return null;
   return {
     sourceType: "slack",
     sourceId: `${channel.id}:${String(message.ts || "")}`,
@@ -116,6 +119,7 @@ const normalizeSlackSourceRecord = ({ channel, message, isWorkbotDm = false }) =
       ownerMentioned,
       ownerCommitment,
       workbotDm: isWorkbotDm,
+      financialTopic,
     },
   };
 };
@@ -306,8 +310,8 @@ const WORKROOM_SOURCE_CANDIDATE_STATUSES = new Set([
   "failed",
   "expired",
 ]);
-const WORKROOM_SOURCE_AUTOMATION_REVIEW_ONLY = true;
-const WORKROOM_SOURCE_AUTOMATION_AUTO_CONFIDENCE = 0.92;
+const WORKROOM_SOURCE_AUTOMATION_REVIEW_ONLY = false;
+const WORKROOM_SOURCE_AUTOMATION_AUTO_CONFIDENCE = 0.82;
 const WORKROOM_SOURCE_AUTOMATION_REVIEW_CONFIDENCE = 0.65;
 const WORKROOM_SOURCE_AUTOMATION_RETENTION_DAYS = 30;
 const WORKROOM_ACTION_OPERATIONS = new Set([
@@ -715,7 +719,7 @@ const extractSourceCandidate = async ({ record, openTaskTitles }) => {
   const client = new OpenAI({ apiKey: OPENAI_API_KEY.value() });
   const response = await client.responses.create({
     model: OPENAI_MODEL.value(),
-    instructions: "You extract Workroom task suggestions from a private source. Return actionable=true only for an explicit request assigned to the owner, an @owner mention requiring action, a direct message to Workbot asking the owner to act, or an explicit commitment written by the owner. Exclude FYIs, newsletters, status notices, meeting chatter, ideas, completed work, and tasks assigned to someone else. Do not invent dates; only preserve a YYYY-MM-DD due date directly grounded in the source. Notes must be a concise, privacy-preserving explanation, never a transcript. Return one proposed task at most.",
+    instructions: "You extract Workroom task suggestions from private Gmail and Slack messages for the workspace owner. Return actionable=true if the message contains an explicit request/action item assigned to the owner, an @mention requiring action or response, a direct message asking the owner to act, an explicit commitment made by the owner, or any message regarding finances, treasurer duties, budgets, payments, checks, or reimbursements where the owner should review or take action. Exclude generic newsletters, marketing, automated system notices, and trivial chatter. Title must be concise and actionable. When auto-creating, a '*' indicator will be added automatically, so keep title clean. Do not invent dates; only preserve a YYYY-MM-DD due date directly grounded in the source. Notes must be a concise, privacy-preserving explanation with relevant context or amounts, never a full transcript. Return one proposed task at most.",
     input: JSON.stringify({
       today: briefingDateKey(),
       source: {
@@ -816,12 +820,13 @@ const persistSourceCandidate = async ({ uid, record, candidate }) => {
   };
   await candidateRef.create(data);
   if (qualifiesForAutoCreate) {
+    const autoTitle = candidate.title.startsWith("* ") ? candidate.title : `* ${candidate.title}`;
     const result = await executeWorkroomAction({
       uid,
       requestId: `source-${candidateId}`,
       operation: "createTask",
       source: `${record.sourceType}-auto`,
-      payload: { title: candidate.title, notes: candidate.notes, priority: candidate.priority, dueDate: candidate.dueDate },
+      payload: { title: autoTitle, notes: candidate.notes, priority: candidate.priority, dueDate: candidate.dueDate },
     });
     await candidateRef.set({ createdId: result.createdId, autoCreatedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   }
@@ -1455,7 +1460,7 @@ exports.runWorkroomSourceScan = onCall({ secrets: [GOOGLE_CLIENT_SECRET, OPENAI_
 });
 
 exports.scheduledWorkroomSourceScan = onSchedule({
-  schedule: "10 7 * * 1-5",
+  schedule: "30 7 * * *",
   timeZone: "America/Chicago",
   secrets: [GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, SLACK_BOT_TOKEN],
 }, async () => {
