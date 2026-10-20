@@ -1256,14 +1256,14 @@ const syncGoogleConnection = async (uid, connectionId, connectionData) => {
     ? connectionData.selectedCalendars.slice(0, 12)
     : ["primary"];
   const now = new Date();
-  const windowEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const windowEnd = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
   const calendarEvents = (await Promise.all(selectedCalendars.map(async (calendarId) => {
     const params = new URLSearchParams({
       timeMin: now.toISOString(),
       timeMax: windowEnd.toISOString(),
       singleEvents: "true",
       orderBy: "startTime",
-      maxResults: "24",
+      maxResults: "150",
     });
     const payload = await googleApi(`/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`, tokenData);
     return (payload.items || []).map((event) => formatGoogleEvent(event, calendarId, connectionId));
@@ -1304,7 +1304,7 @@ const syncWorkroomGoogle = async (uid) => {
   output.events.sort((left, right) => (left.start?.toMillis?.() || Number.MAX_SAFE_INTEGER) - (right.start?.toMillis?.() || Number.MAX_SAFE_INTEGER));
   output.mail.sort((left, right) => (right.receivedAt?.toMillis?.() || 0) - (left.receivedAt?.toMillis?.() || 0));
   await workroomSummaryRef(uid).set({
-    upcomingEvents: output.events.slice(0, 18),
+    upcomingEvents: output.events.slice(0, 150),
     recentMail: output.mail.slice(0, 12),
     unreadCount: output.unreadCount,
     syncError: output.errors[0] || "",
@@ -1434,7 +1434,11 @@ exports.disconnectWorkroomGoogle = onCall(async (request) => {
   return syncWorkroomGoogle(auth.uid);
 });
 
-exports.scheduledWorkroomGoogleSync = onSchedule({ schedule: "every 10 minutes", secrets: [GOOGLE_CLIENT_SECRET] }, async () => {
+exports.scheduledWorkroomGoogleSync = onSchedule({
+  schedule: "0 6,18 * * *",
+  timeZone: "America/Chicago",
+  secrets: [GOOGLE_CLIENT_SECRET],
+}, async () => {
   const connections = await db.collectionGroup("connections").where("status", "==", "connected").get();
   const ownerUids = [...new Set(connections.docs.map((connection) => connection.ref.parent.parent?.id).filter(Boolean))];
   await Promise.all(ownerUids.map(async (uid) => {
