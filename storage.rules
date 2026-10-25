@@ -1,6 +1,20 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function isBusinessOwner(ownerUid) {
+      return request.auth != null && request.auth.uid == ownerUid
+        && firestore.exists(/databases/(default)/documents/loginApprovals/$(ownerUid))
+        && firestore.get(/databases/(default)/documents/loginApprovals/$(ownerUid)).data.status == "approved"
+        && firestore.get(/databases/(default)/documents/loginApprovals/$(ownerUid)).data.accessSections.hasAny(["business"]);
+    }
+    match /businesses/{ownerUid}/{folder}/{fileName} {
+      allow read: if isBusinessOwner(ownerUid);
+      allow create: if resource == null && isBusinessOwner(ownerUid)
+        && folder in ["receipts", "photos", "logos", "evidence"]
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType in ["image/jpeg", "image/png", "image/webp"];
+      allow update, delete: if false;
+    }
     function isAuthed() {
       return request.auth != null;
     }

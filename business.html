@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow"><title>Business | SavemHQ</title>
+  <link rel="stylesheet" href="business.css">
+</head>
+<body class="business-portal">
+  <section id="gate" class="gate"><p class="eyebrow">SavemHQ · Private workspace</p><h1>Your craft.<br>Your business.</h1><p id="gate-message" role="status">Checking access…</p><button id="sign-in" hidden>Sign in with Google</button><a href="workroom-control.html">Back to The Desk</a></section>
+  <div id="app" hidden>
+    <aside class="sidebar"><a class="brand" href="business.html"><span class="brand-mark">B<span> / </span></span><strong id="business-name">Business</strong></a><p class="eyebrow">Built for the work you do</p><nav id="navigation" aria-label="Business sections"></nav><footer><a href="workroom-control.html">← The Desk</a><button id="sign-out" class="quiet">Sign out</button></footer></aside>
+    <main class="workspace"><header class="topbar"><div><p class="eyebrow" id="page-eyebrow">Your business, in view</p><h1 id="page-title">Overview</h1></div><div class="quick-actions"><button data-new="expenses">＋ Receipt</button><button data-new="timeEntries" class="secondary">Log time</button></div></header><div id="notice" role="status" aria-live="polite"></div><div id="timer-bar" hidden></div><div id="content"></div></main>
+  </div>
+  <dialog id="editor" aria-labelledby="editor-title"><header><div><p class="eyebrow">Business workspace</p><h2 id="editor-title"></h2></div><button type="button" id="close-editor" class="quiet" aria-label="Close editor">✕</button></header><form id="editor-form"><div id="editor-fields"></div><p id="form-status" role="status" aria-live="polite"></p><footer><button type="button" id="cancel-editor" class="secondary">Cancel</button><button type="submit" id="save-record">Save</button></footer></form></dialog>
+  <dialog id="preview" aria-label="Client document preview"><div class="preview-actions"><span>Client document · Internal details excluded</span><button id="print-document">Print / Save PDF</button><button id="close-preview" class="secondary">Close</button></div><article id="document" class="client-document"></article></dialog>
+  <script src="js/business/finance.js"></script><script type="module" src="js/business/app.js"></script>
+</body>
+</html>

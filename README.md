@@ -342,3 +342,8 @@ service cloud.firestore {
 	}
 }
 ```
+## Handyman Business Portal
+
+`business.html` provides a private owner-operated business workspace: clients and follow-ups, internal estimating with polished client documents, scheduled jobs and helpers, time/travel, private receipts and photos, change orders, invoices, manual payments, and estimate-versus-actual reporting. Enable **Handyman Business** in the owner's admin approval before use.
+
+See [Business portal development, financial conventions, pilot, and rollout](docs/business-portal.md). Stripe is reserved but disabled. Production deployment and the first real-job pilot are separate steps.

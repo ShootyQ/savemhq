@@ -1,6 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isBusinessOwner(ownerUid) {
+      return request.auth != null && request.auth.uid == ownerUid
+        && exists(/databases/$(database)/documents/loginApprovals/$(ownerUid))
+        && get(/databases/$(database)/documents/loginApprovals/$(ownerUid)).data.status == "approved"
+        && get(/databases/$(database)/documents/loginApprovals/$(ownerUid)).data.accessSections.hasAny(["business"]);
+    }
+    match /businesses/{ownerUid}/{collection}/{recordId} {
+      allow read: if isBusinessOwner(ownerUid) && collection in ["settings", "clients", "estimates", "jobs", "visits", "workers", "timeEntries", "expenses", "changes", "invoices", "payments", "activity", "templates", "photos", "opportunities"];
+      allow write: if false;
+      match /revisions/{revisionId} {
+        allow read: if collection == "estimates" && isBusinessOwner(ownerUid);
+        allow write: if false;
+      }
+    }
     function isAuthed() {
       return request.auth != null;
     }
