@@ -1,3 +1,4 @@
+import { compressImage } from './images.js';
 import { auth, db, ensureApprovalRecord } from '../auth-shared.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
@@ -41,6 +42,8 @@ export async function upload(file, folder, progress) {
   if (!file) return '';
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Use JPEG, PNG, or WebP. Convert HEIC with your phone’s “Most compatible” export option.');
   if (file.size > 10 * 1024 * 1024) throw new Error('Choose an image no larger than 10 MB.');
+  progress?.('compressing');
+  file = await compressImage(file, folder);
   const extension = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[file.type];
   const path = `${root()}/${folder}/${crypto.randomUUID()}.${extension}`;
   const task = uploadBytesResumable(ref(storage, path), file, { contentType: file.type });
@@ -54,3 +57,5 @@ export const watchAccess = (uid, callback) => onSnapshot(doc(db, 'loginApprovals
   const approval = snap.data();
   callback(approval?.status === 'approved' && Array.isArray(approval.accessSections) && approval.accessSections.includes('business'));
 }, () => callback(false));
+
+export const syncDesk = async () => (await httpsCallable(functions, 'businessSyncDesk')({})).data;

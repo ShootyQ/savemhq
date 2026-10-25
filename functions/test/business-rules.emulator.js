@@ -75,3 +75,17 @@ test('real Firestore job actuals, change approval, invoice replacement and payme
   await send('voidEntry',{reason:'Payment entered twice'},{collection:'payments',id:'realdeposit'});
   assert.equal((await app.doc('businesses/owner/payments/realdeposit').get()).data().voided,true);
 });
+test('Desk reminders use real timestamps, remain editable under existing task rules, and close when paid',async()=>{
+  const {createDeskSync}=require('../business/desk');const {Timestamp}=require('@google-cloud/firestore');const {updateDoc,serverTimestamp}=require('firebase/firestore');
+  await app.doc('loginApprovals/owner').set({status:'approved',accessSections:['business','desk']});
+  await app.doc('businesses/owner/jobs/j').set({title:'Repair',status:'completed',invoiceId:'i'});
+  await app.doc('businesses/owner/invoices/i').set({status:'issued',jobId:'j',document:{totalCents:10000,number:'INV-1',dueDate:'2026-11-01'}});
+  const sync=createDeskSync(app,date=>Timestamp.fromDate(date));await sync.changed('owner','invoices','i');
+  const path='workrooms/owner/tasks/business_invoices_i';const owner=env.authenticatedContext('owner').firestore();
+  await assertSucceeds(getDoc(doc(owner,path)));await assertSucceeds(updateDoc(doc(owner,path),{status:'done',completedAt:serverTimestamp()}));
+  const initial=(await app.doc(path).get()).data();assert.equal(initial.status,'done');
+  await sync.changed('owner','invoices','i');assert.equal((await app.doc(path).get()).data().status,'done');
+  await app.doc('businesses/owner/payments/p').set({jobId:'j',amountCents:4000});await sync.changed('owner','payments','p');assert.match((await app.doc(path).get()).data().title,/60\.00/);
+  await app.doc('businesses/owner/payments/p').set({jobId:'j',amountCents:10000});await sync.changed('owner','payments','p');assert.equal((await app.doc(path).get()).data().status,'done');
+  await assertFails(getDoc(doc(env.authenticatedContext('other').firestore(),path)));
+});

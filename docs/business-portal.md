@@ -13,6 +13,7 @@ npm --prefix functions run test:business
 npm --prefix functions run test:business:rules
 npm --prefix functions run test:rules
 npm --prefix functions run test:business:browser
+npm --prefix functions run test:business:images
 ```
 
 The browser suite uses Chromium at `/usr/bin/chromium`; set `CHROMIUM_PATH` for another installation. It exercises the real portal and service using an isolated transactional test store, replacing only Firebase transport/auth. It does not prove production OAuth or deployed connectivity. The emulator suite independently tests real Firestore transactions and Firestore/Storage authorization. It uses a `demo-business` project and refuses to run without the Firestore emulator. Emulator downloads require `storage.googleapis.com`. The browser suite generates screenshots and Letter/A4 PDFs under `/tmp/business-*`.
@@ -72,3 +73,21 @@ No production deployment is performed by the implementation or tests.
 5. Check Function errors in Firebase logs during the pilot. Validate mobile capture and actual printer/browser output with the owner. No customer messages or payments are sent automatically.
 
 Keep previous hosting releases available for rollback. Retain business data and financial history if hiding the portal. Removing the business approval revokes subsequent data requests and callable operations.
+
+## Automatic image compression and Desk actions
+
+New image uploads are optimized on the device before Firebase receives them. Job photos use a 1920-pixel maximum edge and JPEG quality 0.85; receipts/evidence use 2560 pixels and quality 0.90. Logos retain transparency as PNG, with a 1024-pixel target. Images are never upscaled. If optimization would increase file size, the existing file is retained instead, so these dimensions are targets rather than hard upload limits. The 10 MB input/upload limit remains. HEIC must be exported as JPEG. Compression failures retain the form for retry. Only the optimized copy is uploaded; old uploads are not retroactively changed or duplicated as full-resolution backups.
+
+Business changes project reminders into the same owner's `workrooms/{uid}/tasks` collection. The owner needs both Business and Desk access; the existing admin Desk-access exception is honored. Reminders cover dated customer/opportunity follow-ups, issued or accepted estimates awaiting next steps, active jobs, scheduled visits, draft changes, unassigned expenses, and unpaid invoices. Completed jobs without an invoice prompt invoice creation. Partial payments update the collection amount, full payments close it, and voiding a payment can reopen it. Job completion/cancellation closes visit reminders. Existing personal tasks are never changed.
+
+Task IDs are deterministic and updates re-read the latest business state in a Firestore transaction, so retries and out-of-order triggers converge without duplicates. A manual Desk completion stays completed while its business projection is unchanged; changing the relevant date, amount, title, or business state can reopen/update that managed reminder. Completing a Desk task never marks an invoice paid or changes a business record. Managed task fields may be refreshed by business updates. Deleting a generated task hides it until the source changes or the next backfill.
+
+In Business Settings, owners can disable automatic Desk sync or click **Sync Desk actions now** to backfill existing records. Disabling sync or removing Business/Desk approval closes and redacts managed reminders; it does not delete personal tasks. Trigger processing is asynchronous, so allow a short delay after a business save. The Desk provides a link back to each business record.
+
+Deploy the updated callable plus the three new sync Functions before publishing this UI:
+
+```bash
+npx --prefix functions firebase deploy --project savemhq --only "functions:businessCommand,functions:businessDeskSync,functions:businessDeskAccessSync,functions:businessSyncDesk"
+```
+
+No new Firestore or Storage rules are required for these additions. After deployment, use **Sync Desk actions now** once for existing business records. The Functions deploy creates Firestore/Eventarc triggers; deployment permissions must include the required Eventarc roles. Live deployment remains a separate action.
