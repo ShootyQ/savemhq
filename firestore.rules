@@ -3,8 +3,17 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Personal project billing is a distinct admin-owned workspace.
     match /projectBilling/{ownerUid}/{collection}/{recordId} {
-      allow read: if isAdmin() && request.auth.uid == ownerUid
-        && collection in ["settings", "clients", "jobs", "invoices", "payments", "activity"];
+      allow read: if request.auth != null
+        && request.auth.token.email == "andrewpcarlson85@gmail.com"
+        && request.auth.uid == ownerUid
+        && collection in [
+          "settings",
+          "clients",
+          "jobs",
+          "invoices",
+          "payments",
+          "activity"
+        ];
       allow write: if false;
     }
     function isBusinessOwner(ownerUid) {
