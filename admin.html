@@ -428,7 +428,6 @@
                   data-uid="${approvalDoc.id}"
                   data-section-id="${section.id}"
                   ${assignedSections.includes(section.id) ? "checked" : ""}
-                  ${isAdminRecord ? "disabled" : ""}
                 />
                 <span>
                   <strong>${section.label}</strong>
@@ -457,7 +456,7 @@
                 <div class="form-actions">
                   <button class="btn btn-primary" data-action="approved" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Approve + Save</button>
                   <button class="btn btn-secondary" data-action="denied" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Deny</button>
-                  <button class="btn btn-secondary" data-action="save-access" data-uid="${approvalDoc.id}" ${isAdminRecord ? "disabled" : ""}>Save Role/Access Only</button>
+                  <button class="btn btn-secondary" data-action="save-access" data-uid="${approvalDoc.id}">Save Role/Access Only</button>
                 </div>
               </article>
             `;
