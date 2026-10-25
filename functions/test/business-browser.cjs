@@ -3,14 +3,16 @@
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const http=require('node:http');const fs=require('node:fs');const path=require('node:path');const assert=require('node:assert/strict');
 const {Store}=require('./helpers/business-store');const {createService}=require('../business/service');
-const root=path.resolve(__dirname,'../..');const db=new Store();db.seed('loginApprovals/owner',{status:'approved',accessSections:['business']});const service=createService(db);
+const {createDeskSync}=require('../business/desk');
+const root=path.resolve(__dirname,'../..');const db=new Store();db.seed('loginApprovals/owner',{status:'approved',accessSections:['business','desk']});const service=createService(db);
 const api=`export const auth={currentUser:{uid:'owner'}}; export const session=async()=>true;
 async function call(action,input){const r=await fetch('/_test/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});const data=await r.json();if(!r.ok)throw new Error(data.error);return data;}
-export const command=input=>call('command',input);export const list=type=>call('list',{type});export const record=(type,id)=>call('record',{type,id});export const imageBlob=async()=>new Blob(['photo'],{type:'image/jpeg'});export async function upload(file,folder,progress){if(globalThis.__failUploadOnce){globalThis.__failUploadOnce=false;throw new Error('Temporary upload failure');}if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Use JPEG, PNG, or WebP');progress?.(100);return 'businesses/owner/'+folder+'/test.jpg';}`;
+export const syncDesk=()=>call('sync',{});export const command=input=>call('command',input);export const list=type=>call('list',{type});export const record=(type,id)=>call('record',{type,id});export const imageBlob=async()=>new Blob(['photo'],{type:'image/jpeg'});export async function upload(file,folder,progress){if(globalThis.__failUploadOnce){globalThis.__failUploadOnce=false;throw new Error('Temporary upload failure');}if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Use JPEG, PNG, or WebP');progress?.(100);return 'businesses/owner/'+folder+'/test.jpg';}`;
 const server=http.createServer(async(req,res)=>{
  try {
   if(req.url.startsWith('/_test/')){let body='';for await(const c of req)body+=c;const p=JSON.parse(body);let result;
    if(req.url==='/_test/command')result=await service('owner',p);
+   if(req.url==='/_test/sync')result=await createDeskSync(db).all('owner');
    if(req.url==='/_test/list')result=[...db.rows].filter(([k])=>k.startsWith('businesses/owner/'+p.type+'/')&&k.split('/').length===4).map(([k,v])=>({...v,id:k.split('/').at(-1)}));
    if(req.url==='/_test/record')result=db.read(`businesses/owner/${p.type}/${p.id}`)||null;
    res.setHeader('Content-Type','application/json');res.end(JSON.stringify(result));return;
@@ -50,9 +52,11 @@ const server=http.createServer(async(req,res)=>{
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:'/tmp/business-overview-mobile.png',fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.locator('#navigation [data-view="Calendar"]').click();await page.locator('[data-calendar-mode="week"]').click();await page.locator('[data-calendar-mode="agenda"]').click();
   await page.locator('#navigation [data-view="Reports"]').click();await page.locator('summary').click();assert.match(await page.locator('#content').innerText(),/actual/i);
+  await page.locator('#navigation [data-view="Settings"]').click();await page.locator('[data-sync-desk]').click();await page.waitForFunction(()=>document.querySelector('#notice').textContent.includes('Desk actions updated'));assert.ok([...db.rows].some(([key,value])=>key.startsWith('workrooms/owner/tasks/business_invoices_')&&value.title.includes('425.00')));
+  const managed=[...db.rows].find(([key])=>key.startsWith('workrooms/owner/tasks/business_invoices_'))[1];const deepLink=new URL(managed.notes.split('\n').at(-1));await page.goto(base+deepLink.pathname+deepLink.search);await page.locator('[data-invoice]').waitFor();
   // A long multi-page document exercises repeated headers and the print whitelist.
   await page.evaluate(async()=>{const {preview}=await import('/js/business/documents.js');await preview({document:{kind:'Invoice',number:'INV-LONG',date:'2026-10-25',business:{name:'Copper & Oak',contact:'Test'},client:{name:'Sample customer',address:'Address'},title:'Multi-page work',lines:Array.from({length:70},(_,i)=>({group:'Phase '+(i+1),description:'A detailed, carefully described scope of work. '.repeat(8),priceCents:10000,costRateCents:888888})),subtotalCents:700000,discountCents:0,taxCents:0,totalCents:700000,terms:'Thank you.'}});});
   await page.pdf({path:'/tmp/business-invoice-multipage.pdf',format:'A4',printBackground:true});assert.equal(await page.locator('#document tbody tr').count(),70);
-  assert.deepEqual(errors,[]);console.log('PASS: browser workflow, preserved failed form, timer reload, approved change, deposit/invoice balance, private-field exclusion, mobile overflow, calendar, reports, Letter/A4 and multi-page PDFs');
+  assert.deepEqual(errors,[]);console.log('PASS: browser workflow, preserved failed form, timer reload, approved change, deposit/invoice balance, private-field exclusion, mobile overflow, calendar, reports, Desk-action backfill, Letter/A4 and multi-page PDFs');
  } catch (error) { await page.screenshot({path:'/tmp/business-browser-failure.png',fullPage:true});console.error(await page.locator('body').innerText());throw error; } finally {await browser.close();server.close();}
 })().catch(err=>{console.error(err);server.close();process.exitCode=1;});

@@ -24,6 +24,9 @@ class Ref {
   doc(id) { return new Ref(this.db,`${this.path}/${id}`); }
   collection(id) { return new Ref(this.db,`${this.path}/${id}`); }
   where(key,op,value) { if(op!=='==')throw new Error('Unsupported operator');return new Ref(this.db,this.path,[...this.filters,[key,value]]); }
+  async get() { return this.snapshot(); }
+  orderBy() { return this; }
+  limit() { return this; }
   snapshot() {
     if(this.path.split('/').length % 2 === 0){const data=this.db.rows.get(this.path);return{id:this.id,exists:Boolean(data),data:()=>structuredClone(data)};}
     const docs=[...this.db.rows].filter(([path,data])=>path.startsWith(this.path+'/')&&path.split('/').length===this.path.split('/').length+1&&this.filters.every(([key,value])=>data[key]===value)).map(([path,data])=>({id:path.split('/').at(-1),data:()=>structuredClone(data)}));
