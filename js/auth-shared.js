@@ -30,6 +30,7 @@ export const firebaseConfig = {
 export const ADMIN_EMAIL = "andrewpcarlson85@gmail.com";
 export const SAVANNAH_EMAIL = "savannahbcarlson@gmail.com";
 export const ACCESS_SECTIONS = [
+  { id: "business", label: "Handyman Business", description: "Manage your private clients, estimates, jobs, and invoices." },
   {
     id: "desk",
     label: "The Desk",
