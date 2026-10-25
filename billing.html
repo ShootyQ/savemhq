@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Project Billing | SavemHQ</title><link rel="stylesheet" href="business.css"><link rel="stylesheet" href="billing.css"></head>
+<body class="business-portal billing-portal">
+<section id="gate" class="gate"><p class="eyebrow">SavemHQ · Your private workspace</p><h1>Good work.<br>Simple billing.</h1><p id="gate-message" role="status">Checking your account…</p><button id="sign-in" hidden>Sign in with Google</button><a href="workroom-control.html">← The Desk</a></section>
+<div id="app" hidden><aside class="sidebar"><a class="brand" href="billing.html"><span class="brand-mark">S<span> / </span></span><strong>Project Billing</strong></a><p class="eyebrow">Clients. Projects. Paid.</p><nav id="navigation" aria-label="Billing sections"></nav><footer><a href="workroom-control.html">← The Desk</a><button id="sign-out" class="quiet">Sign out</button></footer></aside>
+<main class="workspace"><header class="topbar"><div><p class="eyebrow" id="billing-name">Your independent work</p><h1 id="page-title">Overview</h1></div><div class="quick-actions"><button data-new="projects">＋ New project</button></div></header><p id="notice" role="status" aria-live="polite"></p><div id="content"></div></main></div>
+<dialog id="editor" aria-labelledby="editor-title"><header><div><p class="eyebrow">Project Billing</p><h2 id="editor-title"></h2></div><button id="close-editor" type="button" class="quiet" aria-label="Close editor">✕</button></header><form id="editor-form"><div id="editor-fields" class="fields"></div><p id="form-status" role="status" aria-live="polite"></p><footer><button id="cancel-editor" type="button" class="secondary">Cancel</button><button id="save-record" type="submit">Save</button></footer></form></dialog>
+<dialog id="preview" aria-label="Client invoice preview"><div class="preview-actions"><span>Client invoice · Private notes excluded</span><button id="print-document">Print / Save PDF</button><button id="close-preview" class="secondary">Close</button></div><article id="document" class="client-document"></article></dialog>
+<script src="js/business/finance.js"></script><script type="module" src="js/billing/app.js"></script>
+</body></html>

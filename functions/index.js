@@ -1928,3 +1928,5 @@ exports.getWorkroomAutomationStatus = onCall(async (request) => {
 });
 // Isolated handyman portal; existing Desk handlers remain unchanged.
 Object.assign(exports, require('./business'));
+
+Object.assign(exports, require('./billing'));
