@@ -97,3 +97,12 @@ test('personal billing reads require admin identity AND matching UID; all browse
   await assertFails(setDoc(doc(owner,'projectBilling/admin/payments/fake'),{amountCents:50000}));
   await assertFails(getDoc(doc(owner,'businesses/owner/clients/client')));
 });
+test('billing startup can read a missing profile and query every initially empty collection',async()=>{
+  const {collection,getDocs,query,orderBy,limit}=require('firebase/firestore');
+  const db=env.authenticatedContext('admin',{email:'andrewpcarlson85@gmail.com'}).firestore();
+  const profile=await assertSucceeds(getDoc(doc(db,'projectBilling/admin/settings/profile')));assert.equal(profile.exists(),false);
+  for(const type of ['clients','jobs','invoices','payments']){
+    const page=await assertSucceeds(getDocs(query(collection(db,'projectBilling/admin',type),orderBy('__name__'),limit(100))));assert.equal(page.size,0);
+    await assertFails(getDocs(query(collection(env.authenticatedContext('other',{email:'other@example.test'}).firestore(),'projectBilling/admin',type),orderBy('__name__'),limit(100))));
+  }
+});
