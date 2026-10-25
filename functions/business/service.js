@@ -15,17 +15,23 @@ function sanitizeSettings(p, uid, existing) {
   return { ...defaultSettings(), ...existing, deskSyncEnabled: p.deskSyncEnabled !== false, name: text(p.name, 120), contact: text(p.contact, 1000), timezone: text(p.timezone || 'America/Chicago', 80), costRateCents: amount(p.costRateCents), billRateCents: amount(p.billRateCents), mileageRateCents: amount(p.mileageRateCents), overheadPercent: F.rate(p.overheadPercent || 0), taxPercent: F.rate(p.taxPercent || 0), markupPercent: F.rate(p.markupPercent || 0), terms: text(p.terms), paymentInstructions: text(p.paymentInstructions), logoPath: image(p.logoPath, uid), categories: [...new Set([...defaultSettings().categories, ...(Array.isArray(p.categories) ? p.categories : []).map(c => text(c, 60)).filter(Boolean)])].slice(0, 40), estimatePrefix: text(p.estimatePrefix || 'EST', 12).replace(/[^A-Za-z0-9-]/g, ''), invoicePrefix: text(p.invoicePrefix || 'INV', 12).replace(/[^A-Za-z0-9-]/g, '') };
 }
 const overlaps = (a, b) => a.date === b.date && a.start < b.end && b.start < a.end && a.workerIds.some(w => b.workerIds.includes(w));
-function createService(db, clock = () => new Date().toISOString()) {
+function createService(db, clock = () => new Date().toISOString(), options = {}) {
+  const simpleBilling = options.mode === 'billing';
   return async function command(uid, input) {
     id(uid); id(input.requestId);
     const fingerprint = crypto.createHash('sha256').update(JSON.stringify(input)).digest('hex');
-    const root = db.collection('businesses').doc(uid);
+    const root = db.collection(simpleBilling ? 'projectBilling' : 'businesses').doc(uid);
     const now = clock();
     return db.runTransaction(async tx => {
       // Approval is checked inside the transaction so revocation participates in retries.
       const approval = await tx.get(db.collection('loginApprovals').doc(uid));
       const access = approval.data();
-      if (access?.status !== 'approved' || !access.accessSections?.includes('business')) fail('Handyman Business approval is required');
+      if (simpleBilling) {
+        if (access?.status !== 'approved' || access.email !== 'andrewpcarlson85@gmail.com') fail('Administrator approval is required');
+        if (!['settings', 'saveProject', 'save', 'issueInvoice', 'recordPayment', 'voidEntry'].includes(input.action)
+          || input.action === 'save' && input.collection !== 'clients'
+          || input.action === 'voidEntry' && input.collection !== 'payments') fail('Unsupported billing action');
+      } else if (access?.status !== 'approved' || !access.accessSections?.includes('business')) fail('Handyman Business approval is required');
       const requestRef = root.collection('requests').doc(input.requestId);
       const prior = await tx.get(requestRef);
       if (prior.exists) { if (prior.data().fingerprint !== fingerprint) fail('Request identifier already used'); return prior.data().result; }
@@ -43,9 +49,31 @@ function createService(db, clock = () => new Date().toISOString()) {
       let result = { ok: true };
       const p = input.payload || {};
       if (input.action === 'settings') {
-        const saved = sanitizeSettings(p, uid, settings);
+        const saved = sanitizeSettings(simpleBilling ? { ...p, logoPath: '', deskSyncEnabled: false } : p, uid, settings);
         if (!saved.name) fail('Enter your business name');
         put(settingsRef, { ...saved, updatedAt: now });
+      } else if (input.action === 'saveProject' && simpleBilling) {
+        const key = input.id ? id(input.id) : input.requestId;
+        const current = await get('jobs', key, true);
+        const old = current.data;
+        if (old && (p.version ?? 0) !== old.version) fail('This project changed. Reload before saving your edits.');
+        const client = (await get('clients', p.clientId)).data;
+        if (client.archived && old?.clientId !== client.id) fail('Choose an active customer');
+        if (old && old.clientId !== client.id) {
+          const paid = await tx.get(root.collection('payments').where('jobId', '==', key));
+          if (old.invoiceId || paid.docs.length) fail('Customer cannot change after invoicing or recording payments');
+        }
+        const title = text(p.title, 160);
+        const scope = text(p.scope);
+        if (!title || !scope) fail('Project name and client-visible scope are required');
+        if (!['scheduled', 'in-progress', 'on-hold', 'completed', 'cancelled'].includes(p.status)) fail('Choose a project status');
+        const chargeCents = amount(p.chargeCents);
+        const baseline = F.estimate({ lines: [{ description: scope, priceCents: chargeCents }] });
+        const changed = old && (old.title !== title || old.scope !== scope || old.chargeCents !== chargeCents);
+        const data = { ...old, title, scope, chargeCents, clientId: client.id, status: p.status, notes: text(p.notes), targetDate: p.targetDate ? date(p.targetDate) : '', location: '', baseline, document: { terms: settings.terms }, simpleBilling: true, needsInvoiceReplacement: Boolean(old?.invoiceId && (old.needsInvoiceReplacement || changed)), version: (old?.version || 0) + 1, createdAt: old?.createdAt || now, updatedAt: now };
+        put(current.ref, data);
+        event(old ? 'Project updated' : 'Project created', client.id, key, key);
+        result.id = key;
       } else if (input.action === 'save') {
         const collection = input.collection;
         if (!COLLECTIONS.has(collection) || ['invoices', 'payments', 'activity'].includes(collection)) fail('Unsupported collection');
@@ -206,6 +234,7 @@ function createService(db, clock = () => new Date().toISOString()) {
         put(record.ref, { ...c, status: 'approved', approvalDate: date(p.date), approvalNote: text(p.note), evidencePath: image(p.evidencePath, uid), updatedAt: now });
         event('Change approved', c.clientId, c.jobId, c.id);
       } else if (input.action === 'issueInvoice') {
+        if (!settings.name) fail('Complete billing details before issuing an invoice');
         const jobRecord = await get('jobs', input.id); const job = jobRecord.data;
         const client = (await get('clients', job.clientId)).data;
         const previous = job.invoiceId ? await get('invoices', job.invoiceId) : null;

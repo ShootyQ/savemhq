@@ -1,6 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Personal project billing is a distinct admin-owned workspace.
+    match /projectBilling/{ownerUid}/{collection}/{recordId} {
+      allow read: if isAdmin() && request.auth.uid == ownerUid
+        && collection in ["settings", "clients", "jobs", "invoices", "payments", "activity"];
+      allow write: if false;
+    }
     function isBusinessOwner(ownerUid) {
       return request.auth != null && request.auth.uid == ownerUid
         && exists(/databases/$(database)/documents/loginApprovals/$(ownerUid))

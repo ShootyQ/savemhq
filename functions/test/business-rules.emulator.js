@@ -89,3 +89,11 @@ test('Desk reminders use real timestamps, remain editable under existing task ru
   await app.doc('businesses/owner/payments/p').set({jobId:'j',amountCents:10000});await sync.changed('owner','payments','p');assert.equal((await app.doc(path).get()).data().status,'done');
   await assertFails(getDoc(doc(env.authenticatedContext('other').firestore(),path)));
 });
+test('personal billing reads require admin identity AND matching UID; all browser writes are denied',async()=>{
+  await app.doc('projectBilling/admin/clients/c').set({name:'Private billing customer'});
+  const owner=env.authenticatedContext('admin',{email:'andrewpcarlson85@gmail.com'}).firestore();
+  await assertSucceeds(getDoc(doc(owner,'projectBilling/admin/clients/c')));
+  for(const context of [env.unauthenticatedContext(),env.authenticatedContext('other',{email:'other@example.test'}),env.authenticatedContext('admin',{email:'other@example.test'}),env.authenticatedContext('other',{email:'andrewpcarlson85@gmail.com'})])await assertFails(getDoc(doc(context.firestore(),'projectBilling/admin/clients/c')));
+  await assertFails(setDoc(doc(owner,'projectBilling/admin/payments/fake'),{amountCents:50000}));
+  await assertFails(getDoc(doc(owner,'businesses/owner/clients/client')));
+});

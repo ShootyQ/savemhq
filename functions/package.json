@@ -12,7 +12,8 @@
     "test:business": "node --test test/business-*.test.js",
     "test:business:rules": "firebase emulators:exec --project demo-business --config ../firebase.json --only firestore,storage \"node --test test/business-rules.emulator.js\"",
     "test:business:browser": "node test/business-browser.cjs",
-    "test:business:images": "node test/business-images.cjs"
+    "test:business:images": "node test/business-images.cjs",
+    "test:billing:browser": "node test/billing-browser.cjs"
   },
   "dependencies": {
     "@slack/web-api": "^7.12.0",
