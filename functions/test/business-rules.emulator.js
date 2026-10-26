@@ -97,3 +97,50 @@ test('personal billing reads require admin identity AND matching UID; all browse
   await assertFails(setDoc(doc(owner,'projectBilling/admin/payments/fake'),{amountCents:50000}));
   await assertFails(getDoc(doc(owner,'businesses/owner/clients/client')));
 });
+test('billing startup can read a missing profile and query every initially empty collection',async()=>{
+  const {collection,getDocs,query,orderBy,limit}=require('firebase/firestore');
+  const db=env.authenticatedContext('admin',{email:'andrewpcarlson85@gmail.com'}).firestore();
+  const profile=await assertSucceeds(getDoc(doc(db,'projectBilling/admin/settings/profile')));assert.equal(profile.exists(),false);
+  for(const type of ['clients','jobs','invoices','payments']){
+    const page=await assertSucceeds(getDocs(query(collection(db,'projectBilling/admin',type),orderBy('__name__'),limit(100))));assert.equal(page.size,0);
+    await assertFails(getDocs(query(collection(env.authenticatedContext('other',{email:'other@example.test'}).firestore(),'projectBilling/admin',type),orderBy('__name__'),limit(100))));
+  }
+});
+test('retired Aftercare records deny all browser identities and remain stored for backend recovery',async()=>{
+  const paths=['aftercarePrograms/history','aftercarePrograms/history/students/student','aftercarePrograms/history/attendance/attendance','aftercarePrograms/history/archive/saved/deep/record'];
+  for(const path of paths)await app.doc(path).set({preserved:true,status:'checked-in'});
+  const identities=[env.unauthenticatedContext(),env.authenticatedContext('admin',{email:'andrewpcarlson85@gmail.com'}),env.authenticatedContext('family',{email:'savannahbcarlson@gmail.com'}),env.authenticatedContext('owner',{email:'owner@example.test'})];
+  await app.doc('loginApprovals/owner').set({status:'approved',accessSections:['aftercare']});
+  for(const context of identities)for(const path of paths){await assertFails(getDoc(doc(context.firestore(),path)));await assertFails(setDoc(doc(context.firestore(),path),{preserved:false}));}
+  for(const path of paths)assert.equal((await app.doc(path).get()).data().preserved,true);
+});
+test('only admin can list accounts, grant permissions and change competition locks',async()=>{
+  const {getDocs,collection,updateDoc,deleteField,serverTimestamp}=require('firebase/firestore');
+  const adminDb=env.authenticatedContext('admin',{email:'andrewpcarlson85@gmail.com'}).firestore();const other=env.authenticatedContext('owner',{email:'owner@example.test'}).firestore();
+  await app.doc('loginApprovals/owner').set({uid:'owner',email:'owner@example.test',status:'approved',person:null,personLabel:null,accessSections:['plates'],requestedAt:new Date('2026-01-01'),lastLoginAttemptAt:new Date('2026-01-01'),reviewedAt:null,reviewedBy:null});
+  await assertSucceeds(getDocs(collection(adminDb,'loginApprovals')));await assertFails(getDocs(collection(other,'loginApprovals')));
+  await assertFails(updateDoc(doc(other,'loginApprovals/owner'),{accessSections:['business','desk']}));
+  await assertSucceeds(updateDoc(doc(adminDb,'loginApprovals/owner'),{status:'approved',accessSections:['business','desk','plates'],reviewedBy:'andrewpcarlson85@gmail.com',reviewedAt:serverTimestamp()}));
+  const target='competitions/2026/months/january';const scores={andyStates:['MN','IA'],savannahStates:['WI'],manualCounts:{andy:28,savannah:29}};await app.doc(target).set({...scores,locked:false});
+  await assertFails(updateDoc(doc(other,target),{locked:true}));
+  await assertSucceeds(updateDoc(doc(adminDb,target),{locked:true,lockedAt:serverTimestamp(),lockedBy:'andrewpcarlson85@gmail.com',updatedAt:serverTimestamp()}));
+  await assertSucceeds(updateDoc(doc(adminDb,target),{locked:false,lockedAt:deleteField(),lockedBy:deleteField(),updatedAt:serverTimestamp()}));
+  const saved=(await app.doc(target).get()).data();for(const key of Object.keys(scores))assert.deepEqual(saved[key],scores[key]);assert.equal(saved.locked,false);
+});
+test('real admin API transactions detect concurrent access edits and preserve scores on lock/unlock',async()=>{
+  const sdk=require('firebase/firestore');const Model=require('../../js/admin/model');
+  const db=env.authenticatedContext('admin',{email:'andrewpcarlson85@gmail.com'}).firestore();
+  const code=readFileSync(resolve(__dirname,'../../js/admin/api.js'),'utf8').replace(/^import .*;\n/gm,'').replace(/^export \{.*\};\n?/gm,'').replace(/^export /gm,'');
+  const dependencies={...Object.fromEntries(['collection','doc','onSnapshot','runTransaction','serverTimestamp','deleteField'].map(name=>[name,sdk[name]])),auth:{currentUser:{uid:'admin',email:'andrewpcarlson85@gmail.com'}},db,ADMIN_EMAIL:'andrewpcarlson85@gmail.com',ACCESS_SECTIONS:[{id:'business'},{id:'desk'},{id:'plates'}],getKnownUserProfile:()=>null,initHeaderAuth:()=>{},window:{AdminModel:Model}};
+  const api=Function(...Object.keys(dependencies),code+';return {saveAccess,setMonthLock};')(...Object.values(dependencies));
+  await app.doc('loginApprovals/owner').set({uid:'owner',email:'owner@example.test',status:'pending',accessSections:['aftercare'],person:null,requestedAt:new Date('2026-01-01'),lastLoginAttemptAt:new Date('2026-01-01')});
+  let base={...(await app.doc('loginApprovals/owner').get()).data(),id:'owner'};
+  await api.saveAccess({base,draft:{person:'',accessSections:['desk','aftercare']},action:'approve'});
+  let saved=(await app.doc('loginApprovals/owner').get()).data();assert.equal(saved.status,'approved');assert.deepEqual(saved.accessSections,['desk']);assert.ok(saved.reviewedAt.toDate());
+  base={...saved,id:'owner'};await app.doc('loginApprovals/owner').update({lastLoginAttemptAt:new Date()});
+  const results=await Promise.allSettled([api.saveAccess({base,draft:{person:'',accessSections:['business']},action:'save'}),api.saveAccess({base,draft:{person:'',accessSections:['plates']},action:'save'})]);
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(results.filter(r=>r.status==='rejected').length,1);
+  const scores={andyStates:['MN'],savannahStates:['WI'],manualCounts:{andy:28,savannah:29}};await app.doc('competitions/2026/months/january').set({...scores,locked:false});
+  await api.setMonthLock('january',true,false);await api.setMonthLock('january',false,true);
+  saved=(await app.doc('competitions/2026/months/january').get()).data();for(const key of Object.keys(scores))assert.deepEqual(saved[key],scores[key]);assert.equal(saved.locked,false);assert.equal(saved.lockedAt,undefined);
+});

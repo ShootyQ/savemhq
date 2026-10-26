@@ -351,3 +351,7 @@ See [Business portal development, financial conventions, pilot, and rollout](doc
 ## Personal Project Billing
 
 `billing.html` is the administrator's simplified, separate workspace for customers, fixed-fee projects, invoices, and manual payment tracking. Open **My project billing** from The Desk. See [Project billing workflow, security, and deployment](docs/project-billing.md).
+
+## Admin Workspace
+
+`admin.html` provides searchable People & Access management and score-preserving Competition Locks. Aftercare has been retired from SavemHQ; stored history remains protected in Firestore. See [Admin workflow, validation, and rollout](docs/admin-workspace.md).
