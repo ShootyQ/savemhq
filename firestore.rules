@@ -56,6 +56,33 @@ service cloud.firestore {
         );
     }
 
+    // Teams are explicit shared spaces. Personal Workroom ownership is unchanged.
+    function isTeamMember(roomId) {
+      return isDeskUser(request.auth.uid)
+        && exists(/databases/$(database)/documents/teamRooms/$(roomId)/members/$(request.auth.uid));
+    }
+    match /teamRooms/{roomId} {
+      allow read: if isAuthed() && isTeamMember(roomId);
+      allow write: if false;
+      match /{kind}/{recordId} {
+        allow read: if isAuthed() && isTeamMember(roomId)
+          && kind in ["members", "projects", "tasks", "comments", "activity"];
+        allow write: if false;
+      }
+    }
+    match /teamUsers/{uid}/{kind}/{recordId} {
+      allow read: if isDeskUser(uid) && kind == "rooms";
+      allow write: if false;
+    }
+    match /teamInvites/{invitationId} {
+      allow read: if isAuthed() && isDeskUser(request.auth.uid)
+        && ((request.auth.token.email_verified == true
+          && request.auth.token.email.lower() == resource.data.email)
+          || (isTeamMember(resource.data.roomId)
+            && get(/databases/$(database)/documents/teamRooms/$(resource.data.roomId)).data.ownerUid == request.auth.uid));
+      allow write: if false;
+    }
+
     function workroomProfileIsValid(ownerUid) {
       return request.resource.data.keys().hasAll([
         "ownerUid",

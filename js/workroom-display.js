@@ -1,3 +1,4 @@
+import {watchAssignments,completeAssignment,taskLink} from './teams/api.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth } from "./auth-shared.js";
@@ -48,6 +49,8 @@ let state = {
   calendarView: "week", calendarDate: new Date(), selectedCalendarDay: null,
   editingEventId: null
 };
+let personalTasks = [], teamTasks = [];
+let deskAuthEpoch = 0;
 let celebrationTimer = null;
 
 const clean = (val) => String(val || "").trim();
@@ -56,7 +59,7 @@ const loadStored = (key, fallback = null) => { try { return JSON.parse(window.lo
 const saveStored = (key, value) => { try { const scopedKey = storageKey(key); if (value == null || value === "") window.localStorage.removeItem(scopedKey); else window.localStorage.setItem(scopedKey, JSON.stringify(value)); } catch { } };
 const hasModule = (moduleId) => state.modules.includes(moduleId);
 
-const removeSubscriptions = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; };
+const removeSubscriptions = () => { personalTasks=[]; teamTasks=[]; state.tasks=[]; state.tasksLoaded=false; elements.tasks.replaceChildren(); elements.allGroups.replaceChildren(); elements.focusTaskTitle.textContent=""; elements.focusTaskNotes.textContent=""; elements.focusTaskProject.textContent=""; elements.operationsContent.replaceChildren(); state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; };
 const blank = (copy) => `<p class="workroom-tv-empty">${escapeHtml(copy)}</p>`;
 const startOfDay = (value = new Date()) => { const date = asDate(value) || new Date(); return new Date(date.getFullYear(), date.getMonth(), date.getDate()); };
 const dateKey = (value = new Date()) => { const date = asDate(value); return date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : ""; };
@@ -181,7 +184,7 @@ const operationGroups = (now) => {
   const allEvents = getAllCalendarEvents();
   const calendar = allEvents.map((event) => radarItem("Calendar", event.title, event.location || (event.isCustom ? "Desk Calendar" : "Google Calendar"), `${dayOffset(event.startDate, now) === 0 ? "Today - " : `${formatDay(event.startDate)} - `}${eventWhen(event)}`, 0, event.id, true, "calendar"));
   const mail = (state.summary.recentMail || []).map((message) => radarItem("Mail", message.subject, message.from || "Google Mail", "Unread", 0, message.id, true, "mail"));
-  const projects = [...state.projects].filter((item) => item.status === "active").sort(byDate("targetDate")).map((item) => { const projectTasks = state.tasks.filter((task) => task.projectId === item.id); const complete = projectTasks.filter((task) => task.status === "done").length; const percent = projectTasks.length ? Math.round(complete / projectTasks.length * 100) : 0; return radarItem("Project", item.title, `${percent}% complete`, item.targetDate ? `Target ${formatDay(item.targetDate)}` : "No target date", 0, item.id, true, "project"); });
+  const projects = [...state.projects].filter((item) => item.status === "active").sort(byDate("targetDate")).map((item) => { const projectTasks = state.tasks.filter((task) => task.source !== "team" && task.projectId === item.id); const complete = projectTasks.filter((task) => task.status === "done").length; const percent = projectTasks.length ? Math.round(complete / projectTasks.length * 100) : 0; return radarItem("Project", item.title, `${percent}% complete`, item.targetDate ? `Target ${formatDay(item.targetDate)}` : "No target date", 0, item.id, true, "project"); });
   const ideas = state.ideas.filter((idea) => idea.status !== "archived").map((idea) => radarItem("Idea", idea.title, (idea.tags || []).join(", ") || "Idea & note", idea.status === "developing" ? "Developing" : "Inbox", 0));
   return [
     ...(hasModule("follow-ups") ? [{ id: "contacts", label: "Contacts", items: contacts }] : []),
@@ -239,7 +242,7 @@ const mixedActionItems = (model) => {
 };
 const reviewLaterItems = () => state.actionStates.filter((item) => item.status === "later").sort((left, right) => (asDate(right.updatedAt)?.getTime() || 0) - (asDate(left.updatedAt)?.getTime() || 0));
 
-const projectName = (task) => state.projects.find((project) => project.id === task?.projectId)?.title || "";
+const projectName = (task) => task?.source === "team" ? `Team: ${task.roomName}` : state.projects.find((project) => project.id === task?.projectId)?.title || "";
 const completeButton = (type, item, label = item.title || item.name) => `<button class="workroom-display-check" data-complete-${type}="${escapeHtml(item.id)}" type="button" aria-label="Complete ${escapeHtml(label)}"></button>`;
 const actionButtons = (item) => `<div class="workroom-queue-actions"><button class="workroom-review-later" data-review-later-type="${escapeHtml(item.actionType)}" data-review-later-id="${escapeHtml(item.id)}" type="button" aria-label="Review ${escapeHtml(item.title)} later">Later</button>${completeButton(item.actionType, item)}</div>`;
 const operationRow = (item) => `<div class="workroom-radar-item ${item.score <= 3 ? "radar-urgent" : "radar-normal"}"><div><span>${escapeHtml(item.type)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}${item.detail ? ` - ${escapeHtml(item.detail)}` : ""}</small></div>${item.canComplete && item.id ? actionButtons(item) : ""}</div>`;
@@ -267,7 +270,7 @@ const mixedQueueRow = (item) => {
   `</div>`;
 };
 const reviewLaterRow = (item) => `<div class="workroom-radar-item"><div><span>${escapeHtml(item.itemType)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}${item.detail ? ` - ${escapeHtml(item.detail)}` : ""}</small></div><button class="workroom-restore-action" data-restore-action="${escapeHtml(item.id)}" type="button">Restore</button></div>`;
-const taskRow = (task, now) => { const bucket = taskBucket(task, now); const project = projectName(task); return `<div class="workroom-compass-task priority-${escapeHtml(task.priority)}"><button class="workroom-task-select" data-pin-task="${escapeHtml(task.id)}" type="button"><span class="workroom-task-title">${escapeHtml(task.title)}</span><small><span class="workroom-status-label status-${bucket.id}">${escapeHtml(bucket.label)}</span>${project ? ` <span>${escapeHtml(project)}</span>` : ""}${task.dueDate ? ` <span>${escapeHtml(formatDay(task.dueDate))}</span>` : ""}</small></button>${completeButton("task", task)}</div>`; };
+const taskRow = (task, now) => { const bucket = taskBucket(task, now); const project = projectName(task); return `<div class="workroom-compass-task priority-${escapeHtml(task.priority)}"><button class="workroom-task-select" data-pin-task="${escapeHtml(task.id)}" type="button"><span class="workroom-task-title">${escapeHtml(task.title)}</span><small><span class="workroom-status-label status-${bucket.id}">${escapeHtml(bucket.label)}</span>${project ? ` <span>${escapeHtml(project)}</span>` : ""}${task.dueDate ? ` <span>${escapeHtml(formatDay(task.dueDate))}</span>` : ""}</small></button>${task.source === "team" ? `<a class="workroom-display-command" href="${escapeHtml(taskLink(task))}">Open team</a>` : ""}${completeButton("task", task)}</div>`; };
 const renderDayline = (model) => {
   if (!model.events.length) {
     elements.dayline.innerHTML = `<span class="workroom-dayline-clear">Open runway - no calendar events today.</span>`;
@@ -644,7 +647,9 @@ const writeCompletion = async (type, id, item) => {
   if (!state.user) return;
   if (type === "task" || type === "finance" || type === "contact") {
     const collection = type === "task" ? tasksRef : type === "finance" ? financeRef : contactFollowUpsRef;
-    await updateDoc(doc(collection(state.user.uid), id), { status: "done", completedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    const shared = type === "task" && state.tasks.find(task => task.id === id && task.source === "team");
+    if (shared) await completeAssignment(shared);
+    else await updateDoc(doc(collection(state.user.uid), id), { status: "done", completedAt: serverTimestamp(), updatedAt: serverTimestamp() });
   } else if (type === "project") {
     await updateDoc(doc(projectsRef(state.user.uid), id), { status: "complete", updatedAt: serverTimestamp() });
   } else if (type === "payment-entry") {
@@ -1061,10 +1066,11 @@ const tick = () => { const now = new Date(); elements.clock.textContent = new In
 tick(); window.setInterval(tick, 1000); window.setInterval(() => { if (state.user) render(); }, 60_000);
 
 onAuthStateChanged(auth, async (user) => {
+  const authEpoch = ++deskAuthEpoch;
   removeSubscriptions(); state.user = user;
   state.session = null; state.modules = [];
   if (!user) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.remove("hidden"); elements.gateMessage.textContent = "Sign in to open your Desk display."; return; }
-  try { state.session = await resolveDeskSession(user); } catch (error) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = `Desk access could not be checked: ${error.message || "unknown error"}`; return; }
+  try { const session = await resolveDeskSession(user); if (authEpoch !== deskAuthEpoch) return; state.session = session; } catch (error) { if (authEpoch !== deskAuthEpoch) return; elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = `Desk access could not be checked: ${error.message || "unknown error"}`; return; }
   if (!state.session.hasDeskAccess || !state.session.profile.onboardingComplete) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = state.session.hasDeskAccess ? "Finish setup in the control room first." : "This account has not been granted Desk access."; return; }
   state.modules = state.session.modules;
   state.pinnedTaskId = loadStored(PIN_KEY, ""); state.sprint = loadStored(SPRINT_KEY, null);
@@ -1072,10 +1078,11 @@ onAuthStateChanged(auth, async (user) => {
   document.querySelectorAll("[data-owner-only]").forEach((element) => { element.hidden = !state.session.isAdmin; });
   elements.gate.classList.add("hidden"); elements.app.classList.remove("hidden");
   state.unsubscribers.push(
-    onSnapshot(tasksRef(user.uid), (snapshot) => { state.tasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); state.tasksLoaded = true; render(); }),
+    onSnapshot(tasksRef(user.uid), (snapshot) => { personalTasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); state.tasks=[...personalTasks,...teamTasks]; state.tasksLoaded = true; render(); }),
     onSnapshot(actionStatesRef(user.uid), (snapshot) => { state.actionStates = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
     onSnapshot(calendarEventsRef(user.uid), (snapshot) => { state.calendarEvents = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }),
   );
+  state.unsubscribers.push(watchAssignments(user.uid, tasks => { teamTasks=tasks; state.tasks=[...personalTasks,...teamTasks]; render(); }, () => celebrate("Shared tasks unavailable. Open Teams to retry.")));
   if (hasModule("projects")) state.unsubscribers.push(onSnapshot(projectsRef(user.uid), (snapshot) => { state.projects = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));
   if (hasModule("ideas")) state.unsubscribers.push(onSnapshot(ideasRef(user.uid), (snapshot) => { state.ideas = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));
   if (hasModule("finance")) state.unsubscribers.push(onSnapshot(financeRef(user.uid), (snapshot) => { state.finance = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); render(); }));

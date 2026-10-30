@@ -1930,3 +1930,5 @@ exports.getWorkroomAutomationStatus = onCall(async (request) => {
 Object.assign(exports, require('./business'));
 
 Object.assign(exports, require('./billing'));
+
+Object.assign(exports, require('./teams'));
