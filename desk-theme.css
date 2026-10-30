@@ -1706,3 +1706,77 @@
   ) {
   background: none;
 }
+
+/* One sizing model for header links, buttons, badges and daily totals. */
+body[data-page="workroom-display"] .workroom-display-controls {
+  align-items: stretch;
+}
+body[data-page="workroom-display"]
+  .workroom-display-controls
+  > .workroom-display-command {
+  display: inline-flex;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 44px;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+body[data-page="workroom-display"] .workroom-display-controls > [hidden] {
+  display: none !important;
+}
+body[data-page="workroom-display"]
+  .workroom-display-controls
+  > .workroom-display-command
+  > span {
+  display: inline-grid;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  padding: 0 0.2rem;
+  line-height: 1;
+}
+body[data-page="workroom-display"]
+  .workroom-display-controls
+  > .workroom-display-command
+  > [aria-hidden="true"] {
+  padding: 0;
+  background: transparent;
+}
+body[data-page="workroom-display"] .workroom-day-stats > span {
+  display: inline-flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 0.25rem;
+  height: 44px;
+  line-height: 1.25;
+}
+body[data-page="workroom-display"] .workroom-day-stats > span > strong {
+  margin: 0;
+  line-height: 1;
+}
+@media (max-width: 620px) {
+  body[data-page="workroom-display"] .workroom-command-bar {
+    flex-wrap: wrap;
+  }
+  body[data-page="workroom-display"] .workroom-display-controls {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  body[data-page="workroom-display"]
+    .workroom-display-controls
+    > .workroom-display-command {
+    flex: 1 1 auto;
+  }
+}
