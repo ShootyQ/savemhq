@@ -4,7 +4,7 @@
 
 ## Local development and validation
 
-Use Node 20, Java 21, and Python 3. From the repository:
+Use Node 22, Java 21, and Python 3. From the repository:
 
 ```bash
 npm --prefix functions ci
@@ -18,7 +18,7 @@ npm --prefix functions run test:business:images
 
 The browser suite uses Chromium at `/usr/bin/chromium`; set `CHROMIUM_PATH` for another installation. It exercises the real portal and service using an isolated transactional test store, replacing only Firebase transport/auth. It does not prove production OAuth or deployed connectivity. The emulator suite independently tests real Firestore transactions and Firestore/Storage authorization. It uses a `demo-business` project and refuses to run without the Firestore emulator. Emulator downloads require `storage.googleapis.com`. The browser suite generates screenshots and Letter/A4 PDFs under `/tmp/business-*`.
 
-When the default home is not writable, set `XDG_CONFIG_HOME` and `FIREBASE_EMULATORS_PATH` to writable directories. The prepared cloud instance has Node 20 at `/workspace/.savemhq-tools/node_modules/node/bin` and emulator caches at `/workspace/.cache/firebase/emulators`.
+When the default home is not writable, set `XDG_CONFIG_HOME` and `FIREBASE_EMULATORS_PATH` to writable directories. Use a Node 22 executable for installs, local Functions checks, and deployment. The prepared cloud instance keeps emulator caches at `/workspace/.cache/firebase/emulators`.
 
 For normal static development:
 
