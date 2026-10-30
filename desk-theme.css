@@ -1,0 +1,1708 @@
+/* Desk appearance only. Existing layout, spacing and breakpoints remain in styles.css. */
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"]) {
+  --desk-bg: #f7f8f4;
+  --desk-surface: #ffffff;
+  --desk-soft: #e3ebdf;
+  --desk-hover: #f1f4ed;
+  --desk-text: #27372f;
+  --desk-muted: #637267;
+  --desk-line: #dce2d9;
+  --desk-green: #365a46;
+  --desk-blue: #315f68;
+  --desk-blue-soft: #edf4f3;
+  --desk-warning: #875c16;
+  --desk-warning-soft: #faf1df;
+  --desk-danger: #a33c26;
+  --desk-danger-soft: #fff1ec;
+  color-scheme: light;
+  color: var(--desk-text);
+  background: var(--desk-bg);
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  --text: var(--desk-text);
+  --muted: var(--desk-muted);
+  --border: var(--desk-line);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-display-shell {
+  --phase-accent: var(--desk-green);
+  --phase-cool: var(--desk-blue);
+  --phase-warm: var(--desk-warning);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-progress {
+  border-block: 1px solid var(--desk-line);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-health-row[data-state="running"] {
+  border-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-health-row[data-state="error"] {
+  border-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-totals {
+  border-block: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-totals
+  dt {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-totals
+  dd {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-totals
+  > div:nth-child(2)
+  dd {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-subheading {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-item {
+  border-bottom: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-item
+  strong {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-item
+  small,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-item
+  p {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-item
+  a {
+  color: var(--desk-blue);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-outcome {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-item[data-outcome="failed"]
+  .workroom-scan-outcome {
+  color: var(--desk-danger);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-messages {
+  border-top: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-scan-messages
+  summary {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-gate {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+  box-shadow: none;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-gate
+  h1,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-control-header
+  h1,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-display-focus
+  h1,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-panel
+  h2,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-tv-card
+  h2 {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-gate
+  p {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-eyebrow {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-button-primary {
+  color: var(--desk-text);
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-button-quiet {
+  color: var(--desk-text);
+  background: var(--desk-hover);
+  border-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-control-header {
+  border-bottom: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-notice {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-notice.is-error {
+  color: var(--desk-danger);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-panel,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-tv-card {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+  box-shadow: none;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-panel:hover {
+  border-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-panel-note,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-empty,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-record
+  small,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-connection
+  small {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-form
+  label {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-form
+  input,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-form
+  select,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-form
+  textarea {
+  border: 1px solid var(--desk-line);
+  color: var(--desk-text);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-record,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-connection {
+  border-top: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-record
+  strong,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-connection
+  strong {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-record.is-done
+  strong {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-icon-button {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-check {
+  border: 1px solid var(--desk-line);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .is-done
+  .workroom-check {
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-color-dot,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-tv-marker {
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-color-dot.sky {
+  background: var(--desk-blue-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-color-dot.sun {
+  background: var(--desk-warning-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-color-dot.clay {
+  background: var(--desk-danger-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-priority,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-tv-marker.high {
+  color: var(--desk-danger);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-priority.medium,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-tv-marker.medium {
+  color: var(--desk-warning);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-priority.low,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-tv-marker.low {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-calendar-picker {
+  border: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-calendar-choice {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-google-panel {
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-google-panel
+  .workroom-connection {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-header-subtitle {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-view-nav {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-view-tab {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-view-tab:hover {
+  color: var(--desk-text);
+  background: var(--desk-hover);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-view-tab.is-active {
+  color: var(--desk-text);
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-stat {
+  border-left: 3px solid var(--desk-line);
+  background: var(--desk-hover);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-stat
+  strong {
+  color: var(--desk-text);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-stat
+  span {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-panel-kicker {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-row {
+  border-top: 1px solid var(--desk-line);
+  border-left: 3px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-row.priority-high {
+  border-left-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-row.priority-medium {
+  border-left-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-row.priority-low {
+  border-left-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-row
+  small {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-row
+  strong {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-row
+  span {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-briefing-result {
+  border-top: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-briefing-result
+  pre {
+  border: 1px solid var(--desk-line);
+  color: var(--desk-text);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-briefing-sources,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-briefing-warning {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-briefing-warning {
+  color: var(--desk-danger);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-section-heading
+  h2 {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-health-row {
+  border-left: 3px solid var(--desk-line);
+  background: var(--desk-hover);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-health-row
+  strong {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-health-row
+  span {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-queue-heading
+  h3 {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-candidate {
+  border-top: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-candidate
+  small,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-candidate
+  span,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-candidate
+  p {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-candidate
+  strong {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-excerpt {
+  border-left: 2px solid var(--desk-line);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-candidate
+  a {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-preset-option,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-module-option {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-preset-option:has(input:checked),
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-module-option:has(input:checked) {
+  border-color: var(--desk-line);
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-preset-option
+  strong,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-module-option
+  strong {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-preset-option
+  small,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-module-option
+  small {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-settings-form
+  legend {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-idea
+  > p {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-idea-footer {
+  border-top: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-idea-footer
+  span {
+  border: 1px solid var(--desk-line);
+  color: var(--desk-blue);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-idea-footer
+  select {
+  border: 1px solid var(--desk-line);
+  color: var(--desk-text);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dialog-backdrop {
+  background: rgba(20, 39, 29, 0.48);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dialog-panel {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+  box-shadow: none;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-quick-add-types
+  button {
+  border: 1px solid var(--desk-line);
+  color: var(--desk-muted);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-quick-add-types
+  button.is-active {
+  color: var(--desk-text);
+  background: var(--desk-soft);
+  border-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-display-date {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-clock {
+  color: var(--desk-text);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-day-stats {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-day-stats
+  span {
+  border-left: 2px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-day-stats
+  strong {
+  color: var(--desk-text);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-day-stats
+  .is-urgent {
+  color: var(--desk-danger);
+  border-left-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-day-stats
+  .is-urgent
+  strong {
+  color: var(--desk-danger);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-display-command,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-text-button,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-sprint-choice,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dialog-close {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-display-command {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-display-command
+  span {
+  color: var(--desk-text);
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-display-command:hover,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-display-command:focus-visible,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-sprint-choice:hover,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-sprint-choice:focus-visible {
+  color: var(--desk-text);
+  border-color: var(--desk-line);
+  background: var(--desk-hover);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-text-button {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-text-button:hover,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-text-button:focus-visible {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dayline {
+  border-block: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dayline-event {
+  border-left: 2px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dayline-event
+  strong {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dayline-event.is-next {
+  background: var(--desk-warning-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dayline-event.is-next
+  time {
+  color: var(--desk-warning);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dayline-clear {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-stage {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+  box-shadow: none;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-sprint-launcher {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-soft);
+  color: var(--desk-text);
+  box-shadow: none;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-sprint-launcher:hover,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-sprint-launcher:focus-visible {
+  background: var(--desk-soft);
+  color: var(--desk-text);
+  box-shadow: none;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-sprint-launcher.is-sprint-running {
+  background: var(--desk-soft);
+  color: var(--desk-text);
+  box-shadow: none;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-radar-stage,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-calendar-stage {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-view-group,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-nav-group {
+  background: var(--desk-surface);
+  border: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-pill-btn,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-icon-btn {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-pill-btn:hover,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-icon-btn:hover {
+  color: var(--desk-text);
+  background: var(--desk-hover);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-pill-btn.is-active {
+  color: var(--desk-text);
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-week-col {
+  background: var(--desk-surface);
+  border: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-week-col.is-today {
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-col-header {
+  background: var(--desk-surface);
+  border-bottom: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-col-header:hover {
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-col-num {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip {
+  background: var(--desk-blue-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip:hover {
+  background: var(--desk-blue-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip.cat-work {
+  border-left-color: var(--desk-line);
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip.cat-family {
+  border-left-color: var(--desk-line);
+  background: var(--desk-warning-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip.cat-church {
+  border-left-color: var(--desk-line);
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip.cat-travel {
+  border-left-color: var(--desk-line);
+  background: var(--desk-danger-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip-time {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip-title {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip-loc {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip-del {
+  color: var(--desk-danger);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-empty-day {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-empty-day:hover {
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-cell {
+  background: var(--desk-surface);
+  border: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-cell:hover {
+  border-color: var(--desk-line);
+  background: var(--desk-hover);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-cell.is-selected {
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-cell-num {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-dot {
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-month-detail {
+  background: var(--desk-surface);
+  border: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-detail-header {
+  border-bottom: 1px solid var(--desk-line);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-no-events {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-briefing-fullscreen {
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-briefing-fullscreen-backdrop {
+  background: rgba(20, 39, 29, 0.48);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-fullscreen-briefing-section {
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-fullscreen-briefing-section
+  p {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-event-detail-meta-grid {
+  background: var(--desk-surface);
+  border: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-event-detail-val {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-event-detail-val
+  strong {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-event-detail-notes {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-event-source-tag {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-event-detail-actions {
+  border-top: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-button-secondary {
+  color: var(--desk-text);
+  background: var(--desk-hover);
+  border: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-button-secondary:hover {
+  background: var(--desk-hover);
+  border-color: var(--desk-line);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-button-danger {
+  color: var(--desk-danger);
+  background: var(--desk-danger-soft);
+  border: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-button-danger:hover {
+  background: var(--desk-danger-soft);
+  border-color: var(--desk-line);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dayline-event:hover {
+  background: var(--desk-hover);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-section-heading-row
+  h2 {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-fullscreen {
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-fullscreen-backdrop {
+  background: rgba(20, 39, 29, 0.48);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-close {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-close:hover,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-close:focus-visible {
+  color: var(--desk-text);
+  background: var(--desk-hover);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-task-title {
+  color: var(--desk-text);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-task-notes {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-fullscreen
+  .workroom-focus-ring {
+  background: conic-gradient(
+    var(--phase-warm) var(--focus-progress),
+    var(--desk-line) 0
+  );
+  box-shadow: none;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-fullscreen
+  .workroom-focus-ring::after {
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-fullscreen
+  .workroom-focus-ring
+  span {
+  color: var(--desk-text);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-fullscreen-status {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-durations
+  .workroom-sprint-choice {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-durations
+  .workroom-sprint-choice:hover {
+  background: var(--desk-hover);
+  color: var(--desk-text);
+  border-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-durations
+  .workroom-sprint-choice.is-active {
+  background: var(--desk-soft);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-cancel-btn {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-complete-btn {
+  background: var(--desk-soft);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-focus-complete-btn:hover {
+  background: var(--desk-soft);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-task-list {
+  scrollbar-color: #a8b7a4 transparent;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-task-list::-webkit-scrollbar-thumb {
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-compass-task {
+  border-top: 1px solid var(--desk-line);
+  border-left: 2px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-compass-task.priority-high {
+  border-left-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-task-select:hover
+  .workroom-task-title,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-task-select:focus-visible
+  .workroom-task-title {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-task-title {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-task-select
+  small {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-status-label {
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-status-label.status-overdue {
+  color: var(--desk-danger);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-status-label.status-today {
+  color: var(--desk-warning);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-display-check {
+  border: 1px solid var(--desk-line);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-display-check:hover,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-display-check:focus-visible {
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-mixed-action {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-mixed-action:hover {
+  background: var(--desk-hover);
+  border-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-mixed-action.is-urgent {
+  border-left-color: var(--desk-line);
+  background: var(--desk-danger-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-mixed-action.is-urgent:hover {
+  background: var(--desk-danger-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-mixed-action.is-pinned {
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-item-badge {
+  background: var(--desk-blue-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-item-badge.badge-task {
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-item-badge.badge-finance {
+  background: var(--desk-warning-soft);
+  color: var(--desk-warning);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-item-badge.badge-contact {
+  background: var(--desk-blue-soft);
+  color: var(--desk-blue);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-item-badge.is-urgent-badge {
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-item-badge.is-pinned-badge {
+  background: var(--desk-soft);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-mixed-action-title {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-mixed-action-meta {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-meta-time {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-meta-time.is-overdue {
+  color: var(--desk-danger);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-meta-detail {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-sprint-btn {
+  border: 1px solid var(--desk-line);
+  background: var(--desk-soft);
+  color: var(--desk-green);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-sprint-btn:hover {
+  background: var(--desk-soft);
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-review-later,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-restore-action {
+  border: 1px solid var(--desk-line);
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-review-later:hover,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-review-later:focus-visible,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-restore-action:hover,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-restore-action:focus-visible {
+  color: var(--desk-text);
+  border-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-radar-tab,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-operations-tab {
+  border: 1px solid var(--desk-line);
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-radar-tab
+  span,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-operations-tab
+  span {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-radar-tab.is-active,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-operations-tab.is-active {
+  color: var(--desk-text);
+  background: var(--desk-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-radar-tab.is-active
+  span,
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-operations-tab.is-active
+  span {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-radar-item {
+  border-top: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-radar-item.radar-urgent {
+  border-left-color: var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-radar-item.radar-urgent
+  span {
+  color: var(--desk-danger);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-radar-item
+  strong {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-radar-item
+  small {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-context-footer {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-tv-empty {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-complete-toast {
+  border: 1px solid var(--desk-line);
+  color: var(--desk-text);
+  background: var(--desk-soft);
+  box-shadow: none;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dialog-heading
+  h2 {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dialog-close {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-all-groups
+  h3
+  span {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-finished-task {
+  border-top: 1px solid var(--desk-line);
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-full-briefing
+  section {
+  border-left: 2px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-full-briefing
+  p {
+  color: var(--desk-text);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-briefing-receipt {
+  border-top: 1px solid var(--desk-line);
+  color: var(--desk-muted) !important;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-briefing-error {
+  border-left: 3px solid var(--desk-line);
+  color: var(--desk-danger) !important;
+  background: var(--desk-danger-soft);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-operations-tabs {
+  border-bottom: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-operations-heading
+  span {
+  color: var(--desk-muted);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-guest-welcome {
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-guest-welcome::before {
+  background: var(--desk-surface);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-guest-welcome::after {
+  border: 1px solid var(--desk-line);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-guest-welcome-copy
+  p {
+  color: var(--desk-warning);
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-guest-welcome-copy
+  h1 {
+  color: var(--desk-text);
+  font-family: Georgia, "Times New Roman", serif;
+  text-shadow: none;
+}
+
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-guest-welcome-copy
+  span:not(.workroom-guest-letter) {
+  color: var(--desk-text);
+}
+
+/* Shared controls and semantic states, matching the Teams workspace. */
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(h2, h3, h4) {
+  font-family: inherit;
+  color: var(--desk-text);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(.workroom-control-header h1, .workroom-gate h1) {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(button, .workroom-button, .workroom-view-tab) {
+  font-weight: 600;
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(
+    .workroom-panel,
+    .workroom-gate,
+    .workroom-dialog-panel,
+    .workroom-tv-card
+  ) {
+  border-radius: 12px;
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(.workroom-button, .workroom-button-secondary, .workroom-button-danger) {
+  border-radius: 8px;
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-button-quiet {
+  color: var(--desk-text);
+  background: var(--desk-surface);
+  border-color: var(--desk-line);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-button-quiet:hover {
+  background: var(--desk-hover);
+  border-color: #819c87;
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-button-primary {
+  color: #ffffff;
+  background: var(--desk-green);
+  border-color: var(--desk-green);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-button-primary:hover {
+  color: #ffffff;
+  background: #274633;
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-view-tab {
+  text-decoration: none;
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  a.workroom-view-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-view-tab.is-active {
+  color: var(--desk-green);
+  background: var(--desk-soft);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(a, summary) {
+  color: var(--desk-green);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(button, a, input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--desk-green);
+  outline-offset: 3px;
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(input, select, textarea) {
+  accent-color: var(--desk-green);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  ::placeholder {
+  color: var(--desk-muted);
+  opacity: 1;
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  option {
+  color: var(--desk-text);
+  background: var(--desk-surface);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-dialog-panel {
+  box-shadow: 0 20px 70px rgba(20, 39, 29, 0.18);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-stat {
+  border-left-color: var(--desk-green);
+  background: var(--desk-surface);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-health-row[data-state="error"] {
+  border-color: var(--desk-danger);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-source-health-row[data-state="running"] {
+  border-color: var(--desk-blue);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(
+    .workroom-action-row.priority-high,
+    .workroom-radar-item.radar-urgent,
+    .workroom-mixed-action.is-urgent
+  ) {
+  border-left-color: var(--desk-danger);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-row.priority-medium {
+  border-left-color: var(--desk-warning);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-action-row.priority-low {
+  border-left-color: var(--desk-green);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-guest-welcome::before {
+  background: repeating-linear-gradient(
+    120deg,
+    rgba(54, 90, 70, 0.03) 0 1px,
+    transparent 1px 2.5rem
+  );
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-guest-welcome-copy
+  h1 {
+  color: var(--desk-green);
+}
+@keyframes desk-sprint-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(54, 90, 70, 0.06);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(54, 90, 70, 0.12);
+  }
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-sprint-launcher.is-sprint-running {
+  animation-name: desk-sprint-pulse;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+    .workroom-sprint-launcher.is-sprint-running {
+    animation: none;
+  }
+}
+
+/* Keep completion controls and calendar category markers easy to distinguish. */
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(.workroom-check, .workroom-display-check) {
+  border-color: #718774;
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .is-done
+  .workroom-check {
+  color: #fff;
+  background: var(--desk-green);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(.workroom-check, .workroom-display-check):hover {
+  background: var(--desk-soft);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-compass-task.priority-high {
+  border-left-color: var(--desk-warning);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(.workroom-cal-chip.cat-work, .workroom-cal-chip.cat-church) {
+  border-left-color: var(--desk-green);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip.cat-family {
+  border-left-color: var(--desk-warning);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  .workroom-cal-chip.cat-travel {
+  border-left-color: var(--desk-danger);
+}
+
+/* Full-screen focus and briefing use an opaque quiet surface, not a modal scrim. */
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(.workroom-focus-fullscreen, .workroom-briefing-fullscreen) {
+  background: var(--desk-bg);
+}
+:is(body[data-page="workroom-control"], body[data-page="workroom-display"])
+  :is(
+    .workroom-focus-fullscreen-backdrop,
+    .workroom-briefing-fullscreen-backdrop
+  ) {
+  background: none;
+}
