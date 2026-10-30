@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Teams | SavemHQ</title>
+    <meta
+      name="description"
+      content="Shared projects in your private Workroom."
+    />
+    <link rel="stylesheet" href="teams.css" />
+  </head>
+  <body>
+    <a class="skip" href="#workspace">Skip to workspace</a>
+    <header class="topbar">
+      <a class="brand" href="workroom.html">S / <span>WORKROOM</span></a>
+      <nav aria-label="Workspace">
+        <a href="workroom.html">My Desk</a
+        ><a href="workroom-control.html">Control room</a
+        ><a href="teams.html" aria-current="page">Teams</a>
+      </nav>
+      <div id="header-auth-status" aria-live="polite"></div>
+      <button id="header-sign-in" class="hidden">Sign in</button
+      ><button id="header-sign-out" class="hidden">Sign out</button>
+    </header>
+    <main id="workspace">
+      <section id="gate">
+        <p class="eyebrow">Better, together</p>
+        <h1>A place for shared work.</h1>
+        <p id="gate-message" role="status">Checking Desk access…</p>
+        <button id="retry-access" hidden>Retry access check</button>
+      </section>
+      <div id="teams-app" hidden>
+        <section class="page-heading">
+          <div>
+            <p class="eyebrow">Your shared workspace</p>
+            <h1>Teams</h1>
+            <p>
+              Clear ownership. Shared progress. One place to move things
+              forward.
+            </p>
+          </div>
+          <button id="create-room" class="primary">+ Create team room</button>
+        </section>
+        <p id="notice" role="status" aria-live="polite"></p>
+        <section id="invitations" aria-label="Invitations"></section>
+        <div class="layout">
+          <aside>
+            <label for="room-select">Team room</label
+            ><select id="room-select">
+              <option value="">Choose a room</option>
+            </select>
+            <p id="room-description"></p>
+            <p id="my-role" class="muted"></p>
+            <button id="members-toggle" hidden>People & invitations</button
+            ><button id="archive-room" hidden></button>
+            <div id="room-empty" class="empty">
+              Create a room, or accept an invitation to get started. Your
+              personal Desk stays private.
+            </div>
+          </aside>
+          <section id="room-work" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" id="room-state">Shared projects</p>
+                <h2 id="room-name"></h2>
+              </div>
+              <button id="create-project" class="primary" hidden>
+                + New project
+              </button>
+            </div>
+            <div id="project-list" class="projects"></div>
+            <section id="project-work" hidden>
+              <div id="project-heading"></div>
+              <div class="toolbar">
+                <div class="filters" role="group" aria-label="Task view">
+                  <button data-filter="all" aria-pressed="true">
+                    All tasks</button
+                  ><button data-filter="mine" aria-pressed="false">
+                    My tasks</button
+                  ><button data-filter="people" aria-pressed="false">
+                    By person
+                  </button>
+                </div>
+                <button id="create-task" class="primary" hidden>
+                  + Add task
+                </button>
+              </div>
+              <div id="task-list"></div>
+            </section>
+            <details class="activity">
+              <summary>Recent activity</summary>
+              <div id="activity-list"></div>
+            </details>
+          </section>
+        </div>
+      </div>
+    </main>
+    <dialog id="editor" aria-labelledby="editor-title">
+      <form id="editor-form">
+        <div class="dialog-heading">
+          <h2 id="editor-title"></h2>
+          <button type="button" id="close-editor" aria-label="Close editor">
+            ×
+          </button>
+        </div>
+        <div id="editor-fields"></div>
+        <p id="editor-error" role="status" aria-live="polite"></p>
+        <footer>
+          <button type="button" id="cancel-editor">Cancel</button
+          ><button id="save-editor" class="primary" type="submit">Save</button>
+        </footer>
+      </form>
+    </dialog>
+    <dialog id="people" aria-labelledby="people-title">
+      <div class="dialog-heading">
+        <h2 id="people-title">People & invitations</h2>
+        <button id="close-people" aria-label="Close people">×</button>
+      </div>
+      <p id="people-note">
+        Everyone in this room can see its projects and tasks. Leaders manage
+        project work; the owner manages membership.
+      </p>
+      <div id="people-list"></div>
+      <section id="invite-section" hidden>
+        <h3>Invite someone</h3>
+        <p>
+          They need Desk approval and must accept using this email. Copy the
+          join link to send yourself; no email is sent automatically.
+        </p>
+        <form id="invite-form">
+          <label
+            >Email<input
+              name="email"
+              type="email"
+              maxlength="254"
+              required /></label
+          ><label
+            >Role<select name="role">
+              <option value="member">Member</option>
+              <option value="leader">Leader</option>
+            </select></label
+          ><button class="primary">Create invitation</button>
+        </form>
+        <div id="owner-invites"></div>
+      </section>
+      <p id="people-status" role="status" aria-live="polite"></p>
+    </dialog>
+    <dialog id="task-detail" aria-labelledby="task-title">
+      <div class="dialog-heading">
+        <h2 id="task-title"></h2>
+        <button id="close-task" aria-label="Close task">×</button>
+      </div>
+      <div id="task-description"></div>
+      <h3>Discussion</h3>
+      <div id="comments"></div>
+      <form id="comment-form">
+        <label for="comment-body">Add a comment</label
+        ><textarea id="comment-body" maxlength="2000" required></textarea
+        ><button class="primary">Post comment</button>
+        <p id="comment-status" role="status" aria-live="polite"></p>
+      </form>
+    </dialog>
+    <script src="js/teams/model.js"></script>
+    <script type="module" src="js/teams/app.js"></script>
+  </body>
+</html>

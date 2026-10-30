@@ -15,7 +15,10 @@
     "test:business:images": "node test/business-images.cjs",
     "test:billing:browser": "node test/billing-browser.cjs",
     "test:admin": "node --test test/admin-*.test.js",
-    "test:admin:browser": "node test/admin-browser.cjs"
+    "test:admin:browser": "node test/admin-browser.cjs",
+    "test:teams": "node --test test/teams-model.test.js",
+    "test:teams:rules": "firebase emulators:exec --project demo-teams --config ../firebase.json --only firestore \"node --test test/teams-rules.emulator.js\"",
+    "test:teams:browser": "node test/teams-browser.cjs"
   },
   "dependencies": {
     "@slack/web-api": "^7.12.0",

@@ -1,3 +1,4 @@
+import {watchAssignments,completeAssignment,taskLink} from './teams/api.js';
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -70,6 +71,8 @@ const listSourceCandidates = httpsCallable(functions, "listWorkroomAutomationCan
 const approveSourceCandidate = httpsCallable(functions, "approveWorkroomAutomationCandidate");
 const rejectSourceCandidate = httpsCallable(functions, "rejectWorkroomAutomationCandidate");
 let state = { user: null, session: null, profile: null, modules: [], projects: [], tasks: [], ideas: [], finance: [], contacts: [], ach: [], calendarEvents: [], briefing: {}, focus: {}, connections: [], currentView: "today", quickAddType: "task", onboardingPreset: "pastor", unsubscribers: [] };
+let personalTasks = [], teamTasks = [];
+let deskAuthEpoch = 0;
 let speechRecognition = null;
 let speechActive = false;
 let automationStatusInterval = null;
@@ -86,7 +89,7 @@ const notice = (message = "", error = false) => {
 };
 const clean = (value) => String(value || "").trim();
 const timestampForDate = (value) => value ? new Date(`${value}T12:00:00`) : null;
-const cleanUp = () => { state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; window.clearTimeout(sourcePollTimer); sourceStatusCache = null; sourceCandidateCache = []; sourceRunError = ""; };
+const cleanUp = () => { personalTasks=[]; teamTasks=[]; state.tasks=[]; elements.tasks.replaceChildren(); elements.todayActions?.replaceChildren(); state.unsubscribers.forEach((unsubscribe) => unsubscribe()); state.unsubscribers = []; window.clearTimeout(sourcePollTimer); sourceStatusCache = null; sourceCandidateCache = []; sourceRunError = ""; };
 const hasModule = (moduleId) => state.modules.includes(moduleId);
 const renderBriefingCount = () => {
   const count = Number(state.briefing.dailyRunCount || 0);
@@ -139,7 +142,7 @@ const renderToday = () => {
   ].map(([label, value]) => `<div class="workroom-stat"><strong>${value}</strong><span>${label}</span></div>`).join("");
   if (!elements.todayActions) return;
   const items = [
-    ...openTasks.map((item) => ({ ...item, itemType: "Task", date: item.dueDate, priority: item.priority, complete: "task" })),
+    ...openTasks.map((item) => ({ ...item, itemType: item.source === "team" ? "Team task" : "Task", detail: item.source === "team" ? item.roomName : "", date: item.dueDate, priority: item.priority, complete: "task" })),
     ...openContacts.map((item) => ({ ...item, itemType: "Follow-up", title: item.name, date: item.followUpDate, priority: "medium", complete: "contact", detail: item.reason })),
     ...openFinance.map((item) => ({ ...item, itemType: "Finance", date: item.dueDate, priority: item.urgency, complete: "finance", detail: item.category })),
   ].sort((left, right) => (dateMillis(left.date) || Number.MAX_SAFE_INTEGER) - (dateMillis(right.date) || Number.MAX_SAFE_INTEGER) || priorityRank(left.priority) - priorityRank(right.priority)).slice(0, 12);
@@ -479,7 +482,7 @@ const businessTaskLink = (task) => {
 const renderTasks = () => {
   const projectNames = new Map(state.projects.map((project) => [project.id, project.title]));
   const sorted = [...state.tasks].sort((a, b) => (a.status === "done") - (b.status === "done") || priorityRank(a.priority) - priorityRank(b.priority) || (a.dueDate?.toMillis?.() || Number.MAX_SAFE_INTEGER) - (b.dueDate?.toMillis?.() || Number.MAX_SAFE_INTEGER));
-  elements.tasks.innerHTML = sorted.length ? sorted.map((task) => `<div class="workroom-record ${task.status === "done" ? "is-done" : ""}"><button data-complete-task="${task.id}" class="workroom-check" aria-label="${task.status === "done" ? "Reopen" : "Complete"} ${escapeHtml(task.title)}">${task.status === "done" ? "✓" : ""}</button><div><strong>${escapeHtml(task.title)}</strong>${task.source === "business" && businessTaskLink(task) ? `<small><a href="${escapeHtml(businessTaskLink(task))}">Open business record</a></small>` : ""}<small><span class="workroom-priority ${escapeHtml(task.priority)}">${escapeHtml(task.priority)}</span>${task.projectId ? ` · ${escapeHtml(projectNames.get(task.projectId) || "Archived project")}` : ""}${task.dueDate ? ` · ${formatDay(task.dueDate)}` : ""}</small></div><button data-delete-task="${task.id}" class="workroom-icon-button" aria-label="Delete ${escapeHtml(task.title)}">×</button></div>`).join("") : `<p class="workroom-empty">Your action queue is clear.</p>`;
+  elements.tasks.innerHTML = sorted.length ? sorted.map((task) => `<div class="workroom-record ${task.status === "done" ? "is-done" : ""}"><button data-complete-task="${task.id}" class="workroom-check" aria-label="${task.status === "done" ? "Reopen" : "Complete"} ${escapeHtml(task.title)}">${task.status === "done" ? "✓" : ""}</button><div><strong>${escapeHtml(task.title)}</strong>${task.source === "team" ? `<small><a href="${escapeHtml(taskLink(task))}">Team: ${escapeHtml(task.roomName)} · Open shared project</a></small>` : ""}${task.source === "business" && businessTaskLink(task) ? `<small><a href="${escapeHtml(businessTaskLink(task))}">Open business record</a></small>` : ""}<small><span class="workroom-priority ${escapeHtml(task.priority)}">${escapeHtml(task.priority)}</span>${task.source !== "team" && task.projectId ? ` · ${escapeHtml(projectNames.get(task.projectId) || "Archived project")}` : ""}${task.dueDate ? ` · ${formatDay(task.dueDate)}` : ""}</small></div>${task.source === "team" ? `<small>${escapeHtml(task.teamStatus)}</small>` : `<button data-delete-task="${task.id}" class="workroom-icon-button" aria-label="Delete ${escapeHtml(task.title)}">×</button>`}</div>`).join("") : `<p class="workroom-empty">Your action queue is clear.</p>`;
   renderToday();
 };
 
@@ -539,7 +542,8 @@ const renderCalendarEvents = () => {
 const subscribe = (user) => {
   cleanUp();
   state.projects = []; state.ideas = []; state.finance = []; state.contacts = []; state.ach = []; state.calendarEvents = []; state.connections = [];
-  state.unsubscribers.push(onSnapshot(tasksRef(user.uid), (snapshot) => { state.tasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderTasks(); }));
+  state.unsubscribers.push(onSnapshot(tasksRef(user.uid), (snapshot) => { personalTasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); state.tasks=[...personalTasks,...teamTasks]; renderTasks(); }));
+  state.unsubscribers.push(watchAssignments(user.uid, tasks => { teamTasks=tasks; state.tasks=[...personalTasks,...teamTasks]; renderTasks(); }, error => notice("Shared tasks could not be loaded: " + error.message, true)));
   state.unsubscribers.push(onSnapshot(calendarEventsRef(user.uid), (snapshot) => { state.calendarEvents = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderCalendarEvents(); }));
   if (hasModule("projects")) state.unsubscribers.push(onSnapshot(projectsRef(user.uid), (snapshot) => { state.projects = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderProjects(); renderTasks(); }));
   if (hasModule("ideas")) state.unsubscribers.push(onSnapshot(ideasRef(user.uid), (snapshot) => { state.ideas = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); renderIdeas(); }));
@@ -681,7 +685,7 @@ document.addEventListener("click", (event) => {
   if (button.dataset.deleteAch) run(() => deleteDoc(doc(achEntriesRef(state.user.uid), button.dataset.deleteAch)));
   if (button.dataset.deleteIdea) run(() => deleteDoc(doc(ideasRef(state.user.uid), button.dataset.deleteIdea)), "Idea deleted.");
   if (button.dataset.deleteEvent) run(() => deleteDoc(doc(calendarEventsRef(state.user.uid), button.dataset.deleteEvent)), "Event deleted.");
-  if (taskId) { const task = state.tasks.find((item) => item.id === taskId); run(() => updateDoc(doc(tasksRef(state.user.uid), taskId), { status: task.status === "done" ? "next" : "done", completedAt: task.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
+  if (taskId) { const task = state.tasks.find((item) => item.id === taskId); if (!task) return; if (task.source === "team") { run(() => completeAssignment(task, task.status === "done" ? "todo" : "done"), "Shared task updated."); return; } run(() => updateDoc(doc(tasksRef(state.user.uid), taskId), { status: task.status === "done" ? "next" : "done", completedAt: task.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
   if (financeId) { const item = state.finance.find((record) => record.id === financeId); run(() => updateDoc(doc(financeRef(state.user.uid), financeId), { status: item.status === "done" ? "open" : "done", completedAt: item.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
   if (button.dataset.completeContact) { const item = state.contacts.find((record) => record.id === button.dataset.completeContact); run(() => updateDoc(doc(contactFollowUpsRef(state.user.uid), item.id), { status: item.status === "done" ? "open" : "done", completedAt: item.status === "done" ? null : new Date(), updatedAt: serverTimestamp() })); }
   if (button.dataset.disconnectConnection) run(() => googleDisconnect({ connectionId: button.dataset.disconnectConnection }), "Google account disconnected.");
@@ -697,12 +701,13 @@ document.addEventListener("change", (event) => {
 });
 
 onAuthStateChanged(auth, async (user) => {
+  const authEpoch = ++deskAuthEpoch;
   cleanUp();
   clearAutomationStatusTimer();
   state.user = user;
   state.session = null; state.profile = null; state.modules = [];
   if (!user) { elements.app.classList.add("hidden"); elements.onboarding.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.remove("hidden"); elements.gateMessage.textContent = "Sign in to open your Desk."; renderAutomationStatus(null); return; }
-  try { state.session = await resolveDeskSession(user); } catch (error) { elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = `Desk access could not be checked: ${error.message || "unknown error"}`; return; }
+  try { const session = await resolveDeskSession(user); if (authEpoch !== deskAuthEpoch) return; state.session = session; } catch (error) { if (authEpoch !== deskAuthEpoch) return; elements.app.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = `Desk access could not be checked: ${error.message || "unknown error"}`; return; }
   if (!state.session.hasDeskAccess) { elements.app.classList.add("hidden"); elements.onboarding.classList.add("hidden"); elements.gate.classList.remove("hidden"); elements.signIn.classList.add("hidden"); elements.gateMessage.textContent = state.session.approvalStatus === "pending" ? "Your Desk request is waiting for approval." : "This account has not been granted Desk access."; renderAutomationStatus(null); return; }
   state.profile = state.session.profile; state.modules = state.session.modules;
   elements.gate.classList.add("hidden"); elements.app.classList.remove("hidden");

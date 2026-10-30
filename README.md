@@ -355,3 +355,7 @@ See [Business portal development, financial conventions, pilot, and rollout](doc
 ## Admin Workspace
 
 `admin.html` provides searchable People & Access management and score-preserving Competition Locks. Aftercare has been retired from SavemHQ; stored history remains protected in Firestore. See [Admin workflow, validation, and rollout](docs/admin-workspace.md).
+
+## Workroom Teams
+
+`teams.html` adds private shared rooms, email invitations, owner/leader/member roles, shared projects, assignments, comments, and automatic progress. Assigned work appears in both existing Desk views using the same canonical task. Personal Workroom and business data remain separate. See [Phased implementation guide, permissions, pilot bounds, and deployment](docs/workroom-teams.md).
