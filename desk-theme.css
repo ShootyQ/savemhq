@@ -1,7 +1,7 @@
 /* Desk appearance only. Existing layout, spacing and breakpoints remain in styles.css. */
 :is(body[data-page="workroom-control"], body[data-page="workroom-display"]) {
-  --desk-bg: #f7f8f4;
-  --desk-surface: #ffffff;
+  --desk-bg: #f0f2ec;
+  --desk-surface: #f8f9f5;
   --desk-soft: #e3ebdf;
   --desk-hover: #f1f4ed;
   --desk-text: #27372f;
