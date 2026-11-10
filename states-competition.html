@@ -1,666 +1,264 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Andy and Savannah's States Competition | SavemHQ</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Plate League | Andy & Savannah | SavemHQ</title>
     <meta
       name="description"
-      content="Track Andy and Savannah's monthly license plate spotting competition with winners, sightings, and yearly stats."
+      content="Andy and Savannah’s live monthly license plate scores, season standings, and state comparisons."
     />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="plates.css?v=scoreboard-20261110" />
   </head>
   <body data-page="competition">
-    <a class="skip-link" href="#main-content">Skip to content</a>
+    <a class="skip-link" href="#main-content">Skip to scores</a>
     <div id="site-header-root"></div>
-
-    <main id="main-content">
-      <section class="hero section">
-        <div class="container hero-inner">
-          <p class="tagline">License Plate League</p>
-          <h1>Andy and Savannah's States Competition</h1>
-          <p class="subheadline">
-            A live family rivalry with monthly winners, spotted-state logs, and year-to-date momentum.
+    <main id="main-content" class="plate-shell">
+      <header class="plate-page-heading">
+        <div>
+          <p class="plate-kicker">Andy & Savannah · 2026 season</p>
+          <h1>License Plate League</h1>
+          <p class="plate-subtitle">
+            A little friendly rivalry. One state at a time.
           </p>
-          <div class="hero-surface">
-            <p class="intro">
-              The board below updates from Firestore in realtime. Track monthly results, review exactly which states were logged, and watch streaks evolve across the year.
+        </div>
+        <div class="plate-sync">
+          <span id="sync-status" role="status">Loading scores…</span
+          ><button id="retry-scores" class="plate-button" hidden>Retry</button>
+        </div>
+      </header>
+      <div id="score-loading" class="plate-loading" role="status">
+        Getting the latest scores…
+      </div>
+      <div id="score-content" hidden>
+        <section
+          id="selected-month"
+          class="plate-matchup plate-surface"
+          aria-labelledby="matchup-title"
+        >
+          <div class="plate-matchup-heading">
+            <div>
+              <p class="plate-kicker" id="month-context">This month</p>
+              <h2 id="matchup-title"></h2>
+            </div>
+            <div class="plate-month-controls">
+              <label for="month-select">View month</label
+              ><select id="month-select"></select
+              ><button id="current-month" class="plate-button" hidden>
+                Back to current month
+              </button>
+            </div>
+          </div>
+          <div class="plate-score-pair">
+            <div class="plate-player plate-andy">
+              <h3>Andy</h3>
+              <p id="andy-score" class="plate-score">—</p>
+              <span>states spotted</span>
+            </div>
+            <div class="plate-player plate-savannah">
+              <h3>Savannah</h3>
+              <p id="savannah-score" class="plate-score">—</p>
+              <span>states spotted</span>
+            </div>
+          </div>
+          <div class="plate-matchup-footer">
+            <div>
+              <span id="month-status" class="plate-status"></span>
+              <p id="month-result" class="plate-result"></p>
+            </div>
+            <a
+              id="matchup-add"
+              class="plate-button plate-button-primary"
+              href="plate-entry.html"
+              hidden
+              >Add Plates</a
+            >
+          </div>
+        </section>
+        <section
+          class="plate-season plate-surface"
+          aria-labelledby="season-title"
+        >
+          <div>
+            <p class="plate-kicker" id="season-title">Season wins</p>
+            <p id="season-lead"></p>
+          </div>
+          <div class="plate-season-tally">
+            <div class="plate-andy">
+              <span>Andy</span><strong id="andy-wins">0</strong>
+            </div>
+            <div class="plate-savannah">
+              <span>Savannah</span><strong id="savannah-wins">0</strong>
+            </div>
+            <div><span>Ties</span><strong id="season-ties">0</strong></div>
+          </div>
+          <p id="season-finalized" class="plate-note"></p>
+        </section>
+        <p id="season-empty" class="plate-empty" hidden>
+          No scores have been recorded for this season yet. Approved players can
+          use Add Plates to start.
+        </p>
+        <section
+          id="monthly-scoreboard"
+          class="plate-history"
+          aria-labelledby="history-title"
+        >
+          <div class="plate-section-heading">
+            <div>
+              <p class="plate-kicker">The year at a glance</p>
+              <h2 id="history-title">Monthly results</h2>
+            </div>
+            <a class="plate-text-link" href="#plate-views">Compare states ↓</a>
+          </div>
+          <div class="plate-table-wrap plate-surface">
+            <table class="plate-results">
+              <caption class="plate-sr-only">
+                2026 monthly results. Choose a month to view its scores and
+                state comparison.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Month</th>
+                  <th scope="col" class="plate-andy">Andy</th>
+                  <th scope="col" class="plate-savannah">Savannah</th>
+                  <th scope="col">Result</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody id="month-results"></tbody>
+            </table>
+          </div>
+        </section>
+        <details id="plate-views" class="plate-details plate-surface">
+          <summary>
+            <span
+              ><span class="plate-kicker">One month, side by side</span
+              ><span class="plate-details-title"
+                >State comparison ·
+                <span id="comparison-month"></span></span></span
+            ><span class="plate-details-arrow" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="plate-details-body">
+            <p id="comparison-note" class="plate-note"></p>
+            <div id="comparison-tools">
+              <div
+                class="plate-filters"
+                role="group"
+                aria-label="State comparison filter"
+              >
+                <button
+                  class="plate-button"
+                  data-filter="all"
+                  aria-pressed="true"
+                >
+                  All logged</button
+                ><button
+                  class="plate-button"
+                  data-filter="both"
+                  aria-pressed="false"
+                >
+                  Both</button
+                ><button
+                  class="plate-button"
+                  data-filter="andy"
+                  aria-pressed="false"
+                >
+                  Andy only</button
+                ><button
+                  class="plate-button"
+                  data-filter="savannah"
+                  aria-pressed="false"
+                >
+                  Savannah only
+                </button>
+              </div>
+              <label class="plate-search" for="state-search"
+                >Find a state<input
+                  id="state-search"
+                  type="search"
+                  placeholder="Search states…"
+                  autocomplete="off"
+              /></label>
+            </div>
+            <p id="comparison-count" class="plate-note"></p>
+            <div class="plate-state-table-wrap">
+              <table id="comparison-table" class="plate-state-table">
+                <caption class="plate-sr-only">
+                  States in the available logs for the selected month
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">State</th>
+                    <th scope="col" class="plate-andy">Andy</th>
+                    <th scope="col" class="plate-savannah">Savannah</th>
+                  </tr>
+                </thead>
+                <tbody id="state-comparison"></tbody>
+              </table>
+            </div>
+            <p id="comparison-empty" class="plate-empty" hidden></p>
+            <p class="plate-note plate-coverage">
+              Coverage: 50 states + D.C. “Only” means only in the available
+              logs.
             </p>
           </div>
-          <div class="hero-actions">
-            <a class="btn btn-primary" href="#monthly-scoreboard">See Monthly Scores</a>
-            <a class="btn btn-secondary" href="#plate-views">Browse State Logs</a>
+        </details>
+        <details id="yearly-stats" class="plate-details plate-surface">
+          <summary>
+            <span
+              ><span class="plate-kicker">The bigger picture</span
+              ><span class="plate-details-title">Season stats</span></span
+            ><span class="plate-details-arrow" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="plate-details-body">
+            <div class="plate-stats-grid">
+              <section>
+                <h3>State-count totals</h3>
+                <p class="plate-note">
+                  Monthly scores added together. A state can count again in
+                  another month.
+                </p>
+                <p id="state-totals"></p>
+              </section>
+              <section>
+                <h3>Distinct states in the logs</h3>
+                <p id="unique-states"></p>
+                <p id="unique-note" class="plate-note"></p>
+              </section>
+              <section>
+                <h3>Best combined month</h3>
+                <p id="best-month"></p>
+                <p class="plate-note">
+                  Andy and Savannah’s scores added together.
+                </p>
+              </section>
+              <section>
+                <h3>Win streaks</h3>
+                <p id="current-streak"></p>
+                <p id="longest-streak"></p>
+                <p class="plate-note">
+                  Consecutive finalized calendar-month wins. A tie, no result,
+                  or gap breaks a streak.
+                </p>
+              </section>
+            </div>
           </div>
-        </div>
-      </section>
-
-      <section id="monthly-scoreboard" class="section section-card">
-        <div class="container">
-          <p class="section-kicker">Scoreboard</p>
-          <h2>Monthly Scoreboard (2026)</h2>
-          <p class="section-intro">Live totals for each month with lock status and winner callouts.</p>
-          <p id="data-source-note" class="small-note">Data source: Firestore realtime.</p>
-          <div id="monthly-grid" class="project-grid" aria-live="polite"></div>
-        </div>
-      </section>
-
-      <section id="plate-views" class="section">
-        <div class="container">
-          <p class="section-kicker">State Logs</p>
-          <h2>Plates Seen By Month</h2>
-          <p class="section-intro">
-            Expand each card to inspect Savannah and Andy sightings side by side.
-          </p>
-          <div id="monthly-plates" class="project-grid" aria-live="polite"></div>
-          <p class="small-note">Tip: month cards are generated from the same source as the scoreboard for consistency.</p>
-        </div>
-      </section>
-
-      <section id="yearly-stats" class="section section-card">
-        <div class="container">
-          <p class="section-kicker">Season Summary</p>
-          <h2>Yearly Fun Stats</h2>
-          <div id="yearly-grid" class="project-grid" aria-live="polite"></div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <div class="container footer-wrap">
-        <p>License plates, side quests, and family glory.</p>
-        <nav aria-label="Footer">
-          <ul class="footer-nav">
-            <li><a href="index.html">Home</a></li>
-            <li><a href="#monthly-scoreboard">Monthly</a></li>
-            <li><a href="#plate-views">Plates</a></li>
-            <li><a href="#yearly-stats">Yearly</a></li>
-          </ul>
-        </nav>
+        </details>
       </div>
+      <p
+        id="score-announcement"
+        class="plate-sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      ></p>
+    </main>
+    <footer class="plate-footer">
+      <a href="index.html">SavemHQ home</a
+      ><span>License plates, side quests, and family glory.</span>
     </footer>
-
-    <script type="module">
-      import { getAnalytics, isSupported as analyticsSupported } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js";
-      import {
-        collection,
-        doc,
-        getDocs,
-        onSnapshot,
-        serverTimestamp,
-        writeBatch,
-      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-      import { app, db, initHeaderAuth } from "./js/auth-shared.js";
-      import { initHeaderShell } from "./js/header-shell.js";
-      import { mountSiteHeader } from "./js/header-component.js";
-      import { initRevealMotion, refreshRevealMotion } from "./js/reveal-motion.js";
-
-      mountSiteHeader({
-        brandHref: "index.html",
-        navLinks: [
-          { label: "Home", href: "index.html" },
-          { label: "Road Trip", href: "carlsons-road-trip.html" },
-          { label: "Monthly", href: "#monthly-scoreboard" },
-          { label: "States", href: "#plate-views" },
-          { label: "Yearly", href: "#yearly-stats" },
-        ],
-      });
-
-      const competitionData = {
-        year: 2026,
-        months: [
-          {
-            month: "January",
-            andyStates: [],
-            savannahStates: [],
-            manualCounts: {
-              andy: 28,
-              savannah: 29,
-            },
-            locked: true,
-          },
-          {
-            month: "February",
-            andyStates: [
-              "Arizona",
-              "California",
-              "Colorado",
-              "Delaware",
-              "Florida",
-              "Georgia",
-              "Idaho",
-              "Illinois",
-              "Iowa",
-              "Kansas",
-              "Louisiana",
-              "Maryland",
-              "Michigan",
-              "Minnesota",
-              "Missouri",
-              "New York",
-              "North Carolina",
-              "North Dakota",
-              "Ohio",
-              "Oklahoma",
-              "Oregon",
-              "South Dakota",
-              "Tennessee",
-              "Texas",
-              "Virginia",
-              "District of Columbia",
-              "Washington",
-              "Wisconsin",
-            ],
-            savannahStates: [
-              "Alabama",
-              "Arizona",
-              "California",
-              "Colorado",
-              "Delaware",
-              "Florida",
-              "Illinois",
-              "Indiana",
-              "Iowa",
-              "Louisiana",
-              "Maryland",
-              "Massachusetts",
-              "Michigan",
-              "Minnesota",
-              "Mississippi",
-              "Missouri",
-              "Nebraska",
-              "New Jersey",
-              "New Mexico",
-              "North Dakota",
-              "Ohio",
-              "Oregon",
-              "Pennsylvania",
-              "South Carolina",
-              "South Dakota",
-              "Tennessee",
-              "Texas",
-              "Virginia",
-              "Wisconsin",
-            ],
-          },
-          {
-            month: "March",
-            andyStates: [],
-            savannahStates: [],
-          },
-        ],
-      };
-
-      const monthlyGrid = document.getElementById("monthly-grid");
-      const monthlyPlates = document.getElementById("monthly-plates");
-      const yearlyGrid = document.getElementById("yearly-grid");
-      const headerAuthStatus = document.getElementById("header-auth-status");
-      const dataSourceNote = document.getElementById("data-source-note");
-      const competitionYear = competitionData.year;
-      const monthsCollection = collection(db, "competitions", String(competitionYear), "months");
-      const COLLAPSE_STORAGE_PREFIX = "savemhq-month-collapsed-";
-      const mobileMediaQuery = window.matchMedia("(max-width: 700px)");
-      let latestMonths = [...competitionData.months];
-
-      analyticsSupported().then((supported) => {
-        if (supported) {
-          getAnalytics(app);
-        }
-      });
-
-      const slugifyMonth = (monthName) =>
-        monthName
-          .toLowerCase()
-          .trim()
-          .replace(/\s+/g, "-");
-
-      const monthMetaById = new Map(
-        competitionData.months.map((monthData, index) => [slugifyMonth(monthData.month), { month: monthData.month, order: index }])
-      );
-
-      const winnerForMonth = (monthData) => {
-        if (monthData.andy === 0 && monthData.savannah === 0) {
-          return "In progress";
-        }
-
-        if (monthData.andy > monthData.savannah) {
-          return "Andy";
-        }
-
-        if (monthData.savannah > monthData.andy) {
-          return "Savannah";
-        }
-
-        return "Tie";
-      };
-
-      const winnerClass = (winner) => {
-        if (winner === "Andy") {
-          return "is-andy";
-        }
-        if (winner === "Savannah") {
-          return "is-savannah";
-        }
-        if (winner === "Tie") {
-          return "is-tie";
-        }
-        return "is-open";
-      };
-
-      const leaderLabel = (monthData) => {
-        if (monthData.andy === 0 && monthData.savannah === 0) {
-          return "No leader yet";
-        }
-        if (monthData.andy === monthData.savannah) {
-          return "Even";
-        }
-        return monthData.andy > monthData.savannah ? "Andy" : "Savannah";
-      };
-
-      const renderMonthOptions = (months) => {
-        months.forEach((monthData, index) => {
-          monthMetaById.set(slugifyMonth(monthData.month), {
-            month: monthData.month,
-            order: Number.isFinite(monthData.order) ? monthData.order : index,
-          });
-        });
-      };
-
-      const hasScoreData = (monthData) => {
-        const andyCount = Array.isArray(monthData.andyStates) ? monthData.andyStates.length : 0;
-        const savannahCount = Array.isArray(monthData.savannahStates) ? monthData.savannahStates.length : 0;
-        const manualAndy = Number(monthData?.manualCounts?.andy);
-        const manualSavannah = Number(monthData?.manualCounts?.savannah);
-        const hasManual = Number.isFinite(manualAndy) && Number.isFinite(manualSavannah);
-        return andyCount + savannahCount > 0 || hasManual;
-      };
-
-      const mergeWithFallbackMonths = (firestoreMonths) => {
-        const monthById = new Map();
-        firestoreMonths.forEach((monthData) => {
-          const monthId = slugifyMonth(monthData.month || monthData.id || "");
-          if (!monthId) {
-            return;
-          }
-          monthById.set(monthId, monthData);
-        });
-
-        competitionData.months.forEach((fallbackMonth, index) => {
-          const monthId = slugifyMonth(fallbackMonth.month);
-          const fallbackValue = {
-            month: fallbackMonth.month,
-            order: index,
-            andyStates: Array.isArray(fallbackMonth.andyStates) ? fallbackMonth.andyStates : [],
-            savannahStates: Array.isArray(fallbackMonth.savannahStates) ? fallbackMonth.savannahStates : [],
-            manualCounts: fallbackMonth.manualCounts || null,
-            locked: Boolean(fallbackMonth.locked),
-          };
-
-          const existing = monthById.get(monthId);
-          if (!existing) {
-            monthById.set(monthId, fallbackValue);
-            return;
-          }
-
-          if (!hasScoreData(existing)) {
-            monthById.set(monthId, {
-              ...fallbackValue,
-              ...existing,
-              month: existing.month || fallbackValue.month,
-              order: existing.order ?? fallbackValue.order,
-              andyStates: Array.isArray(existing.andyStates) && existing.andyStates.length ? existing.andyStates : fallbackValue.andyStates,
-              savannahStates: Array.isArray(existing.savannahStates) && existing.savannahStates.length ? existing.savannahStates : fallbackValue.savannahStates,
-              manualCounts: existing.manualCounts || fallbackValue.manualCounts,
-              locked: Boolean(existing.locked),
-            });
-          }
-        });
-
-        return Array.from(monthById.values());
-      };
-
-      const collapseStorageKey = (monthId) => `${COLLAPSE_STORAGE_PREFIX}${monthId}`;
-
-      const isMonthCollapsed = (monthId) => {
-        if (!mobileMediaQuery.matches) {
-          return false;
-        }
-
-        const stored = localStorage.getItem(collapseStorageKey(monthId));
-        if (stored === null) {
-          return true;
-        }
-        return stored === "1";
-      };
-
-      const setMonthCollapsed = (monthId, isCollapsed) => {
-        localStorage.setItem(collapseStorageKey(monthId), isCollapsed ? "1" : "0");
-      };
-
-      const renderCompetition = (months) => {
-        latestMonths = months;
-        const monthScores = months.map((monthData) => {
-          const andyStates = Array.isArray(monthData.andyStates) ? monthData.andyStates : [];
-          const savannahStates = Array.isArray(monthData.savannahStates) ? monthData.savannahStates : [];
-          const manualAndy = Number(monthData?.manualCounts?.andy);
-          const manualSavannah = Number(monthData?.manualCounts?.savannah);
-          const useManualCounts = Number.isFinite(manualAndy) && Number.isFinite(manualSavannah);
-          const monthlyStates = Array.from(new Set([...savannahStates, ...andyStates]));
-          const andy = useManualCounts ? manualAndy : andyStates.length;
-          const savannah = useManualCounts ? manualSavannah : savannahStates.length;
-          const winner = winnerForMonth({ andy, savannah });
-
-          return {
-            ...monthData,
-            andy,
-            savannah,
-            useManualCounts,
-            andyStates,
-            savannahStates,
-            statesSeen: monthlyStates,
-            winner,
-            totalSpots: andy + savannah,
-            uniqueStates: monthlyStates.length,
-            locked: Boolean(monthData.locked),
-          };
-        });
-
-        monthlyGrid.innerHTML = monthScores
-          .map(
-            (monthData) => {
-              const leadCount = Math.abs(monthData.andy - monthData.savannah);
-              const leader = leaderLabel(monthData);
-              const leadLabel =
-                leader === "No leader yet"
-                  ? "No spots logged yet"
-                  : leader === "Even"
-                    ? "Dead even"
-                    : `${leader} leads by ${leadCount}`;
-              const resultPrefix = monthData.locked ? "Winner" : "Winning";
-              const resultValue =
-                leader === "No leader yet"
-                  ? "No leader yet"
-                  : leader === "Even" && monthData.locked
-                    ? "Tie"
-                    : leader;
-              const resultClass = leader === "No leader yet" ? "is-open" : winnerClass(leader === "Even" ? "Tie" : leader);
-
-              return `
-              <article class="project-card month-score-card">
-                <div class="month-card-header month-headline">
-                  <h3>${monthData.month}</h3>
-                  <span class="status-chip ${monthData.locked ? "is-locked" : "is-open"}">${monthData.locked ? "Locked" : "Open"}</span>
-                </div>
-                <div class="score-duo">
-                  <div class="score-lane">
-                    <p class="score-label">Andy</p>
-                    <p class="score-value">${monthData.andy}</p>
-                  </div>
-                  <div class="score-lane">
-                    <p class="score-label">Savannah</p>
-                    <p class="score-value">${monthData.savannah}</p>
-                  </div>
-                </div>
-                <div class="score-bar" aria-hidden="true">
-                  <span style="width: ${monthData.totalSpots ? Math.round((monthData.andy / monthData.totalSpots) * 100) : 50}%"></span>
-                </div>
-                <div class="month-meta-row">
-                  <span class="winner-pill ${resultClass}">${resultPrefix}: ${resultValue}</span>
-                  <span class="small-note">${leadLabel}</span>
-                  <span class="small-note">Unique states: ${monthData.uniqueStates}</span>
-                </div>
-              </article>
-            `;
-            }
-          )
-          .join("");
-
-        monthlyPlates.innerHTML = monthScores
-          .map((monthData) => {
-            const savannahStatePills = monthData.savannahStates
-              .map((stateName) => `<span class="state-pill seen">${stateName}</span>`)
-              .join("");
-
-            const andyStatePills = monthData.andyStates
-              .map((stateName) => `<span class="state-pill seen">${stateName}</span>`)
-              .join("");
-
-            const monthId = slugifyMonth(monthData.month);
-            const isCollapsed = isMonthCollapsed(monthId);
-
-            return `
-              <article class="project-card month-plate-card">
-                <div class="month-card-header">
-                  <h3>${monthData.month}</h3>
-                  <button class="month-toggle-btn" type="button" data-month-id="${monthId}" aria-expanded="${String(!isCollapsed)}">
-                    ${isCollapsed ? "Show states" : "Hide states"}
-                  </button>
-                </div>
-                <div class="month-plate-meta">
-                  <span><strong>Unique states:</strong> ${monthData.uniqueStates}</span>
-                  <span><strong>Total spots:</strong> ${monthData.totalSpots}</span>
-                </div>
-                <div class="month-card-details ${isCollapsed ? "is-collapsed" : ""}" data-month-id="${monthId}">
-                  <div class="player-state-block">
-                    <p class="player-state-title">Savannah spotted</p>
-                    <div class="month-states-wrap">${savannahStatePills || `<p class="small-note">${monthData.useManualCounts ? "No state-level logs for this finalized month." : "No sightings logged yet."}</p>`}</div>
-                  </div>
-                  <div class="player-state-block">
-                    <p class="player-state-title">Andy spotted</p>
-                    <div class="month-states-wrap">${andyStatePills || `<p class="small-note">${monthData.useManualCounts ? "No state-level logs for this finalized month." : "No sightings logged yet."}</p>`}</div>
-                  </div>
-                </div>
-              </article>
-            `;
-          })
-          .join("");
-
-        const finalizedMonths = monthScores.filter((monthData) => monthData.locked);
-        const decidedFinalizedMonths = finalizedMonths.filter((monthData) => monthData.winner === "Andy" || monthData.winner === "Savannah");
-        const andyWins = decidedFinalizedMonths.filter((monthData) => monthData.winner === "Andy").length;
-        const savannahWins = decidedFinalizedMonths.filter((monthData) => monthData.winner === "Savannah").length;
-        const combinedStatesSet = new Set(monthScores.flatMap((monthData) => monthData.statesSeen));
-
-        const bestMonth = monthScores.reduce(
-          (best, monthData) => (monthData.totalSpots > best.totalSpots ? monthData : best),
-          { month: "N/A", totalSpots: -1 }
-        );
-
-        let currentStreakWinner = "None";
-        let currentStreakCount = 0;
-        for (let index = monthScores.length - 1; index >= 0; index -= 1) {
-          if (!monthScores[index].locked) {
-            continue;
-          }
-
-          const winner = monthScores[index].winner;
-          if (winner === "In progress" || winner === "Tie") {
-            continue;
-          }
-
-          if (currentStreakWinner === "None") {
-            currentStreakWinner = winner;
-            currentStreakCount = 1;
-            continue;
-          }
-
-          if (winner === currentStreakWinner) {
-            currentStreakCount += 1;
-          } else {
-            break;
-          }
-        }
-
-        let longestStreakWinner = "None";
-        let longestStreakCount = 0;
-        let runWinner = "";
-        let runCount = 0;
-
-        monthScores.forEach((monthData) => {
-          if (!monthData.locked) {
-            return;
-          }
-
-          if (monthData.winner === "In progress" || monthData.winner === "Tie") {
-            runWinner = "";
-            runCount = 0;
-            return;
-          }
-
-          if (monthData.winner === runWinner) {
-            runCount += 1;
-          } else {
-            runWinner = monthData.winner;
-            runCount = 1;
-          }
-
-          if (runCount > longestStreakCount) {
-            longestStreakCount = runCount;
-            longestStreakWinner = runWinner;
-          }
-        });
-
-        yearlyGrid.innerHTML = `
-          <article class="project-card year-stat-card">
-            <h3>Monthly Wins</h3>
-            <p class="year-stat-value">${andyWins} - ${savannahWins}</p>
-            <p><strong>Andy:</strong> ${andyWins}</p>
-            <p><strong>Savannah:</strong> ${savannahWins}</p>
-            <p class="small-note"><strong>Finalized months counted:</strong> ${finalizedMonths.length}</p>
-          </article>
-          <article class="project-card year-stat-card">
-            <h3>Total Unique States Seen</h3>
-            <p class="year-stat-value">${combinedStatesSet.size}</p>
-            <p><strong>Combined ${competitionYear}:</strong> ${combinedStatesSet.size}</p>
-            <p><strong>Best spotting month:</strong> ${bestMonth.month} (${bestMonth.totalSpots} total spots)</p>
-          </article>
-          <article class="project-card year-stat-card">
-            <h3>Streak Watch</h3>
-            <p class="year-stat-value">${longestStreakCount}</p>
-            <p><strong>Current streak:</strong> ${currentStreakWinner} (${currentStreakCount} month${currentStreakCount === 1 ? "" : "s"})</p>
-            <p><strong>Longest streak:</strong> ${longestStreakWinner} (${longestStreakCount} month${longestStreakCount === 1 ? "" : "s"})</p>
-          </article>
-        `;
-
-        refreshRevealMotion({ scope: monthlyGrid });
-        refreshRevealMotion({ scope: monthlyPlates });
-        refreshRevealMotion({ scope: yearlyGrid });
-
-        document.querySelector("#monthly-scoreboard h2").textContent = `Monthly Scoreboard (${competitionYear})`;
-      };
-
-      const seedMonthsIfNeeded = async () => {
-        const existing = await getDocs(monthsCollection);
-        if (!existing.empty) {
-          return;
-        }
-
-        const batch = writeBatch(db);
-        competitionData.months.forEach((monthData, index) => {
-          const monthId = slugifyMonth(monthData.month);
-          const monthDoc = doc(monthsCollection, monthId);
-          batch.set(monthDoc, {
-            month: monthData.month,
-            order: index,
-            andyStates: monthData.andyStates,
-            savannahStates: monthData.savannahStates,
-            manualCounts: monthData.manualCounts || null,
-            locked: Boolean(monthData.locked),
-            updatedAt: serverTimestamp(),
-          });
-        });
-        await batch.commit();
-      };
-
-      monthlyPlates.addEventListener("click", (event) => {
-        const target = event.target;
-        if (!(target instanceof HTMLElement)) {
-          return;
-        }
-
-        const toggleButton = target.closest(".month-toggle-btn");
-        if (!(toggleButton instanceof HTMLButtonElement)) {
-          return;
-        }
-
-        const monthId = String(toggleButton.dataset.monthId || "");
-        if (!monthId) {
-          return;
-        }
-
-        const nextCollapsed = !isMonthCollapsed(monthId);
-        setMonthCollapsed(monthId, nextCollapsed);
-        renderCompetition(latestMonths);
-      });
-
-      mobileMediaQuery.addEventListener("change", () => {
-        renderCompetition(latestMonths);
-      });
-
-      onSnapshot(
-        monthsCollection,
-        async (snapshot) => {
-          if (snapshot.empty) {
-            try {
-              await seedMonthsIfNeeded();
-              return;
-            } catch (error) {
-              console.error("Could not seed month data", error);
-              renderCompetition(competitionData.months);
-              renderMonthOptions(competitionData.months);
-              if (dataSourceNote) {
-                dataSourceNote.textContent = "Data source: Local fallback (seed failed).";
-              }
-              headerAuthStatus.textContent = "Could not load Firestore data yet. Check Firebase rules/config.";
-              return;
-            }
-          }
-
-          const firestoreMonths = snapshot.docs.map((documentSnapshot) => {
-            const data = documentSnapshot.data();
-            const meta = monthMetaById.get(documentSnapshot.id);
-            return {
-              id: documentSnapshot.id,
-              month: data.month || meta?.month || null,
-              order: Number.isFinite(Number(data.order)) ? Number(data.order) : meta?.order ?? null,
-              andyStates: Array.isArray(data.andyStates) ? data.andyStates : [],
-              savannahStates: Array.isArray(data.savannahStates) ? data.savannahStates : [],
-              manualCounts: data.manualCounts && typeof data.manualCounts === "object" ? data.manualCounts : null,
-              locked: Boolean(data.locked),
-            };
-          });
-
-          const months = mergeWithFallbackMonths(firestoreMonths);
-
-          months.sort((left, right) => {
-            const leftId = slugifyMonth(left.month || "");
-            const rightId = slugifyMonth(right.month || "");
-            const leftOrder = left.order ?? monthMetaById.get(leftId)?.order ?? 999;
-            const rightOrder = right.order ?? monthMetaById.get(rightId)?.order ?? 999;
-            return leftOrder - rightOrder;
-          });
-
-          renderCompetition(months);
-          renderMonthOptions(months);
-          if (dataSourceNote) {
-            dataSourceNote.textContent = "Data source: Firestore realtime.";
-          }
-        },
-        () => {
-          renderCompetition(competitionData.months);
-          renderMonthOptions(competitionData.months);
-          if (dataSourceNote) {
-            dataSourceNote.textContent = "Data source: Local fallback (realtime unavailable).";
-          }
-          headerAuthStatus.textContent = "Realtime sync unavailable. Showing local fallback data.";
-        }
-      );
-
-      initHeaderShell();
-      initHeaderAuth();
-      initRevealMotion();
-
-      renderCompetition(competitionData.months);
-      renderMonthOptions(competitionData.months);
-    </script>
+    <script src="js/plates/model.js?v=20261110"></script>
+    <script type="module" src="js/plates/app.js?v=20261110"></script>
   </body>
 </html>

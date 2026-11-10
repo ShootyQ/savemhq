@@ -256,7 +256,8 @@ firebase deploy --only firestore:rules,functions
 	- `savannahbcarlson@gmail.com` -> Savannah
 	- Other accounts are read-only on plate entry.
 - Andrew and Savannah are auto-approved on first sign-in; other accounts still require approval from the admin page.
-- Monthly plate cards on `states-competition.html` are collapsed by default on mobile and can be expanded per month.
+- `states-competition.html` starts with the current month’s side-by-side scores, followed by finalized season wins and compact monthly results.
+- State comparison and season stats expand on demand. Historical manual totals are preserved, and missing state details are labeled explicitly.
 - Month locks are managed from `admin.html`. Locked months cannot be edited in plate entry.
 
 ## Firebase Realtime Plate Tracker Setup
@@ -268,7 +269,7 @@ firebase deploy --only firestore:rules,functions
 3. Open `admin.html` and sign in as `andrewpcarlson85@gmail.com` to review approvals.
 4. Users can click `Google Login` in the top-right header on any page (`index.html`, `states-competition.html`, `plate-entry.html`, or `admin.html`).
 5. Approved users can open `plate-entry.html` and add sightings.
-6. Live scoreboard updates continue to sync through Firestore snapshots.
+6. Live scoreboard updates continue to sync through Firestore snapshots. The board never seeds or writes competition records; see [Plate competition scoring, validation, and rollout](docs/plate-competition.md).
 
 ### Suggested Firestore Rules
 
