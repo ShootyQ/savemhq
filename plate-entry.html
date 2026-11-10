@@ -6,6 +6,7 @@
     <title>Private Plate Entry | SavemHQ</title>
     <meta name="description" content="Private page for approved users to add monthly plate sightings." />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="plates.css?v=scoreboard-20261110" />
   </head>
   <body data-page="entry">
     <a class="skip-link" href="#main-content">Skip to content</a>
@@ -16,6 +17,7 @@
         <div class="container">
           <h1>Quick Plate Add</h1>
           <p class="small-note">Pick month, then tap states. Tap again to undo.</p>
+          <a id="entry-scoreboard-link" class="plate-entry-return" href="states-competition.html">← Back to scores</a>
         </div>
       </section>
 
@@ -62,6 +64,7 @@
       </div>
     </footer>
 
+    <script src="js/plates/model.js?v=20261110"></script>
     <script type="module">
       import {
         arrayRemove,
@@ -87,33 +90,15 @@
         ],
       });
 
-      const COMPETITION_YEAR = 2026;
-      const DEFAULT_MONTHS = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-      ];
-      const ALL_STATES = [
-        "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida",
-        "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland",
-        "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
-        "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania",
-        "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
-        "West Virginia", "Wisconsin", "Wyoming", "District of Columbia"
-      ];
+      const model = globalThis.PlateModel;
+      const COMPETITION_YEAR = model.YEAR;
+      const DEFAULT_MONTHS = [...model.MONTHS];
+      const ALL_STATES = [...model.STATES];
+      const REQUESTED_MONTH_ID = model.monthId(new URLSearchParams(location.search).get("month"));
       const RECENT_STATES_STORAGE_KEY = "savemhq-recent-states";
       const monthsCollection = collection(db, "competitions", String(COMPETITION_YEAR), "months");
       const monthOrderById = new Map(DEFAULT_MONTHS.map((monthName, index) => [slugifyMonth(monthName), index]));
-      const CURRENT_MONTH_ID = slugifyMonth(new Date().toLocaleString("en-US", { month: "long" }));
+
 
       const entryPanel = document.getElementById("entry-panel");
       const entryLocked = document.getElementById("entry-locked");
@@ -130,6 +115,8 @@
       let canEdit = false;
       let monthsLoaded = false;
       let monthsUnsubscribe = null;
+      let entryAuthEpoch = 0;
+      let monthSnapshotReady = false;
 
       function slugifyMonth(monthName) {
         return String(monthName || "").toLowerCase().trim().replace(/\s+/g, "-");
@@ -190,13 +177,26 @@
         recentStates.innerHTML = states
           .map(
             (stateName) =>
-              `<button class="quick-chip ${selectedStates.has(stateName) ? "is-selected" : ""}" type="button" data-state="${stateName}" ${!canEdit ? "disabled" : ""}>${stateName}</button>`
+              `<button class="quick-chip ${selectedStates.has(stateName) ? "is-selected" : ""}" type="button" data-state="${stateName}" ${!canEdit || !monthSnapshotReady || selectedMonthLocked() ? "disabled" : ""}>${stateName}</button>`
           )
           .join("");
       }
 
       function selectedMonthId() {
         return String(monthSelect.value || "").trim();
+      }
+
+      function updateMonthLinks() {
+        const monthId = selectedMonthId();
+        if (!monthId) return;
+        const scoreboard = `states-competition.html?month=${encodeURIComponent(monthId)}`;
+        document.getElementById("entry-scoreboard-link").href = scoreboard;
+        document.querySelectorAll('.header-nav a[href^="states-competition.html"]').forEach(link => { link.href = scoreboard; });
+        const addLink = document.getElementById("add-plates-link");
+        if (addLink) addLink.href = `plate-entry.html?month=${encodeURIComponent(monthId)}`;
+        const url = new URL(location.href);
+        url.searchParams.set("month", monthId);
+        history.replaceState({}, "", url);
       }
 
       function selectedMonthName() {
@@ -236,9 +236,14 @@
 
         const monthName = selectedMonthName();
         const personLabel = selectedPerson === "andy" ? "Andy" : "Savannah";
+        if (!monthSnapshotReady) {
+          selectedStateText.textContent = `${personLabel} · ${monthName} · Loading month information…`;
+          return;
+        }
         const monthStates = activeStatesForSelection();
-        const lockLabel = selectedMonthLocked() ? "Locked" : "Open";
-        selectedStateText.textContent = `${personLabel} mode | ${monthName} (${lockLabel}) | ${monthStates.size} states logged.`;
+        selectedStateText.textContent = selectedMonthLocked()
+          ? `${personLabel} · ${monthName} · Final month — entry is locked.`
+          : `${personLabel} · ${monthName} · ${monthStates.size} states logged.`;
       }
 
       function sortedResults() {
@@ -260,7 +265,7 @@
             const pendingKey = `${monthId}:${selectedPerson}:${stateName}`;
             const isPending = pendingStateWrites.has(pendingKey);
             const isSelected = selectedStates.has(stateName);
-            return `<button class="state-option ${isSelected ? "is-selected" : ""} ${isPending ? "is-pending" : ""}" type="button" data-state="${stateName}" ${isPending || !canEdit ? "disabled" : ""}>${stateName}</button>`;
+            return `<button class="state-option ${isSelected ? "is-selected" : ""} ${isPending ? "is-pending" : ""}" type="button" data-state="${stateName}" ${isPending || !canEdit || !monthSnapshotReady || selectedMonthLocked() ? "disabled" : ""}>${stateName}</button>`;
           })
           .join("");
       }
@@ -305,18 +310,24 @@
         options.sort((left, right) => Number(left.dataset.order) - Number(right.dataset.order));
         monthSelect.innerHTML = options.map((option) => option.outerHTML).join("");
 
-        const preferredMonthId = previouslySelectedMonthId || CURRENT_MONTH_ID;
+        const preferredMonthId = previouslySelectedMonthId || REQUESTED_MONTH_ID || model.defaultMonth(model.buildMonths(documents.map(monthDoc => ({...monthDoc.data(), id: monthDoc.id}))));
         const preferredOption = Array.from(monthSelect.options).find((option) => option.value === preferredMonthId) || monthSelect.options[0];
         if (preferredOption) {
           monthSelect.value = preferredOption.value;
         }
+        updateMonthLinks();
       }
 
       async function toggleState(stateName) {
         if (!canEdit) {
           return;
         }
+        if (!monthSnapshotReady) {
+          plateStatus.textContent = "Waiting for live month information…";
+          return;
+        }
 
+        const authEpoch = entryAuthEpoch;
         const state = normalizeState(stateName);
         const monthId = selectedMonthId();
         const monthName = selectedMonthName();
@@ -367,6 +378,7 @@
             { merge: true }
           );
 
+          if (authEpoch !== entryAuthEpoch) return;
           if (!hadState) {
             saveRecentState(state);
             renderRecentStates();
@@ -377,6 +389,7 @@
             : `Added ${state} to ${monthName} for ${selectedPerson === "andy" ? "Andy" : "Savannah"}.`;
         } catch (error) {
           console.error("Could not toggle state", error);
+          if (authEpoch !== entryAuthEpoch) return;
           monthDataById.set(monthId, {
             ...monthData,
             [stateField]: currentStates,
@@ -385,14 +398,18 @@
           plateStatus.textContent = `Could not update state (${details}).`;
         } finally {
           pendingStateWrites.delete(pendingKey);
+          if (authEpoch !== entryAuthEpoch) return;
           renderStateResults();
           refreshEntrySummary();
         }
       }
 
       monthSelect.addEventListener("change", () => {
+        updateMonthLinks();
         refreshEntrySummary();
+        renderRecentStates();
         renderStateResults();
+        plateStatus.textContent = !monthSnapshotReady ? "Waiting for live month information…" : selectedMonthLocked() ? `${selectedMonthName()} is locked. View the scores, or ask admin to unlock it.` : "Tap a state to add it. Tap again to remove it.";
       });
 
       recentStates.addEventListener("click", (event) => {
@@ -417,6 +434,9 @@
       initRevealMotion();
       initHeaderAuth({
         onStateChange: async ({ user, isAdmin, approvalStatus, approvalPerson, approvalSections }) => {
+          if (user && auth.currentUser?.uid !== user.uid) return;
+          entryAuthEpoch += 1;
+          canEdit = false;
           if (!user) {
             entryPanel.classList.add("hidden");
             entryLocked.classList.remove("hidden");
@@ -425,6 +445,12 @@
               monthsUnsubscribe();
               monthsUnsubscribe = null;
             }
+            monthsLoaded = false;
+            monthSnapshotReady = false;
+            selectedPerson = "";
+            monthDataById.clear();
+            renderStateResults();
+            renderRecentStates();
             return;
           }
 
@@ -436,6 +462,8 @@
           }, "plates");
 
           if (!canAccessPlates) {
+            monthsUnsubscribe?.(); monthsUnsubscribe = null; monthsLoaded = false; monthSnapshotReady = false;
+            selectedPerson = ""; monthDataById.clear();
             entryPanel.classList.add("hidden");
             entryLocked.classList.remove("hidden");
             if (approvalStatus === "denied") {
@@ -453,7 +481,7 @@
           currentUserEmail = String(user.email || "").toLowerCase();
           selectedPerson = String(approvalPerson || getPersonFromEmail(currentUserEmail) || "").toLowerCase();
 
-          if (!selectedPerson) {
+          if (!["andy", "savannah"].includes(selectedPerson)) {
             entryPanel.classList.add("hidden");
             entryLocked.classList.remove("hidden");
             plateStatus.textContent = "Your login is approved, but no player is assigned yet. Ask admin to set Andy or Savannah on your approval record.";
@@ -471,15 +499,26 @@
           entryLocked.classList.add("hidden");
 
           if (!monthsLoaded) {
+            monthSnapshotReady = false;
             monthsUnsubscribe = onSnapshot(
               monthsCollection,
+              { includeMetadataChanges: true },
               (snapshot) => {
+                monthSnapshotReady = !snapshot.metadata.fromCache;
+                const wasLocked = selectedMonthLocked();
                 loadMonthsFromDocuments(snapshot.docs);
                 refreshEntrySummary();
+                renderRecentStates();
                 renderStateResults();
+                if (!monthSnapshotReady) plateStatus.textContent = "Waiting for live month information…";
+                else if (selectedMonthLocked()) plateStatus.textContent = `${selectedMonthName()} is locked. View the scores, or ask admin to unlock it.`;
+                else if (wasLocked) plateStatus.textContent = "Tap a state to add it. Tap again to remove it.";
               },
               (error) => {
                 console.error("Could not subscribe to months", error);
+                monthSnapshotReady = false;
+                renderStateResults(); renderRecentStates();
+                plateStatus.textContent = "Could not load month updates. Reload this page to reconnect.";
               }
             );
             monthsLoaded = true;
