@@ -34,7 +34,7 @@ npm --prefix functions run test:teams:browser
 npm --prefix functions run test:admin:browser
 ```
 
-The plate suite has 12 pure scoring tests. The browser workflow runs the real scoreboard/API/model and entry page with isolated Firebase transport and fixture identities. It checks live loading/cache/error/retry/empty behavior; absence of competition writes from the board; manual totals; wins, ties and streaks; navigation and browser Back; comparison/search; escaped stored text; stable live-update focus; mobile table accessibility and side-by-side scores; entry add/remove/failure recovery; fresh lock checks; sign-out cleanup; both players; and signed-out/pending/denied/unmapped access gates. It does not prove production Google sign-in or deployed network access.
+The plate suite has 12 pure scoring tests and 6 historical-recovery guard tests. The browser workflow runs the real scoreboard/API/model and entry page with isolated Firebase transport and fixture identities. It checks live loading/cache/error/retry/empty behavior; absence of competition writes from the board; manual totals; wins, ties and streaks; navigation and browser Back; comparison/search; escaped stored text; stable live-update focus; mobile table accessibility and side-by-side scores; entry add/remove/failure recovery; fresh lock checks; sign-out cleanup; both players; and signed-out/pending/denied/unmapped access gates. It does not prove production Google sign-in or deployed network access.
 
 Browser tests require Chromium (default `/usr/bin/chromium`; override `CHROMIUM_PATH`). Preview images use sample data and are written under `/tmp/plates-*`. Existing Desk/Teams and admin browser regressions pass. No rules, indexes, Functions or Storage deployment is required.
 
@@ -46,3 +46,20 @@ Browser tests require Chromium (default `/usr/bin/chromium`; override `CHROMIUM_
 4. Confirm unauthenticated visitors can read scores but cannot enter states. Confirm the admin lock interface still preserves scores.
 
 Production inspection is outstanding: the cloud network did not permit access to www.savemhq.com during implementation. No production data was accessed or altered for these tests.
+
+
+## February history recovery
+
+The previous website bundled February’s original state lists in its HTML: **Andy 28, Savannah 29**. The source is commit `c2ad9b777b79a94440d2ea6bdd8ca6510bf1a076`, `states-competition.html`. The verified archive in `js/plates/legacy-recovery.js` is used only by an explicit Admin recovery action, never as a scoreboard fallback.
+
+After publishing, sign in as administrator, open **Admin → Competition Locks**, and find February. If its database record is missing or empty, **Restore & finalize February** previews the recovered scores in a confirmation before saving. The transaction restores both lists and locks February so Savannah’s win counts. Existing lock metadata is kept when already present, and `historicalRecovery` records the source, administrator, timestamp, and complete previous document. January and every other month are untouched.
+
+Recovery refuses any nonempty state list or recorded manual total (including explicit 0–0), checks for concurrent changes, and treats a repeated successful request as a no-op. If February already shows 28–29 but is open, use its ordinary **Lock** action instead; no recovery is needed. No rules or Functions deployment is required.
+
+Additional validation:
+
+```sh
+npm --prefix functions run test:plates:recovery:rules
+```
+
+Five actual Firestore emulator tests cover missing/empty records, audit preservation, existing values, concurrent retries, and non-admin denial using the unchanged production rules. The admin browser workflow covers confirmation cancellation, failed-save retry, successful recovery and unchanged January scores. Running these tests does not recover production data; the signed-in administrator must run the published recovery action.

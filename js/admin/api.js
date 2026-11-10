@@ -29,3 +29,22 @@ export async function setMonthLock(id,locked,expected){
   });
 }
 export { auth, ADMIN_EMAIL, ACCESS_SECTIONS, getKnownUserProfile, initHeaderAuth };
+
+// Explicit administrator recovery, never part of public scoreboard loading.
+export async function restoreFebruary(base){
+  const user=requireAdmin();const Recovery=window.PlateRecovery;
+  const expected=Recovery.fingerprint(base);const ref=doc(db,'competitions','2026','months','february');
+  return runTransaction(db,async transaction=>{
+    const snapshot=await transaction.get(ref);const current=snapshot.exists()?snapshot.data():null;
+    if(auth.currentUser?.uid!==user.uid)throw new Error('Your sign-in changed. Reload before recovering scores.');requireAdmin();
+    const recovery=Recovery.plan(current,expected);if(recovery.alreadyRestored)return {alreadyRestored:true};
+    transaction.set(ref,{
+      ...recovery.patch,
+      lockedAt:current?.locked===true&&current.lockedAt?current.lockedAt:serverTimestamp(),
+      lockedBy:current?.locked===true&&current.lockedBy?current.lockedBy:user.email,
+      updatedAt:serverTimestamp(),
+      historicalRecovery:{source:Recovery.SOURCE,restoredBy:user.email,restoredAt:serverTimestamp(),previousRecord:current},
+    },{merge:true});
+    return {alreadyRestored:false};
+  });
+}

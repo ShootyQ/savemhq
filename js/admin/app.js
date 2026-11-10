@@ -1,5 +1,6 @@
-import * as API from './api.js';
+import * as API from './api.js?v=february-recovery-20261110';
 const Model=window.AdminModel;
+const Recovery=window.PlateRecovery;
 const $=selector=>document.querySelector(selector);
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state={authorized:false,epoch:0,tab:'people',people:[],months:[],filter:'all',search:'',page:0,initialFilter:false,editor:null,busy:false,peopleError:false,monthBusy:new Set(),monthMessages:new Map()};
@@ -45,7 +46,7 @@ function subscribePeople(){
   },error=>{if(epoch!==state.epoch)return;state.peopleError=true;message(`Unable to load accounts: ${error.message}`,true);$('#people-list').innerHTML='<div class="empty"><strong>Accounts unavailable</strong>Check your connection and retry.</div>'+button('Retry accounts','data-retry-people');});
 }
 function renderMonths(){
-  $('#months-list').innerHTML=Model.monthRows(state.months).map(m=>`<article class="month-row"><div class="month-main"><div><h3>${m.name} ${badge(m.locked?'locked':'open')}</h3><p>${m.manual?'Manual score':'Logged states'} · Andy ${m.andy} · Savannah ${m.savannah}</p></div>${button(m.locked?'Unlock':'Lock',`data-month="${m.id}" ${state.monthBusy.has(m.id)?'disabled':''}`,m.locked?'secondary':'')}</div><details><summary>Lock details</summary><p>${m.locked?`Locked by ${escape(m.lockedBy||'Not recorded')}<br>${escape(formatDate(m.lockedAt))}`:'This month is open for permitted plate edits.'}</p></details><p role="status" class="muted">${escape(state.monthMessages.get(m.id)||'')}</p></article>`).join('');
+  $('#months-list').innerHTML=Model.monthRows(state.months).map(m=>`<article class="month-row"><div class="month-main"><div><h3>${m.name} ${badge(m.locked?'locked':'open')}</h3><p>${m.manual?'Manual score':'Logged states'} · Andy ${m.andy} · Savannah ${m.savannah}</p></div>${button(m.locked?'Unlock':'Lock',`data-month="${m.id}" ${state.monthBusy.has(m.id)?'disabled':''}`,m.locked?'secondary':'')}</div>${m.id==='february'&&Recovery.canRestore(state.months.find(record=>record.id==='february'))?`<p class="inline-info">Historical February record available: Andy 28 · Savannah 29. The old website included a copy of these state lists. Recovery restores the exact lists and finalizes Savannah’s win, only if the live record is missing or empty.</p>${button('Restore & finalize February',`data-recover-february ${state.monthBusy.has(m.id)?'disabled':''}`)}`:''}<details><summary>Lock details</summary><p>${m.locked?`Locked by ${escape(m.lockedBy||'Not recorded')}<br>${escape(formatDate(m.lockedAt))}`:'This month is open for permitted plate edits.'}</p></details><p role="status" class="muted">${escape(state.monthMessages.get(m.id)||'')}</p></article>`).join('');
 }
 function subscribeMonths(){
   stopMonths?.();const epoch=state.epoch;$('#months-list').innerHTML='<div class="empty">Loading month locks…</div>';
@@ -107,6 +108,17 @@ document.addEventListener('click',async event=>{
   if(d.accessAction)await save(d.accessAction);
   if(d.retryPeople!==undefined)subscribePeople();
   if(d.retryMonths!==undefined)subscribeMonths();
+  if(d.recoverFebruary!==undefined){
+    if(state.monthBusy.has('february'))return;
+    const base=state.months.find(record=>record.id==='february')||null;
+    if(!Recovery.canRestore(base)){message('February now contains recorded values. Recovery will not overwrite them.',true);return;}
+    if(!confirm('Restore February 2026 from the old website record: Andy 28, Savannah 29? This restores both original state lists and locks February as a final result. Existing nonempty scores will not be overwritten, and the previous record will be kept in the recovery audit.'))return;
+    const epoch=state.epoch;state.monthBusy.add('february');state.monthMessages.set('february','Recovering February…');renderMonths();
+    try{const result=await API.restoreFebruary(base);if(epoch!==state.epoch)return;state.monthMessages.set('february',result.alreadyRestored?'February was already recovered.':'February recovered and finalized: Andy 28 · Savannah 29.');}
+    catch(error){if(epoch===state.epoch)state.monthMessages.set('february',error.message);}
+    finally{if(epoch===state.epoch){state.monthBusy.delete('february');renderMonths();}}
+    return;
+  }
   if(d.month){
     const month=Model.monthRows(state.months).find(m=>m.id===d.month);if(!month||state.monthBusy.has(month.id))return;
     if(month.locked&&!confirm(`Unlock ${month.name} 2026? Approved players will be able to change plate entries again. Existing scores will not be reset.`))return;
